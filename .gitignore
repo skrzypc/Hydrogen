@@ -416,3 +416,12 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# CUSTOM
+
+*.exe
+imgui.ini
+thirdParty/vcpkg
+thirdParty/vcpkg/*
+thirdParty/vcpkg_installed/*
+build/*
