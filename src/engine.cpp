@@ -1,16 +1,21 @@
 
 #include "engine.h"
 #include "config.h"
+#include "logger.h"
 
 namespace Hydrogen
 {
 	int32 Engine::Run(LPSTR commandLineArgs)
 	{
+		Logger::Initialize();
+
 		if (Hydrogen::Config::WaitForDebugger)
 		{
 			while (!::IsDebuggerPresent())
 			{
-				::Sleep(100);
+				::Sleep(1000);
+
+				H2_INFO(eLogLocation::Engine, eLogLevel::Verbose, "Waiting for debugger.");
 			}
 		}
 

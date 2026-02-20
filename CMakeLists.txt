@@ -45,7 +45,7 @@ target_compile_definitions(Hydrogen PRIVATE
     $<$<CONFIG:RelWithDebInfo>:_RELDBGINFO;_NDEBUG>
 )
 
-target_compile_options(Hydrogen PRIVATE /W3 /permissive- /Zc:__cplusplus)
+target_compile_options(Hydrogen PRIVATE /W3 /permissive- /Zc:__cplusplus /FC)
 
 if(MSVC)
     target_compile_options(Hydrogen PRIVATE /MP)

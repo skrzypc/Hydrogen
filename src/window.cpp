@@ -1,5 +1,6 @@
 
 #include "window.h"
+#include "logger.h"
 
 namespace Hydrogen
 {
@@ -55,7 +56,8 @@ namespace Hydrogen
 
 		if (!m_hwnd)
 		{
-			// ERROR!
+			H2_ERROR(eLogLocation::Core, eLogLevel::Minimal, "Window creation failed!");
+
 			return;
 		}
 
@@ -112,6 +114,9 @@ namespace Hydrogen
 			const uint32 newWidth = LOWORD(lParam);
 			const uint32 newHeight = HIWORD(lParam);
 			Resize(newWidth, newHeight);
+
+			H2_INFO(eLogLocation::Core, eLogLevel::Verbose, "Window resize detected. New window size {}x{}", newWidth, newHeight);
+
 			break;
 		}
 		case WM_INPUT:
