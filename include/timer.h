@@ -11,7 +11,7 @@ namespace Hydrogen
 	public:
 		using Clock = std::chrono::high_resolution_clock;
 		using Timestamp = std::chrono::time_point<Clock>;
-		using TimePoint = std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds>;
+		using TimePoint = std::chrono::zoned_time<std::chrono::milliseconds>;
 
 	public:
 		static Timestamp GetTimestamp() noexcept
@@ -21,8 +21,10 @@ namespace Hydrogen
 
 		static TimePoint GetTime() noexcept
 		{
-			// TODO: Fix hour!
-			return std::chrono::floor<std::chrono::milliseconds>(std::chrono::system_clock::now());
+			return std::chrono::zoned_time {	
+				std::chrono::current_zone(),
+				std::chrono::floor<std::chrono::milliseconds>(std::chrono::system_clock::now())
+			};
 		}
 
 		template<typename DurationType = std::chrono::milliseconds>
