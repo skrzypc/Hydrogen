@@ -27,11 +27,11 @@ namespace Hydrogen
 
 		if (!m_file.is_open())
 		{
-			H2_ERROR(eLogLocation::Core, eLogLevel::Minimal, "Failed to open log file!");
+			H2_ERROR(eLogLevel::Minimal, "Failed to open log file!");
 		}
 	}
 
-	void Logger::_Log(eLogType logType, eLogLocation logLocation, eLogLevel logLevel, std::string_view message)
+	void Logger::Log(eLogType logType, eLogLevel logLevel, std::string_view message)
 	{
 		//std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -40,11 +40,10 @@ namespace Hydrogen
 			return;
 		}
 
-		std::string output = std::format(
-			"[{}][{}][{}] {}\n",
+		std::string finalMessage = std::format(
+			"[{}][{}] {}\n",
 			std::format("{:%H:%M:%S}", Timer::GetTime()),
 			LogTypeToString(logType),
-			LogLocationToString(logLocation),
 			message
 		);
 
@@ -52,14 +51,14 @@ namespace Hydrogen
 		{
 			if (m_file.is_open())
 			{
-				m_file << output;
+				m_file << finalMessage;
 				m_file.flush();
 			}
 		}
 
 		if constexpr (m_bLogToConsole)
 		{
-			OutputDebugStringA(output.c_str());
+			OutputDebugStringA(finalMessage.data());
 		}
 	}
 
@@ -79,16 +78,5 @@ namespace Hydrogen
 		case eLogType::Error: return "ERROR";
 		}
 		return "UNKNOWN";
-	}
-
-	std::string_view Logger::LogLocationToString(eLogLocation logLocation)
-	{
-		switch (logLocation)
-		{
-		case eLogLocation::Engine: return "Engine";
-		case eLogLocation::Renderer: return "Renderer";
-		case eLogLocation::Core: return "Core";
-		}
-		return "Unknown";
 	}
 }

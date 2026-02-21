@@ -21,6 +21,7 @@ namespace Hydrogen
 
 		static TimePoint GetTime() noexcept
 		{
+			// TODO: Fix hour!
 			return std::chrono::floor<std::chrono::milliseconds>(std::chrono::system_clock::now());
 		}
 

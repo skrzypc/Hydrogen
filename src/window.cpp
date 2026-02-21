@@ -56,7 +56,7 @@ namespace Hydrogen
 
 		if (!m_hwnd)
 		{
-			H2_ERROR(eLogLocation::Core, eLogLevel::Minimal, "Window creation failed!");
+			H2_ERROR(eLogLevel::Minimal, "Window creation failed!");
 
 			return;
 		}
@@ -115,7 +115,7 @@ namespace Hydrogen
 			const uint32 newHeight = HIWORD(lParam);
 			Resize(newWidth, newHeight);
 
-			H2_INFO(eLogLocation::Core, eLogLevel::Verbose, "Window resize detected. New window size {}x{}", newWidth, newHeight);
+			H2_INFO(eLogLevel::Verbose, "Window resize detected. New window size {}x{}", newWidth, newHeight);
 
 			break;
 		}

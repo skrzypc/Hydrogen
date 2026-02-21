@@ -2,6 +2,7 @@
 #include "engine.h"
 #include "config.h"
 #include "logger.h"
+#include "verifier.h"
 
 namespace Hydrogen
 {
@@ -15,7 +16,7 @@ namespace Hydrogen
 			{
 				::Sleep(1000);
 
-				H2_INFO(eLogLocation::Engine, eLogLevel::Verbose, "Waiting for debugger.");
+				H2_INFO(eLogLevel::Verbose, "Waiting for debugger.");
 			}
 		}
 

@@ -3,6 +3,7 @@
 #include <string>
 #include <fstream>
 #include <format>
+#include <source_location>
 
 #include "basicTypes.h"
 
@@ -22,24 +23,17 @@ namespace Hydrogen
 		Error
 	};
 
-	enum class eLogLocation : uint8
-	{
-		Core = 0,
-		Renderer,
-		Engine
-	};
-
 	class Logger
 	{
 	public:
 		static void Initialize();
 		static void SetLogLevel(eLogLevel logLevel);
 
-		static void _Log(eLogType logType, eLogLocation logLocation, eLogLevel logLevel, std::string_view message);
+		// Use macros!
+		static void Log(eLogType logType, eLogLevel logLevel, std::string_view message);
 
 	private:
 		static std::string_view LogTypeToString(eLogType logType);
-		static std::string_view LogLocationToString(eLogLocation logLocation);
 
 	private:
 		constexpr static inline std::string_view m_logFileName = "Hydrogen.log";
@@ -52,19 +46,19 @@ namespace Hydrogen
 }
 
 #ifdef _RELEASE
-	#define H2_INFO(location, logLevel, formatString, ...) ((void)0)
-	#define H2_WARNING(location, logLevel, formatString, ...) ((void)0)
-	#define H2_ERROR(location, logLevel, formatString, ...) ((void)0)
+	#define H2_INFO(logLevel, formatString, ...) ((void)0)
+	#define H2_WARNING(logLevel, formatString, ...) ((void)0)
+	#define H2_ERROR(logLevel, formatString, ...) ((void)0)
 #else
-	#define H2_INFO(location, logLevel, formatString, ...) \
-		Hydrogen::Logger::_Log(Hydrogen::eLogType::Info, location, logLevel, \
+	#define H2_INFO(logLevel, formatString, ...) \
+		Hydrogen::Logger::Log(Hydrogen::eLogType::Info, logLevel, \
 			std::format(formatString, __VA_ARGS__))
 
-	#define H2_WARNING(location, logLevel, formatString, ...) \
-		Hydrogen::Logger::_Log(Hydrogen::eLogType::Warning, location, logLevel, \
+	#define H2_WARNING(logLevel, formatString, ...) \
+		Hydrogen::Logger::Log(Hydrogen::eLogType::Warning, logLevel, \
 			std::format(formatString, __VA_ARGS__))
 
-	#define H2_ERROR(location, logLevel, formatString, ...) \
-		Hydrogen::Logger::_Log(Hydrogen::eLogType::Error, location, logLevel, \
+	#define H2_ERROR(logLevel, formatString, ...) \
+		Hydrogen::Logger::Log(Hydrogen::eLogType::Error, logLevel, \
 			std::format(formatString, __VA_ARGS__))
 #endif
