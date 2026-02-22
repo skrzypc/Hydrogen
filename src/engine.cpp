@@ -22,6 +22,8 @@ namespace Hydrogen
 
 		m_window.Create(Config::WindowWidth, Config::WindowHeight, L"Hydrogen Engine");
 
+		m_renderer.Initialize(m_window.GetHandle());
+
 		int32 returnCode = 0;
 		while (true)
 		{
@@ -33,6 +35,8 @@ namespace Hydrogen
 
 				break;
 			}
+
+			m_renderer.RenderFrame();
 		}
 
 		return returnCode;

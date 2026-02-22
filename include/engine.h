@@ -2,6 +2,7 @@
 
 #include "basicTypes.h"
 #include "window.h"
+#include "renderer.h"
 
 namespace Hydrogen
 {
@@ -20,5 +21,6 @@ namespace Hydrogen
 
 	private:
 		Window m_window{};
+		Renderer m_renderer{};
 	};
 }
