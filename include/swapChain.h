@@ -25,10 +25,15 @@ namespace Hydrogen
 
 		void Create(GpuDevice& device, HWND hWnd);
 		void Present();
+		
 		const TextureView* GetCurrentBackBuffer() const	{ return &m_backBufferRtvs[m_frameIndex]; }
 
+		const uint64 GetCurrentFrameNumber() const { return m_frameNumber; }
+		const uint32 GetCurrentFrameIndex() const { return static_cast<uint32>(m_frameIndex); }
+
 	private:
-		uint64 m_frameIndex = 0u;
+		uint8 m_frameIndex = 0u;
+		uint64 m_frameNumber = 0u;
 
 		Microsoft::WRL::ComPtr<IDXGISwapChain4> m_pSwapChain = nullptr;
 		std::array<Texture*, Config::FramesInFlight> m_backBuffers{};

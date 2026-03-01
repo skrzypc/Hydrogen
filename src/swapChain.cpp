@@ -28,7 +28,7 @@ namespace Hydrogen
 		Microsoft::WRL::ComPtr<IDXGISwapChain1> pSwapChain = nullptr;
 		H2_VERIFY_FATAL(
 			gpuDevice.GetDxgiFactory()->CreateSwapChainForHwnd(
-				gpuDevice.GetDirectCommandQueue(),
+				gpuDevice.GetDirectCommandQueue().GetDxCommandQueue(),
 				hWnd,
 				&swapChainDesc,
 				nullptr,
@@ -67,6 +67,10 @@ namespace Hydrogen
 	void SwapChain::Present()
 	{
 		H2_VERIFY_FATAL(m_pSwapChain->Present(0, DXGI_PRESENT_ALLOW_TEARING), "Failed to present swap chain!");
-		m_frameIndex = ++m_frameIndex % Config::FramesInFlight;
+		//H2_VERIFY_FATAL(m_pSwapChain->Present(1, 0), "Failed to present swap chain!");
+
+		// We should probably update that at the beginning of the new frame, not at the end of the current one?
+		m_frameNumber++;
+		m_frameIndex = m_frameNumber % Config::FramesInFlight;
 	}
 }

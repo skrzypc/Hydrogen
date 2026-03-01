@@ -7,7 +7,7 @@
 
 namespace Hydrogen
 {
-	void DescriptorHeap::Initialize(GpuDevice& gpuDevice, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32 capacity, std::wstring_view name)
+	void DescriptorHeap::Initialize(ID3D12Device* pDevice, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32 capacity, std::wstring_view name)
 	{
 		bool bShaderVisible = type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV || type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
 
@@ -20,9 +20,9 @@ namespace Hydrogen
 			.Flags = bShaderVisible ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
 		};
 
-		m_descriptorSize = gpuDevice.GetDxDevice()->GetDescriptorHandleIncrementSize(type);
+		m_descriptorSize = pDevice->GetDescriptorHandleIncrementSize(type);
 
-		H2_VERIFY_FATAL(gpuDevice.GetDxDevice()->CreateDescriptorHeap(&descriptorHeapDesc, IID_PPV_ARGS(&m_pDxDescriptorHeap)), "Failed to create descriptor heap!");
+		H2_VERIFY_FATAL(pDevice->CreateDescriptorHeap(&descriptorHeapDesc, IID_PPV_ARGS(&m_pDxDescriptorHeap)), "Failed to create descriptor heap!");
 		m_pDxDescriptorHeap->SetName(name.data());
 
 		m_cpuHandleStart = m_pDxDescriptorHeap->GetCPUDescriptorHandleForHeapStart();

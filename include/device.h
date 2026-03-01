@@ -8,6 +8,8 @@
 #include <vector>
 
 #include "basicTypes.h"
+
+#include "commandQueue.h"
 #include "descriptorHeap.h"
 #include "linearIndexAllocator.h"
 
@@ -49,7 +51,8 @@ namespace Hydrogen
 
 		void Create();
 
-		ID3D12CommandQueue* GetDirectCommandQueue() const { return m_pDxDirectQueue.Get(); }
+		CommandQueue& GetDirectCommandQueue() { return m_directCommandQueue; }
+
 		IDXGIFactory7* GetDxgiFactory() const { return m_pDxgiFactory.Get(); }
 		ID3D12Device14* GetDxDevice() const { return m_pDxDevice.Get(); }
 
@@ -76,8 +79,6 @@ namespace Hydrogen
 		Microsoft::WRL::ComPtr<IDXGIAdapter4> m_pDxgiAdapter = nullptr;
 		Microsoft::WRL::ComPtr<ID3D12Device14> m_pDxDevice = nullptr;
 
-		Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_pDxDirectQueue = nullptr;
-
 		LinearIndexAllocator m_cbvSrvUavDescriptorAllocator{};
 		DescriptorHeap m_cbvSrvUavDescriptorHeap{};
 
@@ -92,5 +93,7 @@ namespace Hydrogen
 
 		std::vector<std::unique_ptr<Texture>> m_registeredTextures{};
 		std::vector<std::unique_ptr<Buffer>> m_registeredBuffers{};
+
+		CommandQueue m_directCommandQueue{};
 	};
 }

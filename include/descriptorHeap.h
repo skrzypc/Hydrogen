@@ -20,7 +20,7 @@ namespace Hydrogen
 		DescriptorHeap(DescriptorHeap&&) noexcept = default;
 		DescriptorHeap& operator=(DescriptorHeap&&) noexcept = default;
 
-        void Initialize(GpuDevice& gpuDevice, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32 capacity, std::wstring_view name);
+        void Initialize(ID3D12Device* pDevice, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32 capacity, std::wstring_view name);
 
         D3D12_CPU_DESCRIPTOR_HANDLE GetCpuHandle(uint32 index) const;
         D3D12_GPU_DESCRIPTOR_HANDLE GetGpuHandle(uint32 index) const;

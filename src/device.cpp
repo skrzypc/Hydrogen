@@ -205,27 +205,41 @@ namespace Hydrogen
 
 	void GpuDevice::Initialize()
 	{
-		D3D12_COMMAND_QUEUE_DESC commandQueueDesc
-		{
-			.Type = D3D12_COMMAND_LIST_TYPE_DIRECT,
-			.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL,
-			.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE,
-			.NodeMask = 0u
-		};
+		m_directCommandQueue.Initialize(
+			GetDxDevice(),
+			D3D12_COMMAND_LIST_TYPE_DIRECT
+		);
 
-		H2_VERIFY_FATAL(m_pDxDevice->CreateCommandQueue(&commandQueueDesc, IID_PPV_ARGS(&m_pDxDirectQueue)), "Failed to create DX12 Command Queue!");
-		m_pDxDirectQueue->SetName(L"H2_DIRECT_COMMAND_QUEUE");
-
-		m_cbvSrvUavDescriptorHeap.Initialize(*this, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 16384, L"H2_CBV_SRV_UAV_DESCRIPTOR_HEAP");
+		m_cbvSrvUavDescriptorHeap.Initialize(
+			GetDxDevice(),
+			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+			16384,
+			L"H2_CBV_SRV_UAV_DESCRIPTOR_HEAP"
+		);
 		m_cbvSrvUavDescriptorAllocator.Initialize(0, m_cbvSrvUavDescriptorHeap.GetCapacity());
 
-		m_samplerDescriptorHeap.Initialize(*this, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, 2048, L"H2_SAMPLER_DESCRIPTOR_HEAP");
+		m_samplerDescriptorHeap.Initialize(
+			GetDxDevice(),
+			D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
+			2048,
+			L"H2_SAMPLER_DESCRIPTOR_HEAP"
+		);
 		m_samplerDescriptorAllocator.Initialize(0, m_samplerDescriptorHeap.GetCapacity());
 
-		m_rtvDescriptorHeap.Initialize(*this, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 1024, L"H2_RTV_DESCRIPTOR_HEAP");
+		m_rtvDescriptorHeap.Initialize(
+			GetDxDevice(),
+			D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
+			1024,
+			L"H2_RTV_DESCRIPTOR_HEAP"
+		);
 		m_rtvDescriptorAllocator.Initialize(0, m_rtvDescriptorHeap.GetCapacity());
 
-		m_dsvDescriptorHeap.Initialize(*this, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1024, L"H2_DSV_DESCRIPTOR_HEAP");
+		m_dsvDescriptorHeap.Initialize(
+			GetDxDevice(),
+			D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
+			1024,
+			L"H2_DSV_DESCRIPTOR_HEAP"
+		);
 		m_dsvDescriptorAllocator.Initialize(0, m_dsvDescriptorHeap.GetCapacity());
 	}
 

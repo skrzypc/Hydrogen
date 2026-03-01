@@ -2,12 +2,14 @@
   "name": "hydrogen",
   "version-string": "0.1.0",
   "description": "",
+  "supports": "windows & x64",
   "dependencies": [
 	{ "name": "directxtk12", "version>=": "2025-07-10" },
 	{ "name": "directxtex", "version>=": "2025-07-10"},
 	{ "name": "directx-dxc", "version>=": "2025-07-15"},
 	{ "name": "assimp", "version>=": "6.0.2" },
-	{ "name": "imgui", "version>=": "1.91.8", "features": [ "docking-experimental", "dx12-binding", "win32-binding" ] }
+	{ "name": "imgui", "version>=": "1.91.8", "features": [ "docking-experimental", "dx12-binding", "win32-binding" ] },
+	{ "name": "winpixevent", "version>=": "1.0.240308001" }
   ],
   "builtin-baseline": "4334d8b4c8916018600212ab4dd4bbdc343065d1"
 }

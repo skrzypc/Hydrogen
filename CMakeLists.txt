@@ -60,6 +60,7 @@ endif()
 find_package(directxtk12 CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
+find_package(winpixevent CONFIG REQUIRED)
 
 target_link_libraries(Hydrogen PRIVATE
     d3d12
@@ -70,6 +71,7 @@ target_link_libraries(Hydrogen PRIVATE
     Microsoft::DirectXTK12
     assimp::assimp
 	imgui::imgui
+	Microsoft::WinPixEventRuntime
     ${VCPKG_INSTALLED_DIR}/lib/dxcompiler.lib
     ${VCPKG_INSTALLED_DIR}/lib/DirectXTex.lib
 )

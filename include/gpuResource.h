@@ -24,7 +24,7 @@ namespace Hydrogen
         void SetState(D3D12_RESOURCE_STATES state) { m_state = state; }
 
     protected:
-        Microsoft::WRL::ComPtr<ID3D12Resource> m_pResource;
+        Microsoft::WRL::ComPtr<ID3D12Resource> m_pResource = nullptr;
         D3D12_RESOURCE_STATES m_state = D3D12_RESOURCE_STATE_COMMON;
     };
 }

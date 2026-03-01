@@ -31,6 +31,7 @@ namespace Hydrogen
         uint32 GetWidth() const { return m_desc.width; }
         uint32 GetHeight() const { return m_desc.height; }
         DXGI_FORMAT GetFormat() const { return m_desc.format; }
+        uint32 GetMipLevelsCount() const { return m_desc.mipLevels; }
 
     private:
 		Desc m_desc{};
