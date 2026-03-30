@@ -1,13 +1,15 @@
 
+#include <d3d12.h>
+#include <DirectXColors.h>
+
+#include <pix3.h>
+
 #include "renderer.h"
 #include "logger.h"
 #include "verifier.h"
 #include "stringUtilities.h"
 
-#include <d3d12.h>
-#include <DirectXColors.h>
-
-#include <pix3.h>
+#include "frameGraph.h"
 
 namespace Hydrogen
 {
@@ -37,12 +39,15 @@ namespace Hydrogen
 				commandAllocators[i]->Reset();
 			}
 
+			m_frameGraph.Initialize(m_gpuDevice);
+
 			bFirst = false;
 		}
 
-		H2_INFO(eLogLevel::Minimal, "Current frame: {}", m_swapChain.GetCurrentFrameNumber());
-
+		uint64 currentFrameNumber = m_swapChain.GetCurrentFrameNumber();
 		uint32 currentFrameIndex = m_swapChain.GetCurrentFrameIndex();
+
+		H2_INFO(eLogLevel::Minimal, "Current frame: {}", currentFrameNumber);
 
 		auto& commandQueue = m_gpuDevice.GetDirectCommandQueue();
 		commandQueue.Wait(fenceValues[currentFrameIndex]);
@@ -52,41 +57,11 @@ namespace Hydrogen
 
 		auto pCommandList = commandLists[currentFrameIndex].Get();
 
+		// Frame graph usage.
 		{
-			PIXScopedEvent(m_gpuDevice.GetDirectCommandQueue().GetDxCommandQueue(), PIX_COLOR_INDEX(0), String::Format("Frame {}", m_swapChain.GetCurrentFrameNumber()).c_str());
-			PIXScopedEvent(pCommandList, PIX_COLOR_INDEX(0), String::Format("Frame {}", m_swapChain.GetCurrentFrameNumber()).c_str());
+			m_frameGraph.BeginFrame(currentFrameNumber);
 
-			const TextureView* backBufferView = m_swapChain.GetCurrentBackBuffer();
-
-			{
-				PIXScopedEvent(m_gpuDevice.GetDirectCommandQueue().GetDxCommandQueue(), PIX_COLOR_INDEX(1), "Texture barrier 1");
-				PIXScopedEvent(pCommandList, PIX_COLOR_INDEX(1), "Texture barrier 1");
-
-				D3D12_TEXTURE_BARRIER textureBarrier{};
-				textureBarrier.SyncBefore = D3D12_BARRIER_SYNC_NONE;
-				textureBarrier.SyncAfter = D3D12_BARRIER_SYNC_RENDER_TARGET;
-
-				textureBarrier.AccessBefore = D3D12_BARRIER_ACCESS_NO_ACCESS;
-				textureBarrier.AccessAfter = D3D12_BARRIER_ACCESS_RENDER_TARGET;
-
-				textureBarrier.LayoutBefore = D3D12_BARRIER_LAYOUT_PRESENT;
-				textureBarrier.LayoutAfter = D3D12_BARRIER_LAYOUT_RENDER_TARGET;
-
-				textureBarrier.pResource = backBufferView->pTexture->GetResource();
-				textureBarrier.Subresources.IndexOrFirstMipLevel = 0;
-				textureBarrier.Subresources.NumMipLevels = 1;
-				textureBarrier.Subresources.FirstArraySlice = 0;
-				textureBarrier.Subresources.NumArraySlices = 1;
-				textureBarrier.Subresources.FirstPlane = 0;
-				textureBarrier.Subresources.NumPlanes = 1;
-
-				D3D12_BARRIER_GROUP barrierGroup = {};
-				barrierGroup.Type = D3D12_BARRIER_TYPE_TEXTURE;
-				barrierGroup.NumBarriers = 1;
-				barrierGroup.pTextureBarriers = &textureBarrier;
-
-				pCommandList->Barrier(1, &barrierGroup);
-			}
+			FGResourceHandle backBufferHandle = m_frameGraph.ImportTexture(m_swapChain.GetCurrentBackBuffer(), "Backbuffer");
 
 			const FLOAT* clearColor = nullptr;
 
@@ -106,42 +81,34 @@ namespace Hydrogen
 				break;
 			}
 
+			struct ClearPassData
 			{
-				PIXScopedEvent(m_gpuDevice.GetDirectCommandQueue().GetDxCommandQueue(), PIX_COLOR_INDEX(3), "Clear target");
-				PIXScopedEvent(pCommandList, PIX_COLOR_INDEX(3), "Clear target");
+				FGResourceHandle backBufferHandle;
+				const FLOAT* clearColor;
+			};
 
-				pCommandList->ClearRenderTargetView(m_gpuDevice.GetRenderTargetCpuHandle(*backBufferView), clearColor, 0, nullptr);
-			}
+			//ClearPassData clearPassData{ backBufferHandle, clearColor };
 
-			{
-				PIXScopedEvent(m_gpuDevice.GetDirectCommandQueue().GetDxCommandQueue(), PIX_COLOR_INDEX(2), "Texture barrier 2");
-				PIXScopedEvent(pCommandList, PIX_COLOR_INDEX(2), "Texture barrier 2");
+			m_frameGraph.AddPass<ClearPassData>(
+				"ClearBackbuffer",
+				[&](FGBuilder& frameGraphBuilder, ClearPassData& passData)
+				{
+					backBufferHandle = frameGraphBuilder.DefineOutput(backBufferHandle, FGAccess::Output::RenderTarget);
 
-				D3D12_TEXTURE_BARRIER textureBarrier{};
-				textureBarrier.SyncBefore = D3D12_BARRIER_SYNC_RENDER_TARGET;
-				textureBarrier.SyncAfter = D3D12_BARRIER_SYNC_NONE;
+					passData.backBufferHandle = backBufferHandle;
+					passData.clearColor = clearColor;
+				},
+				[](const ClearPassData& passData, FGExecuteContext& ctx, ID3D12GraphicsCommandList7* cmd)
+				{
+					PIXScopedEvent(cmd, PIX_COLOR_INDEX(3), "Clear target");
+					cmd->ClearRenderTargetView(ctx.GetRTV(passData.backBufferHandle), passData.clearColor, 0, nullptr);
+				}
+			);
 
-				textureBarrier.AccessBefore = D3D12_BARRIER_ACCESS_RENDER_TARGET;
-				textureBarrier.AccessAfter = D3D12_BARRIER_ACCESS_NO_ACCESS;
+			m_frameGraph.Compile();
+			m_frameGraph.Execute(pCommandList);
 
-				textureBarrier.LayoutBefore = D3D12_BARRIER_LAYOUT_RENDER_TARGET;
-				textureBarrier.LayoutAfter = D3D12_BARRIER_LAYOUT_PRESENT;
-
-				textureBarrier.pResource = backBufferView->pTexture->GetResource();
-				textureBarrier.Subresources.IndexOrFirstMipLevel = 0;
-				textureBarrier.Subresources.NumMipLevels = 1;
-				textureBarrier.Subresources.FirstArraySlice = 0;
-				textureBarrier.Subresources.NumArraySlices = 1;
-				textureBarrier.Subresources.FirstPlane = 0;
-				textureBarrier.Subresources.NumPlanes = 1;
-
-				D3D12_BARRIER_GROUP barrierGroup = {};
-				barrierGroup.Type = D3D12_BARRIER_TYPE_TEXTURE;
-				barrierGroup.NumBarriers = 1;
-				barrierGroup.pTextureBarriers = &textureBarrier;
-
-				pCommandList->Barrier(1, &barrierGroup);
-			}
+			m_frameGraph.Reset();
 		}
 
 		pCommandList->Close();

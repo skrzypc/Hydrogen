@@ -88,7 +88,7 @@ namespace Hydrogen
 		Initialize();
 	}
 
-	Texture* GpuDevice::CreateTexture(const Texture::Desc& desc)
+	Texture* GpuDevice::CreateTexture(const Texture::Desc& desc, D3D12_BARRIER_LAYOUT initialBarrierLayout)
 	{
 		auto pTexture = std::make_unique<Texture>();
 		pTexture->SetDesc(desc);
@@ -96,7 +96,7 @@ namespace Hydrogen
 		D3D12_HEAP_PROPERTIES heapProps{};
 		heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
 
-		D3D12_RESOURCE_DESC resourceDesc{};
+		D3D12_RESOURCE_DESC1 resourceDesc{};
 		resourceDesc.Dimension = desc.dimension;
 		resourceDesc.Width = desc.width;
 		resourceDesc.Height = desc.height;
@@ -107,24 +107,27 @@ namespace Hydrogen
 		resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 		resourceDesc.Flags = desc.flags;
 
-		H2_VERIFY(m_pDxDevice->CreateCommittedResource(
+		H2_VERIFY(m_pDxDevice->CreateCommittedResource3(
 			&heapProps,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
-			D3D12_RESOURCE_STATE_COMMON,
+			initialBarrierLayout,
+			nullptr,
+			nullptr,
+			0,
 			nullptr,
 			IID_PPV_ARGS(pTexture->GetResourceAddress())),
 			"Texture creation failed!"
 		);
 
-		pTexture->SetState(D3D12_RESOURCE_STATE_COMMON);
+		//pTexture->SetState(D3D12_RESOURCE_STATE_COMMON);
 
 		m_registeredTextures.emplace_back(std::move(pTexture));
 
 		return m_registeredTextures.back().get();
 	}
 
-	Texture* GpuDevice::RegisterTexture(ID3D12Resource* pResource, const Texture::Desc& desc, D3D12_RESOURCE_STATES currentState)
+	Texture* GpuDevice::RegisterTexture(ID3D12Resource* pResource, const Texture::Desc& desc, ResourceState currentState)
 	{
 		auto pTexture = std::make_unique<Texture>();
 		pTexture->SetDesc(desc);
@@ -166,7 +169,7 @@ namespace Hydrogen
 			"Buffer creation failed!"
 		);
 
-		pBuffer->SetState(D3D12_RESOURCE_STATE_COMMON);
+		//pBuffer->SetState(D3D12_RESOURCE_STATE_COMMON);
 
 		m_registeredBuffers.emplace_back(std::move(pBuffer));
 
@@ -177,7 +180,7 @@ namespace Hydrogen
 	{
 		auto pBuffer = std::make_unique<Buffer>();
 		pBuffer->SetDesc(desc);
-		pBuffer->SetState(currentState);
+		//pBuffer->SetState(currentState);
 
 		pBuffer->AttachResource(pResource);
 
@@ -186,21 +189,37 @@ namespace Hydrogen
 		return m_registeredBuffers.back().get();
 	}
 
-	TextureView GpuDevice::CreateRenderTargetView(const Texture* pTexture)
+	//TextureView GpuDevice::CreateRenderTargetView(const Texture* pTexture)
+	//{
+	//	TextureView view{};
+	//	view.pTexture = pTexture;
+	//	view.index = m_rtvDescriptorAllocator.Allocate();
+
+	//	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
+	//	rtvDesc.Format = pTexture->GetFormat();
+	//	rtvDesc.Texture2D.MipSlice = 0;
+	//	rtvDesc.Texture2D.PlaneSlice = 0;
+	//	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+
+	//	m_pDxDevice->CreateRenderTargetView(pTexture->GetResource(), &rtvDesc, m_rtvDescriptorHeap.GetCpuHandle(view.index));
+
+	//	return view;
+	//}
+
+	RenderTargetViewHandle GpuDevice::CreateRenderTargetView(const Texture* pTexture, D3D12_RENDER_TARGET_VIEW_DESC rtvDesc, uint32 rtvIndex)
 	{
-		TextureView view{};
-		view.pTexture = pTexture;
-		view.index = m_rtvDescriptorAllocator.Allocate();
+		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_rtvDescriptorHeap.GetCpuHandle(rtvIndex);
+		m_pDxDevice->CreateRenderTargetView(pTexture->GetResource(), &rtvDesc, cpuHandle);
 
-		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
-		rtvDesc.Format = pTexture->GetFormat();
-		rtvDesc.Texture2D.MipSlice = 0;
-		rtvDesc.Texture2D.PlaneSlice = 0;
-		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+		return RenderTargetViewHandle{ .dxCpuHandle = cpuHandle };
+	}
 
-		m_pDxDevice->CreateRenderTargetView(pTexture->GetResource(), &rtvDesc, m_rtvDescriptorHeap.GetCpuHandle(view.index));
+	DepthStencilViewHandle GpuDevice::CreateDepthStencilView(const Texture* pTexture, D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc, uint32 dsvIndex)
+	{
+		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_dsvDescriptorHeap.GetCpuHandle(dsvIndex);
+		m_pDxDevice->CreateDepthStencilView(pTexture->GetResource(), &dsvDesc, cpuHandle);
 
-		return view;
+		return DepthStencilViewHandle{ .dxCpuHandle = cpuHandle };
 	}
 
 	void GpuDevice::Initialize()
@@ -216,7 +235,7 @@ namespace Hydrogen
 			16384,
 			L"H2_CBV_SRV_UAV_DESCRIPTOR_HEAP"
 		);
-		m_cbvSrvUavDescriptorAllocator.Initialize(0, m_cbvSrvUavDescriptorHeap.GetCapacity());
+		m_cbvSrvUavDescriptorAllocator = RequestDescriptorAllocator<LinearIndexAllocator>(8192, eDescriptorHeapType::CBV_SRV_UAV);
 
 		m_samplerDescriptorHeap.Initialize(
 			GetDxDevice(),
@@ -224,7 +243,7 @@ namespace Hydrogen
 			2048,
 			L"H2_SAMPLER_DESCRIPTOR_HEAP"
 		);
-		m_samplerDescriptorAllocator.Initialize(0, m_samplerDescriptorHeap.GetCapacity());
+		m_samplerDescriptorAllocator = RequestDescriptorAllocator<LinearIndexAllocator>(1024, eDescriptorHeapType::Sampler);
 
 		m_rtvDescriptorHeap.Initialize(
 			GetDxDevice(),
@@ -232,7 +251,7 @@ namespace Hydrogen
 			1024,
 			L"H2_RTV_DESCRIPTOR_HEAP"
 		);
-		m_rtvDescriptorAllocator.Initialize(0, m_rtvDescriptorHeap.GetCapacity());
+		m_rtvDescriptorAllocator = RequestDescriptorAllocator<LinearIndexAllocator>(512, eDescriptorHeapType::RTV);
 
 		m_dsvDescriptorHeap.Initialize(
 			GetDxDevice(),
@@ -240,7 +259,7 @@ namespace Hydrogen
 			1024,
 			L"H2_DSV_DESCRIPTOR_HEAP"
 		);
-		m_dsvDescriptorAllocator.Initialize(0, m_dsvDescriptorHeap.GetCapacity());
+		m_dsvDescriptorAllocator = RequestDescriptorAllocator<LinearIndexAllocator>(512, eDescriptorHeapType::DSV);
 	}
 
 	bool GpuDevice::CheckRequiredFeatureSupport() const
@@ -289,6 +308,37 @@ namespace Hydrogen
 			
 		}
 
+		// TODO: Enhanced barriers
+		{
+			
+		}
+
 		return bAllFeaturesSupported;
+	}
+	
+	DescriptorHeap& GpuDevice::GetDescriptorHeap(eDescriptorHeapType descHeapType)
+	{
+		switch (descHeapType)
+		{
+		case Hydrogen::eDescriptorHeapType::CBV_SRV_UAV:
+		{
+			return m_cbvSrvUavDescriptorHeap;
+		}
+		case Hydrogen::eDescriptorHeapType::Sampler:
+		{
+			return m_samplerDescriptorHeap;
+		}
+		case Hydrogen::eDescriptorHeapType::RTV:
+		{
+			return m_rtvDescriptorHeap;
+		}
+		case Hydrogen::eDescriptorHeapType::DSV:
+		{
+			return m_dsvDescriptorHeap;
+		}
+		default:
+			std::unreachable();
+			break;
+		}
 	}
 }

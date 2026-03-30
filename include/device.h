@@ -11,7 +11,7 @@
 
 #include "commandQueue.h"
 #include "descriptorHeap.h"
-#include "linearIndexAllocator.h"
+#include "indexAllocators.h"
 
 #include "texture.h"
 #include "buffer.h"
@@ -39,6 +39,24 @@ namespace Hydrogen
 		INVALID = 0x0000
 	};
 
+	enum class eDescriptorHeapType : uint8
+	{
+		CBV_SRV_UAV = 0,
+		Sampler = 1,
+		RTV = 2,
+		DSV = 3,
+	};
+
+	struct RenderTargetViewHandle
+	{
+		D3D12_CPU_DESCRIPTOR_HANDLE dxCpuHandle{};
+	};
+
+	struct DepthStencilViewHandle
+	{
+		D3D12_CPU_DESCRIPTOR_HANDLE dxCpuHandle{};
+	};
+
 	class GpuDevice
 	{
 	public:
@@ -56,23 +74,43 @@ namespace Hydrogen
 		IDXGIFactory7* GetDxgiFactory() const { return m_pDxgiFactory.Get(); }
 		ID3D12Device14* GetDxDevice() const { return m_pDxDevice.Get(); }
 
-		Texture* CreateTexture(const Texture::Desc& desc);
-		Texture* RegisterTexture(ID3D12Resource* pResource, const Texture::Desc& desc, D3D12_RESOURCE_STATES currentState);
+		Texture* CreateTexture(const Texture::Desc& desc, D3D12_BARRIER_LAYOUT initialBarrierLayout);
+		Texture* RegisterTexture(ID3D12Resource* pResource, const Texture::Desc& desc, ResourceState currentState);
 
 		Buffer* CreateBuffer(const Buffer::Desc& desc);
 		Buffer* RegisterBuffer(ID3D12Resource* pResource, const Buffer::Desc& desc, D3D12_RESOURCE_STATES currentState);
 
-		TextureView CreateRenderTargetView(const Texture* pTexture);
-		TextureView CreateDepthStencilView(const Texture* pTexture);
-		TextureView CreateShaderResourceView(const Texture* pTexture);
-		TextureView CreateUnorderedAccessView(const Texture* pTexture);
+		template<typename AllocatorT>
+		AllocatorT RequestDescriptorAllocator(uint32 count, eDescriptorHeapType descHeapType)
+		{
+			DescriptorHeap& descriptorHeap = GetDescriptorHeap(descHeapType);
+			
+			uint32 startIndex = descriptorHeap.Allocate(count);
+
+			AllocatorT allocator{};
+			allocator.Initialize(startIndex, count);
+			
+			return allocator;
+		}
+
+		//TextureView CreateRenderTargetView(const Texture* pTexture);
+		RenderTargetViewHandle CreateRenderTargetView(const Texture* pTexture, D3D12_RENDER_TARGET_VIEW_DESC rtvDesc, uint32 rtvIndex);
+		DepthStencilViewHandle CreateDepthStencilView(const Texture* pTexture, D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc, uint32 dsvIndex);
+
+		//TextureView CreateDepthStencilView(const Texture* pTexture);
+		//TextureView CreateShaderResourceView(const Texture* pTexture);
+		//TextureView CreateUnorderedAccessView(const Texture* pTexture);
 
 		// TODO: temp?
-		D3D12_CPU_DESCRIPTOR_HANDLE GetRenderTargetCpuHandle(const TextureView& rtv) const { return m_rtvDescriptorHeap.GetCpuHandle(rtv.index); }
+		//D3D12_CPU_DESCRIPTOR_HANDLE GetRenderTargetCpuHandle(const TextureView& rtv) const { return m_rtvDescriptorHeap.GetCpuHandle(rtv.index); }
+		RenderTargetViewHandle GetRenderTargetHandle(uint32 index) const { return RenderTargetViewHandle{ .dxCpuHandle = m_rtvDescriptorHeap.GetCpuHandle(index) }; }
+		DepthStencilViewHandle GetDepthStencilHandle(uint32 index) const { return DepthStencilViewHandle{ .dxCpuHandle = m_dsvDescriptorHeap.GetCpuHandle(index) }; }
 
 	private:
 		void Initialize();
 		bool CheckRequiredFeatureSupport() const;
+
+		DescriptorHeap& GetDescriptorHeap(eDescriptorHeapType descHeapType);
 
 	private:
 		Microsoft::WRL::ComPtr<IDXGIFactory7> m_pDxgiFactory = nullptr;

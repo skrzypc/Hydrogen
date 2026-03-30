@@ -2,6 +2,7 @@
 
 #include "device.h"
 #include "swapChain.h"
+#include "frameGraph.h"
 
 namespace Hydrogen
 {
@@ -22,7 +23,7 @@ namespace Hydrogen
 		GpuDevice m_gpuDevice;
 		SwapChain m_swapChain;
 
-		//FrameGraph m_frameGraph;
+		FrameGraph m_frameGraph;
 		//GpuScene m_gpuScene;
 	};
 }

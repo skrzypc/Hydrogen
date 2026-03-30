@@ -28,6 +28,8 @@ namespace Hydrogen
 		uint32 GetCapacity() const { return m_capacity; }
         uint32 GetDescriptorSize() const { return m_descriptorSize; }
 
+		uint32 Allocate(uint32 count);
+
     private:
         Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_pDxDescriptorHeap = nullptr;
 		D3D12_CPU_DESCRIPTOR_HANDLE m_cpuHandleStart{};
@@ -35,5 +37,7 @@ namespace Hydrogen
 
         uint32 m_descriptorSize = 0u;
         uint32 m_capacity = 0u;
+
+		uint32 m_allocatedSpace = 0u;
     };
 }

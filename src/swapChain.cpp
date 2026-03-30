@@ -56,11 +56,16 @@ namespace Hydrogen
 					.flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
 					.dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D
 				},
-				D3D12_RESOURCE_STATE_PRESENT
+				ResourceState
+				{
+					.sync = D3D12_BARRIER_SYNC_NONE,
+					.access = D3D12_BARRIER_ACCESS_NO_ACCESS,
+					.layout = D3D12_BARRIER_LAYOUT_PRESENT
+				}
 			);
 
 			m_backBuffers[i] = pBackBufferTexture;
-			m_backBufferRtvs[i] = gpuDevice.CreateRenderTargetView(pBackBufferTexture);
+			//m_backBufferRtvs[i] = gpuDevice.CreateRenderTargetView(pBackBufferTexture);
 		}
 	}
 

@@ -26,7 +26,7 @@ namespace Hydrogen
 		void Create(GpuDevice& device, HWND hWnd);
 		void Present();
 		
-		const TextureView* GetCurrentBackBuffer() const	{ return &m_backBufferRtvs[m_frameIndex]; }
+		Texture* GetCurrentBackBuffer() const { return m_backBuffers[m_frameIndex]; }
 
 		const uint64 GetCurrentFrameNumber() const { return m_frameNumber; }
 		const uint32 GetCurrentFrameIndex() const { return static_cast<uint32>(m_frameIndex); }

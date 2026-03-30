@@ -51,4 +51,16 @@ namespace Hydrogen
 
 		return handle;
 	}
+
+	// Returns the starting index of the allocated range.
+	uint32 DescriptorHeap::Allocate(uint32 count)
+	{
+		H2_VERIFY_FATAL(m_allocatedSpace + count <= m_capacity, "Descriptor heap out of space!");
+
+		uint32 startIndex = m_allocatedSpace;
+
+		m_allocatedSpace += count;
+
+		return startIndex;
+	}
 }
