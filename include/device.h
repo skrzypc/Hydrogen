@@ -35,7 +35,7 @@ namespace Hydrogen
 		INTEL = 0x8086,
 		NVIDIA = 0x10DE,
 		AMD = 0x1002,
-		SOFTWARE = 0xFFFF,
+		SOFTWARE = 0x1414,
 		INVALID = 0x0000
 	};
 

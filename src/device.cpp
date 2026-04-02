@@ -81,7 +81,7 @@ namespace Hydrogen
 
 		H2_VERIFY_FATAL(m_pDxgiAdapter != nullptr, "Requested adapter could not be found! Perhaps requested adapter vendor is not present on this system.");
 
-		H2_VERIFY_FATAL(D3D12CreateDevice(m_pDxgiAdapter.Get(), D3D_FEATURE_LEVEL_12_2, IID_PPV_ARGS(&m_pDxDevice)), "DX12 device could not be created!");
+		H2_VERIFY_FATAL(D3D12CreateDevice(m_pDxgiAdapter.Get(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&m_pDxDevice)), "DX12 device could not be created!");
 
 		H2_VERIFY_FATAL(CheckRequiredFeatureSupport(), "Device does not support all expected features!");
 
@@ -278,32 +278,26 @@ namespace Hydrogen
 
 		// Raytracing
 		{
-			D3D12_RAYTRACING_TIER expectedRaytracingTier = D3D12_RAYTRACING_TIER_1_1;
-
 			D3D12_FEATURE_DATA_D3D12_OPTIONS5 featureData{};
 			H2_VERIFY(m_pDxDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &featureData, sizeof(featureData)), "Could not check raytracing support!");
 			
-			bAllFeaturesSupported &= featureData.RaytracingTier >= expectedRaytracingTier;
+			bAllFeaturesSupported &= featureData.RaytracingTier >= Config::ExpectedRaytracingTier;
 		}
 
 		// Mesh shaders
 		{
-			D3D12_MESH_SHADER_TIER expectedMeshShaderTier = D3D12_MESH_SHADER_TIER_1;
-
 			D3D12_FEATURE_DATA_D3D12_OPTIONS7 featureData{};
 			H2_VERIFY(m_pDxDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &featureData, sizeof(featureData)), "Could not check mesh shader support!");
 			
-			bAllFeaturesSupported &= featureData.MeshShaderTier >= expectedMeshShaderTier;
+			bAllFeaturesSupported &= featureData.MeshShaderTier >= Config::ExpectedMeshShaderTier;
 		}
 
 		// Bindless resources
 		{
-			D3D12_RESOURCE_BINDING_TIER expectedResourceBindingTier = D3D12_RESOURCE_BINDING_TIER_3;
-
 			D3D12_FEATURE_DATA_D3D12_OPTIONS featureData{};
 			H2_VERIFY(m_pDxDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &featureData, sizeof(featureData)), "Could not check bindless resource support!");
 			
-			bAllFeaturesSupported &= featureData.ResourceBindingTier >= expectedResourceBindingTier;
+			bAllFeaturesSupported &= featureData.ResourceBindingTier >= Config::ExpectedResourceBindingTier;
 		}
 
 		// Enhanced barriers
