@@ -16,11 +16,17 @@ if not exist "%ROOT_DIR%\data\models" mkdir "%ROOT_DIR%\data\models"
 if not exist "%VCPKG_DIR%\.git" (
     echo Cloning vcpkg...
     git clone https://github.com/microsoft/vcpkg "%VCPKG_DIR%" || exit /b 1
-
-    pushd "%VCPKG_DIR%"
-    git checkout 4334d8b4c8916018600212ab4dd4bbdc343065d1 || exit /b 1
-    popd
 )
+
+for /f "tokens=2 delims=:, " %%A in ('findstr "builtin-baseline" "%ROOT_DIR%\thirdParty\vcpkg.json"') do (
+    set "VCPKG_BASELINE=%%~A"
+)
+
+echo Updating vcpkg...
+pushd "%VCPKG_DIR%"
+git fetch || exit /b 1
+git checkout %VCPKG_BASELINE% || exit /b 1
+popd
 
 set "VCPKG_ROOT=%VCPKG_DIR%"
 
@@ -42,5 +48,13 @@ if exist "%THIRD_PARTY_DIR%\vcpkg.json" (
 
 popd
 
+echo.
 echo Setup done.
+
+echo.
+pause
+
+echo.
+cmd /k
+
 endlocal

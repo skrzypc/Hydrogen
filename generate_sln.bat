@@ -15,6 +15,19 @@ if not exist "%VCPKG_ROOT%\vcpkg.exe" (
 
 if not exist "%BUILD_DIR%" mkdir "%BUILD_DIR%"
 
+:: Initialize VS developer environment
+set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
+if not exist "%VSWHERE%" (
+    echo Error! vswhere.exe not found. Is Visual Studio installed?
+    exit /b 1
+)
+for /f "tokens=*" %%i in ('"%VSWHERE%" -latest -property installationPath') do set "VS_PATH=%%i"
+if not exist "%VS_PATH%\VC\Auxiliary\Build\vcvarsall.bat" (
+    echo Error! vcvarsall.bat not found.
+    exit /b 1
+)
+call "%VS_PATH%\VC\Auxiliary\Build\vcvarsall.bat" x64
+
 echo Running CMake configure...
 
 cmake -B %BUILD_DIR% -S . ^
@@ -27,5 +40,11 @@ if errorlevel 1 (
     echo Error! CMake configure failed.
     exit /b 1
 )
+
+echo.
+pause
+
+echo.
+cmd /k
 
 endlocal

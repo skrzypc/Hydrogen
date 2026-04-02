@@ -268,7 +268,7 @@ namespace Hydrogen
 
 		// Shader model
 		{
-			D3D_SHADER_MODEL expectedShaderModel = D3D_SHADER_MODEL_6_8;
+			D3D_SHADER_MODEL expectedShaderModel = static_cast<D3D_SHADER_MODEL>((Config::ShaderModelVersionMajor << 4) | Config::ShaderModelVersionMinor);
 
 			D3D12_FEATURE_DATA_SHADER_MODEL featureData{ expectedShaderModel };
 			H2_VERIFY(m_pDxDevice->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &featureData, sizeof(featureData)), "Could not check shader model support!");
@@ -294,7 +294,6 @@ namespace Hydrogen
 			H2_VERIFY(m_pDxDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &featureData, sizeof(featureData)), "Could not check mesh shader support!");
 			
 			bAllFeaturesSupported &= featureData.MeshShaderTier >= expectedMeshShaderTier;
-			
 		}
 
 		// Bindless resources
@@ -305,12 +304,14 @@ namespace Hydrogen
 			H2_VERIFY(m_pDxDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &featureData, sizeof(featureData)), "Could not check bindless resource support!");
 			
 			bAllFeaturesSupported &= featureData.ResourceBindingTier >= expectedResourceBindingTier;
-			
 		}
 
-		// TODO: Enhanced barriers
+		// Enhanced barriers
 		{
-			
+			D3D12_FEATURE_DATA_D3D12_OPTIONS12 featureData{};
+			H2_VERIFY(m_pDxDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS12, &featureData, sizeof(featureData)), "Could not check enhanced barriers support!");
+
+			bAllFeaturesSupported &= static_cast<bool>(featureData.EnhancedBarriersSupported);
 		}
 
 		return bAllFeaturesSupported;

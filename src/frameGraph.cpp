@@ -353,7 +353,7 @@ namespace Hydrogen
 									.FirstPlane = 0,
 									.NumPlanes = 1,
 								},
-								.Flags = (isFirstAccess && isWrite)
+								.Flags = (isFirstAccess && isWrite && cur.layout == D3D12_BARRIER_LAYOUT_UNDEFINED)
 								? D3D12_TEXTURE_BARRIER_FLAG_DISCARD
 								: D3D12_TEXTURE_BARRIER_FLAG_NONE,
 								});

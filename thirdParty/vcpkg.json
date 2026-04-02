@@ -4,12 +4,13 @@
   "description": "",
   "supports": "windows & x64",
   "dependencies": [
-	{ "name": "directxtk12", "version>=": "2025-07-10" },
-	{ "name": "directxtex", "version>=": "2025-07-10"},
-	{ "name": "directx-dxc", "version>=": "2025-07-15"},
+	{ "name": "directx12-agility", "version>=": "1.619.0" },
+	{ "name": "directxtk12", "version>=": "2026-03-31" },
+	{ "name": "directxtex", "version>=": "2026-03-31"},
+	{ "name": "directx-dxc", "version>=": "2026-02-20"},
 	{ "name": "assimp", "version>=": "6.0.2" },
 	{ "name": "imgui", "version>=": "1.91.8", "features": [ "docking-experimental", "dx12-binding", "win32-binding" ] },
 	{ "name": "winpixevent", "version>=": "1.0.240308001" }
   ],
-  "builtin-baseline": "4334d8b4c8916018600212ab4dd4bbdc343065d1"
+  "builtin-baseline": "dbbd673624c057174dd51ef85758951032717715"
 }

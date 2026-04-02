@@ -22,6 +22,6 @@ namespace Hydrogen
 		static constexpr eAdapterVendor RequestedAdapter = eAdapterVendor::NVIDIA;
 
 		static constexpr uint8 ShaderModelVersionMajor = 6;
-		static constexpr uint8 ShaderModelVersionMinor = 8;
+		static constexpr uint8 ShaderModelVersionMinor = 9;
 	};
 }
