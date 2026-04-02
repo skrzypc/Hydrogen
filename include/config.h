@@ -20,5 +20,8 @@ namespace Hydrogen
 
 		static constexpr bool EnableGPUBasedValidation = false;
 		static constexpr eAdapterVendor RequestedAdapter = eAdapterVendor::NVIDIA;
+
+		static constexpr uint8 ShaderModelVersionMajor = 6;
+		static constexpr uint8 ShaderModelVersionMinor = 8;
 	};
 }

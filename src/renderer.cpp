@@ -26,6 +26,8 @@ namespace Hydrogen
 		static Microsoft::WRL::ComPtr<ID3D12CommandAllocator> commandAllocators[Config::FramesInFlight];
 		static Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList10> commandLists[Config::FramesInFlight];
 
+		static std::unordered_map<std::string, Shader> shaderCache{};
+
 		if (bFirst)
 		{
 			for (uint32 i = 0; i < Config::FramesInFlight; ++i)
@@ -40,6 +42,33 @@ namespace Hydrogen
 			}
 
 			m_frameGraph.Initialize(m_gpuDevice);
+
+			Shader::Desc testVsDesc
+			{
+				.sourcePath = "testShader.vs",
+				.name = "TestVs",
+				.entryPoint = "main",
+				.type = eShaderType::VS,
+				.defines = {}
+			};
+
+			Shader::Desc testPsDesc
+			{
+				.sourcePath = "testShader.ps",
+				.name = "TestPs",
+				.entryPoint = "main",
+				.type = eShaderType::PS,
+				.defines = {}
+			};
+
+			Shader testVs(testVsDesc);
+			m_shaderCompiler.Compile(testVs);
+
+			Shader testPs(testPsDesc);
+			m_shaderCompiler.Compile(testPs);
+
+			shaderCache.insert(std::make_pair("TestVs", std::move(testVs)));
+			shaderCache.insert(std::make_pair("TestPs", std::move(testPs)));
 
 			bFirst = false;
 		}
@@ -83,11 +112,9 @@ namespace Hydrogen
 
 			struct ClearPassData
 			{
-				FGResourceHandle backBufferHandle;
-				const FLOAT* clearColor;
+				FGResourceHandle backBufferHandle{};
+				const FLOAT* clearColor = nullptr;
 			};
-
-			//ClearPassData clearPassData{ backBufferHandle, clearColor };
 
 			m_frameGraph.AddPass<ClearPassData>(
 				"ClearBackbuffer",

@@ -78,3 +78,5 @@ namespace Hydrogen
 		Hydrogen::Verifier::VerifyFatal(condition, std::format(formatString, __VA_ARGS__), \
 			std::source_location::current())
 #endif
+
+#define H2_VERIFY_STATIC(condition) static_assert(condition, #condition)

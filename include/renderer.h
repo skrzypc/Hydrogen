@@ -3,6 +3,7 @@
 #include "device.h"
 #include "swapChain.h"
 #include "frameGraph.h"
+#include "shaderCompiler.h"
 
 namespace Hydrogen
 {
@@ -24,6 +25,7 @@ namespace Hydrogen
 		SwapChain m_swapChain;
 
 		FrameGraph m_frameGraph;
+		ShaderCompiler m_shaderCompiler;
 		//GpuScene m_gpuScene;
 	};
 }
