@@ -19,7 +19,7 @@ namespace Hydrogen
 		static constexpr eLogLevel LogLevel = eLogLevel::Verbose;
 
 		static constexpr bool EnableGPUBasedValidation = false;
-		static constexpr eAdapterVendor RequestedAdapter = eAdapterVendor::NVIDIA;
+		static constexpr eAdapterVendor RequestedAdapter = eAdapterVendor::AMD;
 
 		static constexpr uint8 ShaderModelVersionMajor = 6;
 		static constexpr uint8 ShaderModelVersionMinor = 9;
