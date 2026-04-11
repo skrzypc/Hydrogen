@@ -260,6 +260,8 @@ namespace Hydrogen
 			L"H2_DSV_DESCRIPTOR_HEAP"
 		);
 		m_dsvDescriptorAllocator = RequestDescriptorAllocator<LinearIndexAllocator>(512, eDescriptorHeapType::DSV);
+
+		m_rootSignature.Create(*this);
 	}
 
 	bool GpuDevice::CheckRequiredFeatureSupport() const

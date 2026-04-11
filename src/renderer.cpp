@@ -10,6 +10,7 @@
 #include "stringUtilities.h"
 
 #include "frameGraph.h"
+#include "pipelineState.h"
 
 namespace Hydrogen
 {
@@ -27,6 +28,7 @@ namespace Hydrogen
 		static Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList10> commandLists[Config::FramesInFlight];
 
 		static std::unordered_map<std::string, Shader> shaderCache{};
+		static PipelineState testPso{};
 
 		if (bFirst)
 		{
@@ -67,6 +69,23 @@ namespace Hydrogen
 			Shader testPs(testPsDesc);
 			m_shaderCompiler.Compile(testPs);
 
+			const DXGI_FORMAT backBufferFormat = m_swapChain.GetCurrentBackBuffer()->GetDesc().format;
+			PipelineState::GraphicsDesc psoDesc
+			{
+				.pVertexShader = &testVs,
+				.pPixelShader = &testPs,
+				.renderTargetFormats = std::span<const DXGI_FORMAT>(&backBufferFormat, 1),
+				.depthFormat = DXGI_FORMAT_UNKNOWN,
+				.rasterizerDesc = PipelineState::DefaultRasterizer(),
+				.blendDesc = PipelineState::DefaultBlend(),
+				.depthStencilDesc = PipelineState::DefaultDepthStencil(),
+				.primitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
+			};
+			// Depth test not needed for fullscreen triangle.
+			psoDesc.depthStencilDesc.DepthEnable = FALSE;
+
+			testPso.CreateGraphics(m_gpuDevice, psoDesc);
+
 			shaderCache.insert(std::make_pair("TestVs", std::move(testVs)));
 			shaderCache.insert(std::make_pair("TestPs", std::move(testPs)));
 
@@ -86,34 +105,27 @@ namespace Hydrogen
 
 		auto pCommandList = commandLists[currentFrameIndex].Get();
 
+		// Bind descriptor heaps and root signature once per frame, before any pass executes.
+		{
+			std::vector<ID3D12DescriptorHeap*> descriptorHeaps(2, nullptr);
+			descriptorHeaps[0] = m_gpuDevice.GetDescriptorHeap(eDescriptorHeapType::CBV_SRV_UAV).GetDxHeap();
+			descriptorHeaps[1] = m_gpuDevice.GetDescriptorHeap(eDescriptorHeapType::Sampler).GetDxHeap();
+
+			pCommandList->SetDescriptorHeaps(descriptorHeaps.size(), descriptorHeaps.data());
+
+			pCommandList->SetGraphicsRootSignature(m_gpuDevice.GetRootSignature().Get());
+			//pCommandList->SetComputeRootSignature(pRS);
+		}
+
 		// Frame graph usage.
 		{
 			m_frameGraph.BeginFrame(currentFrameNumber);
 
 			FGResourceHandle backBufferHandle = m_frameGraph.ImportTexture(m_swapChain.GetCurrentBackBuffer(), "Backbuffer");
 
-			const FLOAT* clearColor = nullptr;
-
-			switch (currentFrameIndex)
-			{
-			case 0:
-				clearColor = DirectX::Colors::CornflowerBlue;
-				break;
-			case 1:
-				clearColor = DirectX::Colors::DarkRed;
-				break;
-			case 2:
-				clearColor = DirectX::Colors::DarkGreen;
-				break;
-			default:
-				clearColor = DirectX::Colors::White;
-				break;
-			}
-
 			struct ClearPassData
 			{
 				FGResourceHandle backBufferHandle{};
-				const FLOAT* clearColor = nullptr;
 			};
 
 			m_frameGraph.AddPass<ClearPassData>(
@@ -121,14 +133,50 @@ namespace Hydrogen
 				[&](FGBuilder& frameGraphBuilder, ClearPassData& passData)
 				{
 					backBufferHandle = frameGraphBuilder.DefineOutput(backBufferHandle, FGAccess::Output::RenderTarget);
-
 					passData.backBufferHandle = backBufferHandle;
-					passData.clearColor = clearColor;
 				},
 				[](const ClearPassData& passData, FGExecuteContext& ctx, ID3D12GraphicsCommandList7* cmd)
 				{
 					PIXScopedEvent(cmd, PIX_COLOR_INDEX(3), "Clear target");
-					cmd->ClearRenderTargetView(ctx.GetRTV(passData.backBufferHandle), passData.clearColor, 0, nullptr);
+					constexpr FLOAT clearColor[] = { 0.1f, 0.1f, 0.1f, 1.0f };
+					cmd->ClearRenderTargetView(ctx.GetRTV(passData.backBufferHandle), clearColor, 0, nullptr);
+				}
+			);
+
+			const Texture::Desc& bbDesc = m_swapChain.GetCurrentBackBuffer()->GetDesc();
+
+			struct DrawPassData
+			{
+				FGResourceHandle backBufferHandle{};
+				ID3D12PipelineState* pPso = nullptr;
+				uint32 width = 0;
+				uint32 height = 0;
+			};
+
+			m_frameGraph.AddPass<DrawPassData>(
+				"TestTriangle",
+				[&](FGBuilder& frameGraphBuilder, DrawPassData& passData)
+				{
+					backBufferHandle = frameGraphBuilder.DefineOutput(backBufferHandle, FGAccess::Output::RenderTarget);
+					passData.backBufferHandle = backBufferHandle;
+					passData.pPso = testPso.Get();
+					passData.width = bbDesc.width;
+					passData.height = bbDesc.height;
+				},
+				[](const DrawPassData& passData, FGExecuteContext& ctx, ID3D12GraphicsCommandList7* cmd)
+				{
+					PIXScopedEvent(cmd, PIX_COLOR_INDEX(5), "Test triangle");
+
+					D3D12_VIEWPORT viewport{ 0.0f, 0.0f, static_cast<float32>(passData.width), static_cast<float32>(passData.height), 0.0f, 1.0f };
+					D3D12_RECT scissor{ 0, 0, static_cast<uint32>(passData.width), static_cast<uint32>(passData.height) };
+					cmd->RSSetViewports(1, &viewport);
+					cmd->RSSetScissorRects(1, &scissor);
+
+					D3D12_CPU_DESCRIPTOR_HANDLE rtv = ctx.GetRTV(passData.backBufferHandle);
+					cmd->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
+					cmd->SetPipelineState(passData.pPso);
+					cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+					cmd->DrawInstanced(3, 1, 0, 0);
 				}
 			);
 

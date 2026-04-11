@@ -4,6 +4,7 @@
 #include "swapChain.h"
 #include "frameGraph.h"
 #include "shaderCompiler.h"
+#include "pipelineState.h"
 
 namespace Hydrogen
 {

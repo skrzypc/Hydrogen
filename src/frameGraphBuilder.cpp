@@ -136,6 +136,7 @@ namespace Hydrogen
 			}
 
 			handle.version++;
+			node.versions[0]++;
 		}
 		else
 		{

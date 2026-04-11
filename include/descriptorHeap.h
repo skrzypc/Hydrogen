@@ -25,6 +25,8 @@ namespace Hydrogen
         D3D12_CPU_DESCRIPTOR_HANDLE GetCpuHandle(uint32 index) const;
         D3D12_GPU_DESCRIPTOR_HANDLE GetGpuHandle(uint32 index) const;
 
+		ID3D12DescriptorHeap* GetDxHeap() const { return m_pDxDescriptorHeap.Get(); }
+
 		uint32 GetCapacity() const { return m_capacity; }
         uint32 GetDescriptorSize() const { return m_descriptorSize; }
 

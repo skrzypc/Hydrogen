@@ -12,6 +12,7 @@
 #include "commandQueue.h"
 #include "descriptorHeap.h"
 #include "indexAllocators.h"
+#include "rootSignature.h"
 
 #include "texture.h"
 #include "buffer.h"
@@ -74,6 +75,8 @@ namespace Hydrogen
 		IDXGIFactory7* GetDxgiFactory() const { return m_pDxgiFactory.Get(); }
 		ID3D12Device14* GetDxDevice() const { return m_pDxDevice.Get(); }
 
+		const RootSignature& GetRootSignature() const { return m_rootSignature; }
+
 		Texture* CreateTexture(const Texture::Desc& desc, D3D12_BARRIER_LAYOUT initialBarrierLayout);
 		Texture* RegisterTexture(ID3D12Resource* pResource, const Texture::Desc& desc, ResourceState currentState);
 
@@ -106,11 +109,12 @@ namespace Hydrogen
 		RenderTargetViewHandle GetRenderTargetHandle(uint32 index) const { return RenderTargetViewHandle{ .dxCpuHandle = m_rtvDescriptorHeap.GetCpuHandle(index) }; }
 		DepthStencilViewHandle GetDepthStencilHandle(uint32 index) const { return DepthStencilViewHandle{ .dxCpuHandle = m_dsvDescriptorHeap.GetCpuHandle(index) }; }
 
+		// Temporary? It would be better not to expose heaps directly
+		DescriptorHeap& GetDescriptorHeap(eDescriptorHeapType descHeapType);
+
 	private:
 		void Initialize();
 		bool CheckRequiredFeatureSupport() const;
-
-		DescriptorHeap& GetDescriptorHeap(eDescriptorHeapType descHeapType);
 
 	private:
 		Microsoft::WRL::ComPtr<IDXGIFactory7> m_pDxgiFactory = nullptr;
@@ -133,5 +137,8 @@ namespace Hydrogen
 		std::vector<std::unique_ptr<Buffer>> m_registeredBuffers{};
 
 		CommandQueue m_directCommandQueue{};
+
+		// Move it somewhere else? RS should be per render backend I think
+		RootSignature m_rootSignature{};
 	};
 }
