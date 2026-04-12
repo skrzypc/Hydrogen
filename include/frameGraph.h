@@ -4,6 +4,7 @@
 #include <functional>
 #include <memory>
 #include <queue>
+#include <array>
 
 #include <d3d12.h>
 
@@ -13,6 +14,7 @@
 #include "frameGraphBuilder.h"
 #include "frameGraphResourceCache.h"
 #include "stringUtilities.h"
+#include "renderPasses/renderPass.h"
 
 namespace Hydrogen
 {
@@ -33,6 +35,11 @@ namespace Hydrogen
 
 		const FGResourceHandle CreateTexture(Texture::Desc textureDesc);
 		const FGResourceHandle ImportTexture(Texture* pTexture, std::string_view name);
+		void Import(eFrameResource name, Texture* pTexture);
+
+		FGResourceHandle GetResource(eFrameResource name) const;
+
+		void AddPass(std::string_view passName, IRenderPass& pass);
 
 		template<typename PassDataT, typename SetupFn, typename ExecuteFn>
 		void AddPass(
@@ -82,5 +89,7 @@ namespace Hydrogen
 
 		std::vector<FGTextureNode> m_textureNodes{};
 		std::vector<FGBufferNode> m_bufferNodes{};
+
+		std::array<FGResourceHandle, static_cast<uint32>(eFrameResource::Count)> m_resourceRegistry{};
 	};
 }

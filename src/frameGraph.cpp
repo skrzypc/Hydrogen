@@ -4,6 +4,7 @@
 
 #include "frameGraph.h"
 #include "stringUtilities.h"
+#include "renderPasses/renderPass.h"
 
 namespace Hydrogen
 {
@@ -17,6 +18,37 @@ namespace Hydrogen
 		H2_VERIFY(m_currentFrameNumber + 1 == newFrameNumber, "Unexpected frame number!");
 
 		m_currentFrameNumber = newFrameNumber;
+
+		// Reset registry — handles from the previous frame are stale.
+		m_resourceRegistry.fill(FGResourceHandle{});
+	}
+
+	void FrameGraph::Import(eFrameResource name, Texture* pTexture)
+	{
+		FGResourceHandle handle = ImportTexture(pTexture, "");
+		m_resourceRegistry[static_cast<uint32>(name)] = handle;
+	}
+
+	FGResourceHandle FrameGraph::GetResource(eFrameResource name) const
+	{
+		const FGResourceHandle& handle = m_resourceRegistry[static_cast<uint32>(name)];
+		H2_VERIFY_FATAL(handle.IsValid(), "Resource not imported for this frame!");
+		return handle;
+	}
+
+	void FrameGraph::AddPass(std::string_view passName, IRenderPass& pass)
+	{
+		FGPass& fgPass = m_passes.emplace_back();
+		fgPass.name = passName;
+		fgPass.index = static_cast<uint32>(m_passes.size() - 1u);
+
+		FGBuilder builder(*this, fgPass);
+		pass.Setup(builder);
+
+		fgPass.executeFn = [&pass](FGExecuteContext& ctx, ID3D12GraphicsCommandList7* cmd)
+		{
+			pass.Execute(ctx, cmd);
+		};
 	}
 
 	const FGResourceHandle FrameGraph::CreateTexture(Texture::Desc textureDesc)

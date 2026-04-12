@@ -11,14 +11,32 @@ namespace Hydrogen
 		: m_frameGraph(frameGraph), m_pass(pass)
 	{}
 
-	FGResourceHandle FGBuilder::DefineInput(FGResourceHandle resourceHandle, FGAccess::Input readAccess)
+	FGResourceHandle FGBuilder::Read(FGResourceHandle handle, FGAccess::Input access)
 	{
-		return AccessInternal(resourceHandle, FGPassNodeType::Input, ResolveRead(readAccess), FGSubresourceRange{}); // Ignore subresources for now.
+		return AccessInternal(handle, FGPassNodeType::Input, ResolveRead(access), FGSubresourceRange{});
 	}
 
-	FGResourceHandle FGBuilder::DefineOutput(FGResourceHandle resourceHandle, FGAccess::Output writeAccess)
+	FGResourceHandle FGBuilder::Write(FGResourceHandle handle, FGAccess::Output access)
 	{
-		return AccessInternal(resourceHandle, FGPassNodeType::Output, ResolveWrite(writeAccess), FGSubresourceRange{}); // Ignore subresources for now.
+		return AccessInternal(handle, FGPassNodeType::Output, ResolveWrite(access), FGSubresourceRange{});
+	}
+
+	FGResourceHandle FGBuilder::Read(eFrameResource resource, FGAccess::Input access)
+	{
+		return Read(m_frameGraph.GetResource(resource), access);
+	}
+
+	FGResourceHandle FGBuilder::Write(eFrameResource resource, FGAccess::Output access)
+	{
+		FGResourceHandle handle = Write(m_frameGraph.GetResource(resource), access);
+		m_frameGraph.m_resourceRegistry[static_cast<uint32>(resource)] = handle;
+		return handle;
+	}
+
+	const Texture::Desc& FGBuilder::GetTextureDesc(eFrameResource resource) const
+	{
+		FGResourceHandle handle = m_frameGraph.GetResource(resource);
+		return m_frameGraph.m_textureNodes[handle.index].desc;
 	}
 
 	FGPassNodeAccess FGBuilder::ResolveRead(FGAccess::Input readAccess)

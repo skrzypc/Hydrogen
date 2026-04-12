@@ -4,7 +4,8 @@
 #include "swapChain.h"
 #include "frameGraph.h"
 #include "shaderCompiler.h"
-#include "pipelineState.h"
+#include "renderPasses/clearPass.h"
+#include "renderPasses/testTrianglePass.h"
 
 namespace Hydrogen
 {
@@ -27,6 +28,9 @@ namespace Hydrogen
 
 		FrameGraph m_frameGraph;
 		ShaderCompiler m_shaderCompiler;
+
+		ClearPass m_clearPass{};
+		TestTrianglePass m_testTrianglePass{};
 		//GpuScene m_gpuScene;
 	};
 }
