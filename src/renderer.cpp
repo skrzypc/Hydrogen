@@ -10,6 +10,7 @@
 #include "stringUtilities.h"
 
 #include "frameGraph.h"
+#include "graphicsContext.h"
 
 namespace Hydrogen
 {
@@ -19,6 +20,7 @@ namespace Hydrogen
 		m_swapChain.Create(m_gpuDevice, hWnd);
 
 		m_frameGraph.Initialize(m_gpuDevice);
+		m_uploadBuffer.Initialize(m_gpuDevice, 1024 * 1024); // 1 MiB per frame
 
 		m_clearPass.Initialize(m_gpuDevice, m_shaderCompiler);
 		m_testTrianglePass.Initialize(m_gpuDevice, m_shaderCompiler);
@@ -84,7 +86,10 @@ namespace Hydrogen
 			m_frameGraph.AddPass("TestTriangle", m_testTrianglePass);
 
 			m_frameGraph.Compile();
-			m_frameGraph.Execute(pCommandList);
+
+			m_uploadBuffer.NextFrame(currentFrameIndex);
+			GraphicsContext gfx(pCommandList, m_uploadBuffer);
+			m_frameGraph.Execute(gfx);
 
 			m_frameGraph.Reset();
 		}

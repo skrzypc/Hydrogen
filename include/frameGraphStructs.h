@@ -14,6 +14,8 @@
 
 namespace Hydrogen
 {
+	class GraphicsContext;
+
 	// Texture/Buffer
 	enum class FGResourceType : uint8
 	{
@@ -181,7 +183,7 @@ namespace Hydrogen
 		std::vector<D3D12_TEXTURE_BARRIER> textureBarriers{};
 		std::vector<D3D12_BUFFER_BARRIER> bufferBarriers{};
 
-		std::move_only_function<void(FGExecuteContext&, ID3D12GraphicsCommandList7*)> executeFn{};
+		std::move_only_function<void(FGExecuteContext&, GraphicsContext&)> executeFn{};
 
 		std::string name = "Unknown";
 

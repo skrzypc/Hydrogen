@@ -4,6 +4,7 @@
 #include "swapChain.h"
 #include "frameGraph.h"
 #include "shaderCompiler.h"
+#include "uploadRingBuffer.h"
 #include "renderPasses/clearPass.h"
 #include "renderPasses/testTrianglePass.h"
 
@@ -28,6 +29,7 @@ namespace Hydrogen
 
 		FrameGraph m_frameGraph;
 		ShaderCompiler m_shaderCompiler;
+		UploadRingBuffer m_uploadBuffer{};
 
 		ClearPass m_clearPass{};
 		TestTrianglePass m_testTrianglePass{};

@@ -15,6 +15,7 @@
 #include "frameGraphResourceCache.h"
 #include "stringUtilities.h"
 #include "renderPasses/renderPass.h"
+#include "graphicsContext.h"
 
 namespace Hydrogen
 {
@@ -58,14 +59,14 @@ namespace Hydrogen
 			setupFn(builder, *pPassData.get());
 
 			pass.executeFn = [pData = std::move(pPassData), fn = std::forward<decltype(executeFn)>(executeFn)]
-			(FGExecuteContext& ctx, ID3D12GraphicsCommandList7* cmd) mutable
+			(FGExecuteContext& ctx, GraphicsContext& gfx) mutable
 				{
-					fn(*pData, ctx, cmd);
+					fn(*pData, ctx, gfx);
 				};
 		}
 
 		void Compile();
-		void Execute(ID3D12GraphicsCommandList10* cmd);
+		void Execute(GraphicsContext& gfx);
 
 		void Reset();
 

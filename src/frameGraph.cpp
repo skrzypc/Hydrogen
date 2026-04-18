@@ -45,9 +45,9 @@ namespace Hydrogen
 		FGBuilder builder(*this, fgPass);
 		pass.Setup(builder);
 
-		fgPass.executeFn = [&pass](FGExecuteContext& ctx, ID3D12GraphicsCommandList7* cmd)
+		fgPass.executeFn = [&pass](FGExecuteContext& ctx, GraphicsContext& gfx)
 		{
-			pass.Execute(ctx, cmd);
+			pass.Execute(ctx, gfx);
 		};
 	}
 
@@ -93,9 +93,11 @@ namespace Hydrogen
 		BuildDescriptors();
 	}
 
-	void FrameGraph::Execute(ID3D12GraphicsCommandList10* pCommandList)
+	void FrameGraph::Execute(GraphicsContext& gfx)
 	{
-		PIXScopedEvent(pCommandList, PIX_COLOR_INDEX(0), String::Format("Frame {}", m_currentFrameNumber).c_str());
+		ID3D12GraphicsCommandList10* cmd = gfx.CmdList();
+
+		PIXScopedEvent(cmd, PIX_COLOR_INDEX(0), String::Format("Frame {}", m_currentFrameNumber).c_str());
 
 		for (auto& pass : m_passes)
 		{
@@ -127,13 +129,16 @@ namespace Hydrogen
 
 			if (groupCount > 0)
 			{
-				pCommandList->Barrier(groupCount, groups);
+				cmd->Barrier(groupCount, groups);
 			}
 
-			pass.executeFn(m_executeContext, pCommandList);
+			{
+				PIXScopedEvent(cmd, PIX_COLOR_INDEX(pass.index), pass.name.c_str());
+				pass.executeFn(m_executeContext, gfx);
+			}
 		}
 
-		RestoreImportedResources(pCommandList);
+		RestoreImportedResources(cmd);
 	}
 
 	void FrameGraph::Reset()

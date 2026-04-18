@@ -2,6 +2,7 @@
 
 #include <array>
 #include "renderPass.h"
+#include "frameGraphBuilder.h"
 
 namespace Hydrogen
 {
@@ -18,10 +19,7 @@ namespace Hydrogen
 			m_handle = builder.Write(target, FGAccess::Output::RenderTarget);
 		}
 
-		void Execute(FGExecuteContext& ctx, ID3D12GraphicsCommandList7* cmd) override
-		{
-			cmd->ClearRenderTargetView(ctx.GetRTV(m_handle), clearColor.data(), 0, nullptr);
-		}
+		void Execute(FGExecuteContext& ctx, GraphicsContext& gfx) override;
 
 	private:
 		FGResourceHandle m_handle{};

@@ -19,7 +19,7 @@ namespace Hydrogen
 		static constexpr eLogLevel LogLevel = eLogLevel::Verbose;
 
 		static constexpr bool EnableGPUBasedValidation = false;
-		static constexpr eAdapterVendor RequestedAdapter = eAdapterVendor::NVIDIA;
+		static constexpr eAdapterVendor RequestedAdapter = eAdapterVendor::AMD;
 
 		static constexpr D3D12_RAYTRACING_TIER ExpectedRaytracingTier = D3D12_RAYTRACING_TIER_1_1; // 1_2 not supported by AMD yet.
 		static constexpr D3D12_MESH_SHADER_TIER ExpectedMeshShaderTier = D3D12_MESH_SHADER_TIER_1;
