@@ -166,11 +166,19 @@ namespace Hydrogen
 			return m_dsvMap.at(handle.index);
 		}
 
+		ID3D12Resource* GetResource(FGResourceHandle handle) const
+		{
+			H2_VERIFY_FATAL(handle.IsTexture() && m_resourceMap.contains(handle.index), "No resource found for handle!");
+
+			return m_resourceMap.at(handle.index);
+		}
+
 	private:
 		friend class FrameGraph;
 
 		std::unordered_map<uint32, D3D12_CPU_DESCRIPTOR_HANDLE> m_rtvMap;
 		std::unordered_map<uint32, D3D12_CPU_DESCRIPTOR_HANDLE> m_dsvMap;
+		std::unordered_map<uint32, ID3D12Resource*> m_resourceMap;
 	};
 
 	struct FGPass

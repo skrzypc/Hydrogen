@@ -5,6 +5,7 @@
 #include "config.h"
 #include "swapChain.h"
 #include "verifier.h"
+#include "stringUtilities.h"
 
 namespace Hydrogen
 {
@@ -40,13 +41,16 @@ namespace Hydrogen
 		pSwapChain.As(&m_pSwapChain);
 		m_pSwapChain->GetDesc1(&swapChainDesc);
 
+		ResourceState backbufferInitialState{};
+		backbufferInitialState.layout = D3D12_BARRIER_LAYOUT_PRESENT;
 		for (uint32 i = 0; i < m_backBuffers.size(); ++i)
 		{
 			ID3D12Resource* pBackBuffer = nullptr;
 			H2_VERIFY_FATAL(m_pSwapChain->GetBuffer(i, IID_PPV_ARGS(&pBackBuffer)), "Failed to obtain back buffer from swap chain!");
 
-			Texture* pBackBufferTexture = gpuDevice.RegisterTexture(pBackBuffer,
-				Texture::Desc
+			auto pBackBufferTexture = gpuDevice.CreateTexture(
+				String::Format(L"H2_BACKBUFFER_{}", i),
+				pBackBuffer,
 				{
 					.width = swapChainDesc.Width,
 					.height = swapChainDesc.Height,
@@ -56,16 +60,10 @@ namespace Hydrogen
 					.flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
 					.dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D
 				},
-				ResourceState
-				{
-					.sync = D3D12_BARRIER_SYNC_NONE,
-					.access = D3D12_BARRIER_ACCESS_NO_ACCESS,
-					.layout = D3D12_BARRIER_LAYOUT_PRESENT
-				}
+				backbufferInitialState
 			);
 
-			m_backBuffers[i] = pBackBufferTexture;
-			//m_backBufferRtvs[i] = gpuDevice.CreateRenderTargetView(pBackBufferTexture);
+			m_backBuffers[i] = std::move(pBackBufferTexture);
 		}
 	}
 

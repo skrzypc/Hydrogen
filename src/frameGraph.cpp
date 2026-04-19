@@ -3,7 +3,7 @@
 #include <pix3.h>
 
 #include "frameGraph.h"
-#include "stringUtilities.h"
+#include "graphicsContext.h"
 #include "renderPasses/renderPass.h"
 
 namespace Hydrogen
@@ -19,21 +19,75 @@ namespace Hydrogen
 
 		m_currentFrameNumber = newFrameNumber;
 
-		// Reset registry — handles from the previous frame are stale.
-		m_resourceRegistry.fill(FGResourceHandle{});
+		m_resourceRegistry.clear();
 	}
 
-	void FrameGraph::Import(eFrameResource name, Texture* pTexture)
+	FGResourceHandle FrameGraph::CreateTexture(std::string_view name, Texture::Desc desc)
 	{
-		FGResourceHandle handle = ImportTexture(pTexture, "");
-		m_resourceRegistry[static_cast<uint32>(name)] = handle;
-	}
+		H2_VERIFY(!m_resourceRegistry.contains(String::ToUpper(name)), "Resource '{}' already exists!", name);
 
-	FGResourceHandle FrameGraph::GetResource(eFrameResource name) const
-	{
-		const FGResourceHandle& handle = m_resourceRegistry[static_cast<uint32>(name)];
-		H2_VERIFY_FATAL(handle.IsValid(), "Resource not imported for this frame!");
+		FGTextureNode node{};
+		node.name = name;
+		node.bImported = false;
+		node.pResource = nullptr; // TODO
+		node.baseResourceState = ResourceState{};
+		node.desc = desc;
+
+		uint32 subCount = node.desc.mipLevels * node.desc.arraySize;
+		node.subresourceStates.resize(subCount, node.baseResourceState);
+		node.versions.resize(subCount, 0);
+
+		m_textureNodes.push_back(std::move(node));
+
+		FGResourceHandle handle{};
+		handle.index = static_cast<uint32>(m_textureNodes.size() - 1);
+		handle.type = FGResourceType::Texture;
+		handle.version = 0;
+
+		m_resourceRegistry[String::ToUpper(name)] = handle;
+
 		return handle;
+	}
+
+	FGResourceHandle FrameGraph::CreateBuffer(std::string_view name, Buffer::Desc desc)
+	{
+		return FGResourceHandle{};
+	}
+
+	void FrameGraph::ImportTexture(std::string_view name, Texture* pTexture)
+	{
+		H2_VERIFY(!m_resourceRegistry.contains(String::ToUpper(name)), "Resource '{}' already exists!", name);
+
+		FGTextureNode node{};
+		node.name = name;
+		node.bImported = true;
+		node.pResource = pTexture;
+		node.baseResourceState = pTexture->GetState();
+		node.desc = pTexture->GetDesc();
+
+		uint32 subCount = node.desc.mipLevels * node.desc.arraySize;
+		node.subresourceStates.resize(subCount, node.baseResourceState);
+		node.versions.resize(subCount, 0);
+
+		m_textureNodes.push_back(std::move(node));
+
+		FGResourceHandle handle{};
+		handle.index = static_cast<uint32>(m_textureNodes.size() - 1);
+		handle.type = FGResourceType::Texture;
+		handle.version = 0;
+
+		m_resourceRegistry[String::ToUpper(name)] = handle;
+	}
+
+	void FrameGraph::ImportBuffer(std::string_view name, Buffer* pBuffer)
+	{
+	}
+
+	FGResourceHandle FrameGraph::GetResource(std::string_view name) const
+	{
+		auto it = m_resourceRegistry.find(String::ToUpper(name));
+		H2_VERIFY_FATAL(it != m_resourceRegistry.end(), "Resource '{}' not found in registry!", name);
+		return it->second;
 	}
 
 	void FrameGraph::AddPass(std::string_view passName, IRenderPass& pass)
@@ -51,35 +105,6 @@ namespace Hydrogen
 		};
 	}
 
-	const FGResourceHandle FrameGraph::CreateTexture(Texture::Desc textureDesc)
-	{
-		return FGResourceHandle{};
-	}
-
-	const FGResourceHandle FrameGraph::ImportTexture(Texture* pTexture, std::string_view name)
-	{
-		FGTextureNode node{};
-		node.name = name;
-		node.bImported = true;
-		node.pResource = pTexture;
-
-		node.baseResourceState = pTexture->GetState();
-
-		node.desc = pTexture->GetDesc();
-
-		uint32 subCount = node.desc.mipLevels * node.desc.arraySize;
-		node.subresourceStates.resize(subCount, node.baseResourceState);
-		node.versions.resize(subCount, 0);
-
-		m_textureNodes.push_back(std::move(node));
-
-		FGResourceHandle resourceHandle{};
-		resourceHandle.index = static_cast<uint32>(m_textureNodes.size() - 1);
-		resourceHandle.type = FGResourceType::Texture;
-		resourceHandle.version = 0;
-
-		return resourceHandle;
-	}
 
 	void FrameGraph::Compile()
 	{
@@ -148,7 +173,7 @@ namespace Hydrogen
 			if (node.bImported) continue;
 			if (node.pResource == nullptr) continue;
 
-			//m_resourceCache.ReleaseTexture(node.pResource, m_currentFrame);
+			m_resourceCache.ReleaseTexture(node.pResource, m_currentFrameNumber);
 			node.pResource = nullptr;
 		}
 
@@ -167,6 +192,7 @@ namespace Hydrogen
 
 		m_executeContext.m_rtvMap.clear();
 		m_executeContext.m_dsvMap.clear();
+		m_executeContext.m_resourceMap.clear();
 
 		//m_resourceCache.Cleanup(m_currentFrame);
 	}
@@ -312,9 +338,9 @@ namespace Hydrogen
 	{
 		for (auto& node : m_textureNodes)
 		{
-			if (node.bImported || node.refCount) continue;
+			if (node.bImported || node.refCount == 0) continue;
 
-			//node.pResource = m_resourceCache.AcquireTexture(node.desc, node.flags, m_currentFrame);
+			node.pResource = m_resourceCache.AcquireTexture(node.desc, m_currentFrameNumber);
 
 			H2_VERIFY(node.pResource != nullptr, "Failed to allocate texture resource for node: {}", node.name);
 
@@ -323,9 +349,9 @@ namespace Hydrogen
 
 		for (auto& node : m_bufferNodes)
 		{
-			if (node.bImported || node.refCount) continue;
+			if (node.bImported || node.refCount == 0) continue;
 
-			//node.pResource = m_resourceCache.AcquireBuffer(node.desc, node.flags, m_currentFrame);
+			//node.pResource = m_resourceCache.AcquireBuffer(node.desc, m_currentFrameNumber);
 
 			H2_VERIFY(node.pResource != nullptr, "Failed to allocate buffer resource for node: {}", node.name);
 
@@ -460,8 +486,10 @@ namespace Hydrogen
 				case FGUsage::None:
 					break;
 				}
+
+				m_executeContext.m_resourceMap[passNode.handle.index] = node.pResource->GetResource();
+				}
 			}
-		}
 	}
 
 	void FrameGraph::RestoreImportedResources(ID3D12GraphicsCommandList7* cmd)

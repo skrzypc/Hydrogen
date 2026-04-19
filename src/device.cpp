@@ -88,10 +88,9 @@ namespace Hydrogen
 		Initialize();
 	}
 
-	Texture* GpuDevice::CreateTexture(const Texture::Desc& desc, D3D12_BARRIER_LAYOUT initialBarrierLayout)
+	std::unique_ptr<Texture> GpuDevice::CreateTexture(std::wstring_view name, const Texture::Desc& desc, ResourceState& initialState, const D3D12_CLEAR_VALUE* pClearValue)
 	{
 		auto pTexture = std::make_unique<Texture>();
-		pTexture->SetDesc(desc);
 
 		D3D12_HEAP_PROPERTIES heapProps{};
 		heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
@@ -111,8 +110,8 @@ namespace Hydrogen
 			&heapProps,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
-			initialBarrierLayout,
-			nullptr,
+			initialState.layout,
+			pClearValue,
 			nullptr,
 			0,
 			nullptr,
@@ -120,27 +119,26 @@ namespace Hydrogen
 			"Texture creation failed!"
 		);
 
-		//pTexture->SetState(D3D12_RESOURCE_STATE_COMMON);
+		pTexture->SetName(name);
+		pTexture->SetDesc(desc);
+		pTexture->SetState(initialState);
 
-		m_registeredTextures.emplace_back(std::move(pTexture));
-
-		return m_registeredTextures.back().get();
+		return pTexture;
 	}
 
-	Texture* GpuDevice::RegisterTexture(ID3D12Resource* pResource, const Texture::Desc& desc, ResourceState currentState)
+	std::unique_ptr<Texture> GpuDevice::CreateTexture(std::wstring_view name, ID3D12Resource* pResource, const Texture::Desc& desc, ResourceState& initialState, const D3D12_CLEAR_VALUE* pClearValue)
 	{
 		auto pTexture = std::make_unique<Texture>();
-		pTexture->SetDesc(desc);
-		pTexture->SetState(currentState);
-
 		pTexture->AttachResource(pResource);
 
-		m_registeredTextures.emplace_back(std::move(pTexture));
+		pTexture->SetName(name);
+		pTexture->SetDesc(desc);
+		pTexture->SetState(initialState);
 
-		return m_registeredTextures.back().get();
+		return pTexture;
 	}
 
-	Buffer* GpuDevice::CreateBuffer(const Buffer::Desc& desc)
+	std::unique_ptr<Buffer> GpuDevice::CreateBuffer(std::wstring_view name, const Buffer::Desc& desc, ResourceState& initialState)
 	{
 		auto pBuffer = std::make_unique<Buffer>();
 		pBuffer->SetDesc(desc);
@@ -169,42 +167,23 @@ namespace Hydrogen
 			"Buffer creation failed!"
 		);
 
-		//pBuffer->SetState(D3D12_RESOURCE_STATE_COMMON);
+		pBuffer->SetName(name);
+		pBuffer->SetState(initialState);
 
-		m_registeredBuffers.emplace_back(std::move(pBuffer));
-
-		return m_registeredBuffers.back().get();
+		return pBuffer;
 	}
 
-	Buffer* GpuDevice::RegisterBuffer(ID3D12Resource* pResource, const Buffer::Desc& desc, D3D12_RESOURCE_STATES currentState)
+	std::unique_ptr<Buffer> GpuDevice::CreateBuffer(std::wstring_view name, ID3D12Resource* pResource, const Buffer::Desc& desc, ResourceState& initialState)
 	{
 		auto pBuffer = std::make_unique<Buffer>();
-		pBuffer->SetDesc(desc);
-		//pBuffer->SetState(currentState);
-
 		pBuffer->AttachResource(pResource);
 
-		m_registeredBuffers.emplace_back(std::move(pBuffer));
+		pBuffer->SetName(name);
+		pBuffer->SetDesc(desc);
+		pBuffer->SetState(initialState);
 
-		return m_registeredBuffers.back().get();
+		return pBuffer;
 	}
-
-	//TextureView GpuDevice::CreateRenderTargetView(const Texture* pTexture)
-	//{
-	//	TextureView view{};
-	//	view.pTexture = pTexture;
-	//	view.index = m_rtvDescriptorAllocator.Allocate();
-
-	//	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
-	//	rtvDesc.Format = pTexture->GetFormat();
-	//	rtvDesc.Texture2D.MipSlice = 0;
-	//	rtvDesc.Texture2D.PlaneSlice = 0;
-	//	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-
-	//	m_pDxDevice->CreateRenderTargetView(pTexture->GetResource(), &rtvDesc, m_rtvDescriptorHeap.GetCpuHandle(view.index));
-
-	//	return view;
-	//}
 
 	RenderTargetViewHandle GpuDevice::CreateRenderTargetView(const Texture* pTexture, D3D12_RENDER_TARGET_VIEW_DESC rtvDesc, uint32 rtvIndex)
 	{
@@ -274,7 +253,7 @@ namespace Hydrogen
 
 			D3D12_FEATURE_DATA_SHADER_MODEL featureData{ expectedShaderModel };
 			H2_VERIFY(m_pDxDevice->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &featureData, sizeof(featureData)), "Could not check shader model support!");
-			
+
 			bAllFeaturesSupported &= featureData.HighestShaderModel >= expectedShaderModel;
 		}
 
@@ -282,7 +261,7 @@ namespace Hydrogen
 		{
 			D3D12_FEATURE_DATA_D3D12_OPTIONS5 featureData{};
 			H2_VERIFY(m_pDxDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &featureData, sizeof(featureData)), "Could not check raytracing support!");
-			
+
 			bAllFeaturesSupported &= featureData.RaytracingTier >= Config::ExpectedRaytracingTier;
 		}
 
@@ -290,7 +269,7 @@ namespace Hydrogen
 		{
 			D3D12_FEATURE_DATA_D3D12_OPTIONS7 featureData{};
 			H2_VERIFY(m_pDxDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &featureData, sizeof(featureData)), "Could not check mesh shader support!");
-			
+
 			bAllFeaturesSupported &= featureData.MeshShaderTier >= Config::ExpectedMeshShaderTier;
 		}
 
@@ -298,7 +277,7 @@ namespace Hydrogen
 		{
 			D3D12_FEATURE_DATA_D3D12_OPTIONS featureData{};
 			H2_VERIFY(m_pDxDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &featureData, sizeof(featureData)), "Could not check bindless resource support!");
-			
+
 			bAllFeaturesSupported &= featureData.ResourceBindingTier >= Config::ExpectedResourceBindingTier;
 		}
 
@@ -312,7 +291,7 @@ namespace Hydrogen
 
 		return bAllFeaturesSupported;
 	}
-	
+
 	DescriptorHeap& GpuDevice::GetDescriptorHeap(eDescriptorHeapType descHeapType)
 	{
 		switch (descHeapType)

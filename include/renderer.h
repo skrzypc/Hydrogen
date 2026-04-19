@@ -6,7 +6,9 @@
 #include "shaderCompiler.h"
 #include "uploadRingBuffer.h"
 #include "renderPasses/clearPass.h"
-#include "renderPasses/testTrianglePass.h"
+#include "renderPasses/animateBackground.h"
+#include "renderPasses/copyPass.h"
+#include "renderPasses/overlappingRectsPass.h"
 
 namespace Hydrogen
 {
@@ -14,7 +16,7 @@ namespace Hydrogen
 	{
 	public:
 		Renderer() = default;
-		~Renderer() = default;
+		~Renderer();
 		Renderer(const Renderer&) = delete;
 		Renderer& operator=(const Renderer&) = delete;
 		Renderer(Renderer&&) noexcept = default;
@@ -32,7 +34,9 @@ namespace Hydrogen
 		UploadRingBuffer m_uploadBuffer{};
 
 		ClearPass m_clearPass{};
-		TestTrianglePass m_testTrianglePass{};
+		AnimateBackgroundPass m_animateBackgroundPass{};
+		CopyPass m_copyPass{};
+		OverlappingRectsPass m_overlappingRectsPass{};
 		//GpuScene m_gpuScene;
 	};
 }

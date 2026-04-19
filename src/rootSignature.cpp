@@ -76,6 +76,8 @@ namespace Hydrogen
 			IID_PPV_ARGS(&m_pDxRootSignature)),
 			"Root signature creation failed"
 		);
+
+		m_pDxRootSignature->SetName(L"H2_COMMON_ROOT_SIGNATURE");
 	}
 
 	std::array<D3D12_STATIC_SAMPLER_DESC1, static_cast<size_t>(eStaticSampler::Count)> RootSignature::BuildStaticSamplers()

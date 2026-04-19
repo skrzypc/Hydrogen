@@ -21,21 +21,21 @@ namespace Hydrogen
 		return AccessInternal(handle, FGPassNodeType::Output, ResolveWrite(access), FGSubresourceRange{});
 	}
 
-	FGResourceHandle FGBuilder::Read(eFrameResource resource, FGAccess::Input access)
+	FGResourceHandle FGBuilder::Read(std::string_view name, FGAccess::Input access)
 	{
-		return Read(m_frameGraph.GetResource(resource), access);
+		return Read(m_frameGraph.GetResource(name), access);
 	}
 
-	FGResourceHandle FGBuilder::Write(eFrameResource resource, FGAccess::Output access)
+	FGResourceHandle FGBuilder::Write(std::string_view name, FGAccess::Output access)
 	{
-		FGResourceHandle handle = Write(m_frameGraph.GetResource(resource), access);
-		m_frameGraph.m_resourceRegistry[static_cast<uint32>(resource)] = handle;
+		FGResourceHandle handle = Write(m_frameGraph.GetResource(name), access);
+		m_frameGraph.m_resourceRegistry[String::ToUpper(name)] = handle;
 		return handle;
 	}
 
-	const Texture::Desc& FGBuilder::GetTextureDesc(eFrameResource resource) const
+	const Texture::Desc& FGBuilder::GetTextureDesc(std::string_view name) const
 	{
-		FGResourceHandle handle = m_frameGraph.GetResource(resource);
+		FGResourceHandle handle = m_frameGraph.GetResource(name);
 		return m_frameGraph.m_textureNodes[handle.index].desc;
 	}
 

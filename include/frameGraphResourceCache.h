@@ -34,6 +34,8 @@ namespace Hydrogen
 		// uint32 GetUAVIndex(Texture* pTexture, const FGSubresourceRange& range);
 
 	private:
+		Texture* CreateTexture(const Texture::Desc& desc);
+
 		// TODO: there should be generalized hashing function available. Replace with that.
 		uint64 HashRange(const FGSubresourceRange& range);
 
@@ -61,6 +63,7 @@ namespace Hydrogen
 		FreeListIndexAllocator m_rtvAllocator{};
 		FreeListIndexAllocator m_dsvAllocator{};
 
+		std::vector<std::unique_ptr<Texture>> m_ownedTextures;
 		std::unordered_map<Texture::Desc, std::vector<FGFreeTextureEntry>, TextureDescHash> m_freeTextures;
 		std::unordered_set<const Texture*> m_activeTextures;
 

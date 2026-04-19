@@ -1,28 +1,29 @@
 #pragma once
 
-#include <array>
 #include <string>
 #include "renderPass.h"
 #include "frameGraphBuilder.h"
 
 namespace Hydrogen
 {
-	class ClearPass : public IRenderPass
+	class CopyPass : public IRenderPass
 	{
 	public:
-		std::string target = "";
-		std::array<float, 4> clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+		std::string src;
+		std::string dst;
 
 		void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler) override {}
 
 		void Setup(FGBuilder& builder) override
 		{
-			m_handle = builder.Write(target, FGAccess::Output::RenderTarget);
+			m_srcHandle = builder.Read(src, FGAccess::Input::CopySrc);
+			m_dstHandle = builder.Write(dst, FGAccess::Output::CopyDst);
 		}
 
 		void Execute(FGExecuteContext& ctx, GraphicsContext& gfx) override;
 
 	private:
-		FGResourceHandle m_handle{};
+		FGResourceHandle m_srcHandle{};
+		FGResourceHandle m_dstHandle{};
 	};
 }

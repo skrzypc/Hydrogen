@@ -3,17 +3,16 @@
 #include "device.h"
 #include "shaderCompiler.h"
 #include "frameGraphBuilder.h"
-#include "frameResources.h"
 #include "graphicsContext.h"
-#include "renderPasses/testTrianglePass.h"
+#include "renderPasses/animateBackground.h"
 
 namespace Hydrogen
 {
-	void TestTrianglePass::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler)
+	void AnimateBackgroundPass::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler)
 	{
 		Shader::Desc vsDesc
 		{
-			.sourcePath = "testShader.vs",
+			.sourcePath = "animateBackground.vs",
 			.name = "TestVs",
 			.entryPoint = "main",
 			.type = eShaderType::VS,
@@ -21,7 +20,7 @@ namespace Hydrogen
 
 		Shader::Desc psDesc
 		{
-			.sourcePath = "testShader.ps",
+			.sourcePath = "animateBackground.ps",
 			.name = "TestPs",
 			.entryPoint = "main",
 			.type = eShaderType::PS,
@@ -51,16 +50,16 @@ namespace Hydrogen
 		m_pso.CreateGraphics(device, psoDesc);
 	}
 
-	void TestTrianglePass::Setup(FGBuilder& builder)
+	void AnimateBackgroundPass::Setup(FGBuilder& builder)
 	{
-		m_backBuffer = builder.Write(eFrameResource::Backbuffer, FGAccess::Output::RenderTarget);
+		m_targetHandle = builder.Write(target, FGAccess::Output::RenderTarget);
 
-		const Texture::Desc& desc = builder.GetTextureDesc(eFrameResource::Backbuffer);
+		const Texture::Desc& desc = builder.GetTextureDesc(target);
 		m_width = desc.width;
 		m_height = desc.height;
 	}
 
-	void TestTrianglePass::Execute(FGExecuteContext& ctx, GraphicsContext& gfx)
+	void AnimateBackgroundPass::Execute(FGExecuteContext& ctx, GraphicsContext& gfx)
 	{
 		constexpr float32 kSpeed = 1.0f / 1800.0f;
 		constexpr float32 k2Pi3  = 2.0944f; // 2π/3
@@ -83,7 +82,7 @@ namespace Hydrogen
 		cmd->RSSetViewports(1, &viewport);
 		cmd->RSSetScissorRects(1, &scissor);
 
-		D3D12_CPU_DESCRIPTOR_HANDLE rtv = ctx.GetRTV(m_backBuffer);
+		D3D12_CPU_DESCRIPTOR_HANDLE rtv = ctx.GetRTV(m_targetHandle);
 		cmd->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
 		cmd->SetPipelineState(m_pso.Get());
 		cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);

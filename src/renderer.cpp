@@ -14,6 +14,11 @@
 
 namespace Hydrogen
 {
+	Renderer::~Renderer()
+	{
+		m_gpuDevice.GetDirectCommandQueue().WaitForIdle();
+	}
+
 	void Renderer::Initialize(HWND hWnd)
 	{
 		m_gpuDevice.Create();
@@ -23,7 +28,8 @@ namespace Hydrogen
 		m_uploadBuffer.Initialize(m_gpuDevice, 1024 * 1024); // 1 MiB per frame
 
 		m_clearPass.Initialize(m_gpuDevice, m_shaderCompiler);
-		m_testTrianglePass.Initialize(m_gpuDevice, m_shaderCompiler);
+		m_animateBackgroundPass.Initialize(m_gpuDevice, m_shaderCompiler);
+		m_overlappingRectsPass.Initialize(m_gpuDevice, m_shaderCompiler);
 	}
 
 	void Renderer::RenderFrame()
@@ -79,11 +85,34 @@ namespace Hydrogen
 
 			// Define all frame resources.
 			{
-				m_frameGraph.Import(eFrameResource::Backbuffer, m_swapChain.GetCurrentBackBuffer());
+				m_frameGraph.ImportTexture("Backbuffer", m_swapChain.GetCurrentBackBuffer());
+				const Texture::Desc& backBufferDesc = m_swapChain.GetCurrentBackBuffer()->GetDesc();
+
+				m_frameGraph.CreateTexture("DefaultTarget",
+					{
+						.width = backBufferDesc.width,
+						.height = backBufferDesc.height,
+						.mipLevels = 1,
+						.arraySize = 1,
+						.format = backBufferDesc.format,
+						.flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+						.dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D
+					}
+				);
 			}
 
-			m_frameGraph.AddPass("ClearBackbuffer", m_clearPass);
-			m_frameGraph.AddPass("TestTriangle", m_testTrianglePass);
+			m_clearPass.target = "DefaultTarget";
+			m_frameGraph.AddPass("ClearTarget", m_clearPass);
+
+			m_animateBackgroundPass.target = "DefaultTarget";
+			m_frameGraph.AddPass("AnimateBackground", m_animateBackgroundPass);
+
+			m_overlappingRectsPass.target = "DefaultTarget";
+			m_frameGraph.AddPass("OverlappingRects", m_overlappingRectsPass);
+
+			m_copyPass.src = "DefaultTarget";
+			m_copyPass.dst = "Backbuffer";
+			m_frameGraph.AddPass("CopyToBackbuffer", m_copyPass);
 
 			m_frameGraph.Compile();
 

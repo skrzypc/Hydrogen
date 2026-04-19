@@ -2,7 +2,6 @@
 
 #include <string_view>
 
-#include "frameResources.h"
 #include "frameGraphStructs.h"
 
 namespace Hydrogen
@@ -24,10 +23,10 @@ namespace Hydrogen
 		FGResourceHandle Read(FGResourceHandle handle, FGAccess::Input access);
 		FGResourceHandle Write(FGResourceHandle handle, FGAccess::Output access);
 
-		FGResourceHandle Read(eFrameResource resource, FGAccess::Input access);
-		FGResourceHandle Write(eFrameResource resource, FGAccess::Output access);
+		FGResourceHandle Read(std::string_view name, FGAccess::Input access);
+		FGResourceHandle Write(std::string_view name, FGAccess::Output access);
 
-		const Texture::Desc& GetTextureDesc(eFrameResource resource) const;
+		const Texture::Desc& GetTextureDesc(std::string_view name) const;
 
 	private:
 		FGPassNodeAccess ResolveRead(FGAccess::Input access);

@@ -5,6 +5,8 @@
 #include <memory>
 #include <queue>
 #include <array>
+#include <unordered_map>
+#include <string>
 
 #include <d3d12.h>
 
@@ -14,11 +16,12 @@
 #include "frameGraphBuilder.h"
 #include "frameGraphResourceCache.h"
 #include "stringUtilities.h"
-#include "renderPasses/renderPass.h"
-#include "graphicsContext.h"
 
 namespace Hydrogen
 {
+	class IRenderPass;
+	class GraphicsContext;
+
 	class FrameGraph
 	{
 		friend class FGBuilder;
@@ -34,11 +37,13 @@ namespace Hydrogen
 
 		void BeginFrame(uint64 newFrameNumber);
 
-		const FGResourceHandle CreateTexture(Texture::Desc textureDesc);
-		const FGResourceHandle ImportTexture(Texture* pTexture, std::string_view name);
-		void Import(eFrameResource name, Texture* pTexture);
+		FGResourceHandle CreateTexture(std::string_view name, Texture::Desc desc);
+		FGResourceHandle CreateBuffer(std::string_view name, Buffer::Desc desc);
 
-		FGResourceHandle GetResource(eFrameResource name) const;
+		void ImportTexture(std::string_view name, Texture* pTexture);
+		void ImportBuffer(std::string_view name, Buffer* pBuffer);
+
+		FGResourceHandle GetResource(std::string_view name) const;
 
 		void AddPass(std::string_view passName, IRenderPass& pass);
 
@@ -91,6 +96,6 @@ namespace Hydrogen
 		std::vector<FGTextureNode> m_textureNodes{};
 		std::vector<FGBufferNode> m_bufferNodes{};
 
-		std::array<FGResourceHandle, static_cast<uint32>(eFrameResource::Count)> m_resourceRegistry{};
+		std::unordered_map<std::string, FGResourceHandle> m_resourceRegistry{};
 	};
 }

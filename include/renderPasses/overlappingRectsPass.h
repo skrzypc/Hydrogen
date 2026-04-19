@@ -1,7 +1,7 @@
 #pragma once
 
-#include <DirectXMath.h>
-
+#include <string>
+#include <array>
 #include "renderPass.h"
 #include "pipelineState.h"
 #include "frameGraphStructs.h"
@@ -9,25 +9,26 @@
 
 namespace Hydrogen
 {
-	class TestTrianglePass : public IRenderPass
+	class OverlappingRectsPass : public IRenderPass
 	{
 	public:
-		struct PassData
+		struct PushConstants
 		{
-			DirectX::XMFLOAT4 colorTint = { 1.0f, 1.0f, 1.0f, 1.0f };
+			float rectMin[2];
+			float rectMax[2];
+			float color[4];
 		};
+
+		std::string target;
 
 		void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler) override;
 		void Setup(FGBuilder& builder) override;
 		void Execute(FGExecuteContext& ctx, GraphicsContext& gfx) override;
 
 	private:
-		PipelineState m_pso{}; // TODO: Later move to PSO cache.
-		FGResourceHandle m_backBuffer{}; // Avoid storing handles here?
+		PipelineState m_pso{};
+		FGResourceHandle m_targetHandle{};
 		uint32 m_width = 0;
 		uint32 m_height = 0;
-
-		float m_time = 0.0f;
-		PassData m_passData{};
 	};
 }

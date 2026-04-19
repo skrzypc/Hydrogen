@@ -28,8 +28,7 @@ namespace Hydrogen
 			return pTexture;
 		}
 
-		//return CreateTexture(desc, normalizedFlags, key, currentFrame);
-		return nullptr;
+		return CreateTexture(textureDesc);
 	}
 
 	void FGResourceCache::ReleaseTexture(Texture* pTexture, uint64 currentFrame)
@@ -44,7 +43,7 @@ namespace Hydrogen
 				.lastUsedFrame = currentFrame,
 			});
 	}
-	
+
 	RenderTargetViewHandle FGResourceCache::GetRTV(const Texture* pTexture, const FGSubresourceRange& range)
 	{
 		uint64 subresourceRangeHash = HashRange(range);
@@ -118,6 +117,35 @@ namespace Hydrogen
 		textureDsvs[subresourceRangeHash] = dsvHandle;
 
 		return dsvHandle;
+	}
+
+	Texture* FGResourceCache::CreateTexture(const Texture::Desc& desc)
+	{
+		D3D12_CLEAR_VALUE clearValue{};
+		const D3D12_CLEAR_VALUE* pClearValue = nullptr;
+
+		if (desc.flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
+		{
+			clearValue.Format = desc.format;
+			clearValue.Color[0] = clearValue.Color[1] = clearValue.Color[2] = 0.0f;
+			clearValue.Color[3] = 1.0f;
+			pClearValue = &clearValue;
+		}
+		else if (desc.flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
+		{
+			clearValue.Format = desc.format;
+			clearValue.DepthStencil = { .Depth = 1.0f, .Stencil = 0 };
+			pClearValue = &clearValue;
+		}
+
+		ResourceState initialState{};
+		auto pTexture = m_pDevice->CreateTexture(L"FrameGraphTexture", desc, initialState, pClearValue);
+
+		Texture* pRaw = pTexture.get();
+		m_ownedTextures.push_back(std::move(pTexture));
+		m_activeTextures.insert(pRaw);
+
+		return pRaw;
 	}
 
 	// TODO: there should be generalized hashing function available. Replace with that.
