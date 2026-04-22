@@ -71,7 +71,7 @@ namespace Hydrogen
 		}
 
 		void Compile();
-		void Execute(GraphicsContext& gfx);
+		[[nodiscard]] GraphicsContext Execute();
 
 		void Reset();
 
@@ -86,6 +86,7 @@ namespace Hydrogen
 		void RestoreImportedResources(ID3D12GraphicsCommandList7* cmd);
 
 	private:
+		GpuDevice* m_pDevice = nullptr;
 		uint64 m_currentFrameNumber = std::numeric_limits<uint64>::max();
 
 		FGExecuteContext m_executeContext{};

@@ -81,6 +81,11 @@ namespace Hydrogen
 		WaitForSingleObject(m_fenceEvent, INFINITE);
 	}
 
+	void CommandQueue::WaitOnQueue(const CommandQueue& other, uint64 fenceValue)
+	{
+		H2_VERIFY(m_pQueue->Wait(other.m_pFence.Get(), fenceValue), "Failed to enqueue GPU wait on queue fence!");
+	}
+
 	void CommandQueue::WaitForIdle()
 	{
 		uint64 fenceValue = Signal();

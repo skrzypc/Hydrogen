@@ -10,6 +10,7 @@ namespace Hydrogen
 {
 	void FrameGraph::Initialize(GpuDevice& device)
 	{
+		m_pDevice = &device;
 		m_resourceCache.Initialize(device);
 	}
 
@@ -118,8 +119,9 @@ namespace Hydrogen
 		BuildDescriptors();
 	}
 
-	void FrameGraph::Execute(GraphicsContext& gfx)
+	GraphicsContext FrameGraph::Execute()
 	{
+		GraphicsContext gfx = m_pDevice->AcquireGraphicsContext();
 		ID3D12GraphicsCommandList10* cmd = gfx.CmdList();
 
 		PIXScopedEvent(cmd, PIX_COLOR_INDEX(0), String::Format("Frame {}", m_currentFrameNumber).c_str());
@@ -164,6 +166,8 @@ namespace Hydrogen
 		}
 
 		RestoreImportedResources(cmd);
+
+		return gfx;
 	}
 
 	void FrameGraph::Reset()

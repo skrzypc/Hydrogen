@@ -11,6 +11,7 @@
 
 #include "frameGraph.h"
 #include "graphicsContext.h"
+#include "meshLoader.h"
 
 namespace Hydrogen
 {
@@ -26,107 +27,77 @@ namespace Hydrogen
 
 		m_frameGraph.Initialize(m_gpuDevice);
 		m_uploadBuffer.Initialize(m_gpuDevice, 1024 * 1024); // 1 MiB per frame
+		GraphicsContext::s_pUploadBuffer = &m_uploadBuffer;
+		m_gpuUploader.Initialize(m_gpuDevice, 64 * 1024 * 1024); // 64 MiB staging
 
 		m_clearPass.Initialize(m_gpuDevice, m_shaderCompiler);
 		m_animateBackgroundPass.Initialize(m_gpuDevice, m_shaderCompiler);
 		m_overlappingRectsPass.Initialize(m_gpuDevice, m_shaderCompiler);
+
+		// Test
+		//auto meshes = MeshLoader::Load("data/models/stanfordBunny/bunny.obj");
+	}
+
+	void Renderer::BeginFrame(uint32 frameIndex)
+	{
+		m_uploadBuffer.NextFrame(frameIndex);
+		m_gpuDevice.GetDirectCommandQueue().Wait(m_frameFenceValues[frameIndex]);
+	}
+
+	void Renderer::EndFrame(uint32 frameIndex, uint64 fenceValue)
+	{
+		m_frameFenceValues[frameIndex] = fenceValue;
+		m_swapChain.Present();
 	}
 
 	void Renderer::RenderFrame()
 	{
-		static uint64 fenceValues[Config::FramesInFlight] = { 0ull, 0ull, 0ull };
-		static Microsoft::WRL::ComPtr<ID3D12CommandAllocator> commandAllocators[Config::FramesInFlight];
-		static Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList10> commandLists[Config::FramesInFlight];
-		static bool bCommandListsInitialized = false;
-
-		if (!bCommandListsInitialized)
-		{
-			for (uint32 i = 0; i < Config::FramesInFlight; ++i)
-			{
-				H2_VERIFY_FATAL(m_gpuDevice.GetDxDevice()->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&commandAllocators[i])), "Failed to create command allocator!");
-				H2_VERIFY_FATAL(m_gpuDevice.GetDxDevice()->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocators[i].Get(), nullptr, IID_PPV_ARGS(&commandLists[i])), "Failed to create command list!");
-				commandLists[i]->SetName(String::Format(L"COMMAND_LIST_{}", i).c_str());
-				commandLists[i]->ClearState(nullptr);
-				commandLists[i]->Close();
-				commandAllocators[i]->SetName(String::Format(L"COMMAND_ALLOCATOR_{}", i).c_str());
-				commandAllocators[i]->Reset();
-			}
-			bCommandListsInitialized = true;
-		}
-
 		uint64 currentFrameNumber = m_swapChain.GetCurrentFrameNumber();
 		uint32 currentFrameIndex = m_swapChain.GetCurrentFrameIndex();
 
 		H2_INFO(eLogLevel::Minimal, "Current frame: {}", currentFrameNumber);
 
-		auto& commandQueue = m_gpuDevice.GetDirectCommandQueue();
-		commandQueue.Wait(fenceValues[currentFrameIndex]);
+		BeginFrame(currentFrameIndex);
 
-		commandAllocators[currentFrameIndex]->Reset();
-		commandLists[currentFrameIndex]->Reset(commandAllocators[currentFrameIndex].Get(), nullptr);
+		m_frameGraph.BeginFrame(currentFrameNumber);
 
-		auto pCommandList = commandLists[currentFrameIndex].Get();
-
-		// Bind descriptor heaps and root signature once per frame, before any pass executes.
+		// Define all frame resources.
 		{
-			std::vector<ID3D12DescriptorHeap*> descriptorHeaps(2, nullptr);
-			descriptorHeaps[0] = m_gpuDevice.GetDescriptorHeap(eDescriptorHeapType::CBV_SRV_UAV).GetDxHeap();
-			descriptorHeaps[1] = m_gpuDevice.GetDescriptorHeap(eDescriptorHeapType::Sampler).GetDxHeap();
+			m_frameGraph.ImportTexture("Backbuffer", m_swapChain.GetCurrentBackBuffer());
+			const Texture::Desc& backBufferDesc = m_swapChain.GetCurrentBackBuffer()->GetDesc();
 
-			pCommandList->SetDescriptorHeaps(static_cast<uint32>(descriptorHeaps.size()), descriptorHeaps.data());
-
-			pCommandList->SetGraphicsRootSignature(m_gpuDevice.GetRootSignature().Get());
-			//pCommandList->SetComputeRootSignature(pRS);
+			m_frameGraph.CreateTexture("DefaultTarget",
+				{
+					.width = backBufferDesc.width,
+					.height = backBufferDesc.height,
+					.mipLevels = 1,
+					.arraySize = 1,
+					.format = backBufferDesc.format,
+					.flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+					.dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D
+				}
+			);
 		}
 
-		// Frame graph usage.
-		{
-			m_frameGraph.BeginFrame(currentFrameNumber);
+		m_clearPass.target = "DefaultTarget";
+		m_frameGraph.AddPass("ClearTarget", m_clearPass);
 
-			// Define all frame resources.
-			{
-				m_frameGraph.ImportTexture("Backbuffer", m_swapChain.GetCurrentBackBuffer());
-				const Texture::Desc& backBufferDesc = m_swapChain.GetCurrentBackBuffer()->GetDesc();
+		m_animateBackgroundPass.target = "DefaultTarget";
+		m_frameGraph.AddPass("AnimateBackground", m_animateBackgroundPass);
 
-				m_frameGraph.CreateTexture("DefaultTarget",
-					{
-						.width = backBufferDesc.width,
-						.height = backBufferDesc.height,
-						.mipLevels = 1,
-						.arraySize = 1,
-						.format = backBufferDesc.format,
-						.flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
-						.dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D
-					}
-				);
-			}
+		m_overlappingRectsPass.target = "DefaultTarget";
+		m_frameGraph.AddPass("OverlappingRects", m_overlappingRectsPass);
 
-			m_clearPass.target = "DefaultTarget";
-			m_frameGraph.AddPass("ClearTarget", m_clearPass);
+		m_copyPass.src = "DefaultTarget";
+		m_copyPass.dst = "Backbuffer";
+		m_frameGraph.AddPass("CopyToBackbuffer", m_copyPass);
 
-			m_animateBackgroundPass.target = "DefaultTarget";
-			m_frameGraph.AddPass("AnimateBackground", m_animateBackgroundPass);
+		m_frameGraph.Compile();
+		GraphicsContext gfx = m_frameGraph.Execute();
+		m_frameGraph.Reset();
 
-			m_overlappingRectsPass.target = "DefaultTarget";
-			m_frameGraph.AddPass("OverlappingRects", m_overlappingRectsPass);
+		uint64 fenceValue = m_gpuDevice.ExecuteGraphicsContext(std::move(gfx));
 
-			m_copyPass.src = "DefaultTarget";
-			m_copyPass.dst = "Backbuffer";
-			m_frameGraph.AddPass("CopyToBackbuffer", m_copyPass);
-
-			m_frameGraph.Compile();
-
-			m_uploadBuffer.NextFrame(currentFrameIndex);
-			GraphicsContext gfx(pCommandList, m_uploadBuffer);
-			m_frameGraph.Execute(gfx);
-
-			m_frameGraph.Reset();
-		}
-
-		pCommandList->Close();
-
-		fenceValues[currentFrameIndex] = m_gpuDevice.GetDirectCommandQueue().SubmitCommandList(pCommandList);
-
-		m_swapChain.Present();
+		EndFrame(currentFrameIndex, fenceValue);
 	}
 }

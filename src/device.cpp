@@ -4,6 +4,8 @@
 #include "config.h"
 #include "verifier.h"
 #include "stringUtilities.h"
+#include "graphicsContext.h"
+#include "copyContext.h"
 
 namespace Hydrogen
 {
@@ -208,6 +210,16 @@ namespace Hydrogen
 			D3D12_COMMAND_LIST_TYPE_DIRECT
 		);
 
+		m_copyCommandQueue.Initialize(
+			GetDxDevice(),
+			D3D12_COMMAND_LIST_TYPE_COPY
+		);
+
+		m_directAllocatorPool.Initialize(*this, D3D12_COMMAND_LIST_TYPE_DIRECT);
+		m_copyAllocatorPool.Initialize(*this, D3D12_COMMAND_LIST_TYPE_COPY);
+		m_directListPool.Initialize(*this, D3D12_COMMAND_LIST_TYPE_DIRECT);
+		m_copyListPool.Initialize(*this, D3D12_COMMAND_LIST_TYPE_COPY);
+
 		m_cbvSrvUavDescriptorHeap.Initialize(
 			GetDxDevice(),
 			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
@@ -290,6 +302,75 @@ namespace Hydrogen
 		}
 
 		return bAllFeaturesSupported;
+	}
+
+	GraphicsContext GpuDevice::AcquireGraphicsContext()
+	{
+		uint64 completed = m_directCommandQueue.GetCompletedFenceValue();
+		ID3D12CommandAllocator* pAllocator = m_directAllocatorPool.Acquire(completed);
+		ID3D12GraphicsCommandList10* pList = m_directListPool.Acquire();
+		H2_VERIFY_FATAL(pList->Reset(pAllocator, nullptr), "Failed to reset graphics command list!");
+		m_directContextMap[pList] = pAllocator;
+
+		ID3D12DescriptorHeap* descriptorHeaps[] =
+		{
+			GetDescriptorHeap(eDescriptorHeapType::CBV_SRV_UAV).GetDxHeap(),
+			GetDescriptorHeap(eDescriptorHeapType::Sampler).GetDxHeap(),
+		};
+		pList->SetDescriptorHeaps(2, descriptorHeaps);
+		pList->SetGraphicsRootSignature(m_rootSignature.Get());
+
+		return GraphicsContext(pList);
+	}
+
+	uint64 GpuDevice::ExecuteGraphicsContext(GraphicsContext ctx)
+	{
+		ID3D12GraphicsCommandList10* pList = ctx.CmdList();
+		H2_VERIFY_FATAL(pList->Close(), "Failed to close graphics command list!");
+
+		uint64 fenceValue = m_directCommandQueue.SubmitCommandList(pList);
+
+		ID3D12CommandAllocator* pAllocator = m_directContextMap.at(pList);
+		m_directContextMap.erase(pList);
+
+		m_directListPool.Release(pList);
+		m_directAllocatorPool.Release(pAllocator, fenceValue);
+
+		ctx.m_pCommandList.Reset();
+
+		return fenceValue;
+	}
+
+	CopyContext GpuDevice::AcquireCopyContext()
+	{
+		uint64 completed = m_copyCommandQueue.GetCompletedFenceValue();
+
+		ID3D12CommandAllocator* pAllocator = m_copyAllocatorPool.Acquire(completed);
+		ID3D12GraphicsCommandList10* pList = m_copyListPool.Acquire();
+
+		H2_VERIFY_FATAL(pList->Reset(pAllocator, nullptr), "Failed to reset copy command list!");
+
+		m_copyContextMap[pList] = pAllocator;
+
+		return CopyContext(pList);
+	}
+
+	uint64 GpuDevice::ExecuteCopyContext(CopyContext ctx)
+	{
+		ID3D12GraphicsCommandList10* pList = ctx.CmdList();
+		H2_VERIFY_FATAL(pList->Close(), "Failed to close copy command list!");
+
+		uint64 fenceValue = m_copyCommandQueue.SubmitCommandList(pList);
+
+		ID3D12CommandAllocator* pAllocator = m_copyContextMap.at(pList);
+		m_copyContextMap.erase(pList);
+
+		m_copyListPool.Release(pList);
+		m_copyAllocatorPool.Release(pAllocator, fenceValue);
+
+		ctx.m_pCommandList.Reset();
+
+		return fenceValue;
 	}
 
 	DescriptorHeap& GpuDevice::GetDescriptorHeap(eDescriptorHeapType descHeapType)

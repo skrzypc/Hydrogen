@@ -1,6 +1,7 @@
 #pragma once
 
 #include <d3d12.h>
+#include <wrl.h>
 #include <cstring>
 
 #include "basicTypes.h"
@@ -13,10 +14,13 @@ namespace Hydrogen
 	class GraphicsContext
 	{
 	public:
-		GraphicsContext(ID3D12GraphicsCommandList10* cmd, UploadRingBuffer& uploadBuffer)
-			: m_pCommandList(cmd), m_uploadBuffer(uploadBuffer)
+		GraphicsContext(ID3D12GraphicsCommandList10* pList)
+			: m_pCommandList(pList)
 		{}
-		~GraphicsContext() = default;
+		~GraphicsContext()
+		{
+			H2_VERIFY(m_pCommandList == nullptr, "GraphicsContext destroyed without being executed!");
+		}
 		GraphicsContext(const GraphicsContext&) = delete;
 		GraphicsContext& operator=(const GraphicsContext&) = delete;
 		GraphicsContext(GraphicsContext&&) noexcept = default;
@@ -27,7 +31,7 @@ namespace Hydrogen
 		template<typename T>
 		void SetFrameData(const T& data)
 		{
-			auto [pCpuData, gpuAddress] = m_uploadBuffer.Allocate(sizeof(T));
+			auto [pCpuData, gpuAddress] = s_pUploadBuffer->Allocate(sizeof(T));
 			memcpy(pCpuData, &data, sizeof(T));
 			m_pCommandList->SetGraphicsRootConstantBufferView(static_cast<uint32>(eRootParam::FrameConstantBuffer), gpuAddress);
 		}
@@ -35,7 +39,7 @@ namespace Hydrogen
 		template<typename T>
 		void SetPassData(const T& data)
 		{
-			auto [pCpuData, gpuAddress] = m_uploadBuffer.Allocate(sizeof(T));
+			auto [pCpuData, gpuAddress] = s_pUploadBuffer->Allocate(sizeof(T));
 			memcpy(pCpuData, &data, sizeof(T));
 			m_pCommandList->SetGraphicsRootConstantBufferView(static_cast<uint32>(eRootParam::PassConstantBuffer), gpuAddress);
 		}
@@ -47,8 +51,11 @@ namespace Hydrogen
 			m_pCommandList->SetGraphicsRoot32BitConstants(static_cast<uint32>(eRootParam::PushConstants), sizeof(T) / sizeof(uint32), &data, 0);
 		}
 
+		inline static UploadRingBuffer* s_pUploadBuffer = nullptr;
+
 	private:
+		friend class GpuDevice;
+
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList10> m_pCommandList = nullptr;
-		UploadRingBuffer& m_uploadBuffer;
 	};
 }

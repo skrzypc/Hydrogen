@@ -5,6 +5,7 @@
 #include "frameGraph.h"
 #include "shaderCompiler.h"
 #include "uploadRingBuffer.h"
+#include "gpuUploader.h"
 #include "renderPasses/clearPass.h"
 #include "renderPasses/animateBackground.h"
 #include "renderPasses/copyPass.h"
@@ -26,12 +27,18 @@ namespace Hydrogen
 		void RenderFrame();
 
 	private:
+		void BeginFrame(uint32 frameIndex);
+		void EndFrame(uint32 frameIndex, uint64 fenceValue);
+
 		GpuDevice m_gpuDevice;
 		SwapChain m_swapChain;
 
 		FrameGraph m_frameGraph;
 		ShaderCompiler m_shaderCompiler;
 		UploadRingBuffer m_uploadBuffer{};
+		GpuUploader m_gpuUploader{};
+
+		uint64 m_frameFenceValues[Config::FramesInFlight] = {};
 
 		ClearPass m_clearPass{};
 		AnimateBackgroundPass m_animateBackgroundPass{};

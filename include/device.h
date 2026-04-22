@@ -5,11 +5,14 @@
 #include <dxgidebug.h>
 #include <wrl.h>
 
+#include <unordered_map>
 #include <vector>
 
 #include "basicTypes.h"
 
 #include "commandQueue.h"
+#include "commandAllocatorPool.h"
+#include "commandListPool.h"
 #include "descriptorHeap.h"
 #include "indexAllocators.h"
 #include "rootSignature.h"
@@ -19,6 +22,8 @@
 
 namespace Hydrogen
 {
+	class GraphicsContext;
+	class CopyContext;
 	enum class eAdapterVendor : uint16
 	{
 		INTEL = 0x8086,
@@ -59,6 +64,13 @@ namespace Hydrogen
 		void Create();
 
 		CommandQueue& GetDirectCommandQueue() { return m_directCommandQueue; }
+		CommandQueue& GetCopyCommandQueue() { return m_copyCommandQueue; }
+
+		[[nodiscard]] GraphicsContext AcquireGraphicsContext();
+		uint64 ExecuteGraphicsContext(GraphicsContext ctx);
+
+		[[nodiscard]] CopyContext AcquireCopyContext();
+		uint64 ExecuteCopyContext(CopyContext ctx);
 
 		IDXGIFactory7* GetDxgiFactory() const { return m_pDxgiFactory.Get(); }
 		ID3D12Device14* GetDxDevice() const { return m_pDxDevice.Get(); }
@@ -90,12 +102,11 @@ namespace Hydrogen
 		RenderTargetViewHandle GetRenderTargetHandle(uint32 index) const { return RenderTargetViewHandle{ .dxCpuHandle = m_rtvDescriptorHeap.GetCpuHandle(index) }; }
 		DepthStencilViewHandle GetDepthStencilHandle(uint32 index) const { return DepthStencilViewHandle{ .dxCpuHandle = m_dsvDescriptorHeap.GetCpuHandle(index) }; }
 
-		// Temporary? It would be better not to expose heaps directly
-		DescriptorHeap& GetDescriptorHeap(eDescriptorHeapType descHeapType);
-
 	private:
 		void Initialize();
 		bool CheckRequiredFeatureSupport() const;
+
+		DescriptorHeap& GetDescriptorHeap(eDescriptorHeapType descHeapType);
 
 	private:
 		Microsoft::WRL::ComPtr<IDXGIFactory7> m_pDxgiFactory = nullptr;
@@ -115,6 +126,15 @@ namespace Hydrogen
 		DescriptorHeap m_dsvDescriptorHeap{};
 
 		CommandQueue m_directCommandQueue{};
+		CommandQueue m_copyCommandQueue{};
+
+		CommandAllocatorPool m_directAllocatorPool{};
+		CommandAllocatorPool m_copyAllocatorPool{};
+		CommandListPool m_directListPool{};
+		CommandListPool m_copyListPool{};
+
+		std::unordered_map<ID3D12GraphicsCommandList10*, ID3D12CommandAllocator*> m_directContextMap;
+		std::unordered_map<ID3D12GraphicsCommandList10*, ID3D12CommandAllocator*> m_copyContextMap;
 
 		// Move it somewhere else? RS should be per render backend I think
 		RootSignature m_rootSignature{};
