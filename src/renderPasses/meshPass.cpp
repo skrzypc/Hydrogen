@@ -1,27 +1,28 @@
-#include <cmath>
+#include <d3d12.h>
 
 #include "device.h"
 #include "shaderCompiler.h"
 #include "frameGraphBuilder.h"
 #include "graphicsContext.h"
-#include "renderPasses/animateBackground.h"
+#include "gpuScene.h"
+#include "renderPasses/meshPass.h"
 
 namespace Hydrogen
 {
-	void AnimateBackgroundPass::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler)
+	void MeshPass::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler)
 	{
 		Shader::Desc vsDesc
 		{
-			.sourcePath = "animateBackground.vs",
-			.name = "TestVs",
+			.sourcePath = "mesh.vs",
+			.name = "MeshVS",
 			.entryPoint = "mainVS",
 			.type = eShaderType::VS,
 		};
 
 		Shader::Desc psDesc
 		{
-			.sourcePath = "animateBackground.ps",
-			.name = "TestPs",
+			.sourcePath = "mesh.ps",
+			.name = "MeshPS",
 			.entryPoint = "mainPS",
 			.type = eShaderType::PS,
 		};
@@ -32,25 +33,31 @@ namespace Hydrogen
 		Shader ps(psDesc);
 		shaderCompiler.Compile(ps);
 
-		const DXGI_FORMAT backBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+		const DXGI_FORMAT targetFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+		D3D12_RASTERIZER_DESC2 rasterizerDesc = PipelineState::DefaultRasterizer();
+		rasterizerDesc.CullMode = D3D12_CULL_MODE_NONE;
+		rasterizerDesc.FillMode = D3D12_FILL_MODE_WIREFRAME;
+
+		D3D12_DEPTH_STENCIL_DESC1 depthStencilDesc = PipelineState::DefaultDepthStencil();
+		depthStencilDesc.DepthEnable = FALSE;
 
 		PipelineState::GraphicsDesc psoDesc
 		{
 			.pVertexShader = &vs,
 			.pPixelShader = &ps,
-			.renderTargetFormats = std::span<const DXGI_FORMAT>(&backBufferFormat, 1),
+			.renderTargetFormats = std::span<const DXGI_FORMAT>(&targetFormat, 1),
 			.depthFormat = DXGI_FORMAT_UNKNOWN,
-			.rasterizerDesc = PipelineState::DefaultRasterizer(),
+			.rasterizerDesc = rasterizerDesc,
 			.blendDesc = PipelineState::DefaultBlend(),
-			.depthStencilDesc = PipelineState::DefaultDepthStencil(),
+			.depthStencilDesc = depthStencilDesc,
 			.primitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
 		};
-		psoDesc.depthStencilDesc.DepthEnable = FALSE;
 
 		m_pso.CreateGraphics(device, psoDesc);
 	}
 
-	void AnimateBackgroundPass::Setup(FGBuilder& builder)
+	void MeshPass::Setup(FGBuilder& builder)
 	{
 		m_targetHandle = builder.Write(target, FGAccess::Output::RenderTarget);
 
@@ -59,22 +66,8 @@ namespace Hydrogen
 		m_height = desc.height;
 	}
 
-	void AnimateBackgroundPass::Execute(FGExecuteContext& ctx, GraphicsContext& gfx)
+	void MeshPass::Execute(FGExecuteContext& ctx, GraphicsContext& gfx)
 	{
-		constexpr float32 kSpeed = 1.0f / 1800.0f;
-		constexpr float32 k2Pi3  = 2.0944f; // 2π/3
-
-		m_time += kSpeed;
-		m_passData.colorTint =
-		{
-			0.5f + 0.5f * std::sinf(m_time),
-			0.5f + 0.5f * std::sinf(m_time + k2Pi3),
-			0.5f + 0.5f * std::sinf(m_time + 2.0f * k2Pi3),
-			1.0f,
-		};
-
-		gfx.SetPassData(m_passData);
-
 		ID3D12GraphicsCommandList10* cmd = gfx.CmdList();
 
 		D3D12_VIEWPORT viewport{ 0.0f, 0.0f, static_cast<float>(m_width), static_cast<float>(m_height), 0.0f, 1.0f };
@@ -86,6 +79,22 @@ namespace Hydrogen
 		cmd->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
 		cmd->SetPipelineState(m_pso.Get());
 		cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		cmd->DrawInstanced(3, 1, 0, 0);
+
+		D3D12_INDEX_BUFFER_VIEW ibv{};
+		ibv.BufferLocation = pScene->GetIndexBuffer()->GetResource()->GetGPUVirtualAddress();
+		ibv.SizeInBytes = static_cast<UINT>(pScene->GetIndexBuffer()->GetDesc().size);
+		ibv.Format = DXGI_FORMAT_R32_UINT;
+		cmd->IASetIndexBuffer(&ibv);
+
+		for (const GpuMesh& mesh : pScene->GetMeshes())
+		{
+			PushConstants push{};
+			push.color[0] = 1.0f;
+			push.color[1] = 0.7f;
+			push.color[2] = 0.4f;
+			gfx.SetPushConstants(push);
+
+			cmd->DrawIndexedInstanced(mesh.indexCount, 1, mesh.baseIndex, mesh.baseVertex, 0);
+		}
 	}
 }

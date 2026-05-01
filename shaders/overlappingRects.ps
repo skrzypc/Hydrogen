@@ -4,7 +4,7 @@ struct PSInput
     float4 color : COLOR0;
 };
 
-float4 main(PSInput input) : SV_Target
+float4 mainPS(PSInput input) : SV_Target
 {
     return input.color;
 }

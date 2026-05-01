@@ -75,7 +75,7 @@ namespace Hydrogen
 			desc.Texture2D.MipSlice = range.mipOffset;
 		}
 
-		RenderTargetViewHandle rtvHandle = m_pDevice->CreateRenderTargetView(pTexture, desc, allocatedRtvIndex);
+		RenderTargetViewHandle rtvHandle = m_pDevice->CreateRenderTargetViewAtIndex(pTexture, desc, allocatedRtvIndex);
 		textureRtvs[subresourceRangeHash] = rtvHandle;
 
 		return rtvHandle;
@@ -113,7 +113,7 @@ namespace Hydrogen
 			desc.Texture2D.MipSlice = range.mipOffset;
 		}
 
-		DepthStencilViewHandle dsvHandle = m_pDevice->CreateDepthStencilView(pTexture, desc, allocatedDsvIndex);
+		DepthStencilViewHandle dsvHandle = m_pDevice->CreateDepthStencilViewAtIndex(pTexture, desc, allocatedDsvIndex);
 		textureDsvs[subresourceRangeHash] = dsvHandle;
 
 		return dsvHandle;

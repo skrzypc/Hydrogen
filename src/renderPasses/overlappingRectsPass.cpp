@@ -12,7 +12,7 @@ namespace Hydrogen
 		{
 			.sourcePath = "overlappingRects.vs",
 			.name = "OverlappingRectsVS",
-			.entryPoint = "main",
+			.entryPoint = "mainVS",
 			.type = eShaderType::VS,
 		};
 
@@ -20,7 +20,7 @@ namespace Hydrogen
 		{
 			.sourcePath = "overlappingRects.ps",
 			.name = "OverlappingRectsPS",
-			.entryPoint = "main",
+			.entryPoint = "mainPS",
 			.type = eShaderType::PS,
 		};
 

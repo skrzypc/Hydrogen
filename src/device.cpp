@@ -187,7 +187,7 @@ namespace Hydrogen
 		return pBuffer;
 	}
 
-	RenderTargetViewHandle GpuDevice::CreateRenderTargetView(const Texture* pTexture, D3D12_RENDER_TARGET_VIEW_DESC rtvDesc, uint32 rtvIndex)
+	RenderTargetViewHandle GpuDevice::CreateRenderTargetViewAtIndex(const Texture* pTexture, D3D12_RENDER_TARGET_VIEW_DESC rtvDesc, uint32 rtvIndex)
 	{
 		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_rtvDescriptorHeap.GetCpuHandle(rtvIndex);
 		m_pDxDevice->CreateRenderTargetView(pTexture->GetResource(), &rtvDesc, cpuHandle);
@@ -195,12 +195,19 @@ namespace Hydrogen
 		return RenderTargetViewHandle{ .dxCpuHandle = cpuHandle };
 	}
 
-	DepthStencilViewHandle GpuDevice::CreateDepthStencilView(const Texture* pTexture, D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc, uint32 dsvIndex)
+	DepthStencilViewHandle GpuDevice::CreateDepthStencilViewAtIndex(const Texture* pTexture, D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc, uint32 dsvIndex)
 	{
 		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_dsvDescriptorHeap.GetCpuHandle(dsvIndex);
 		m_pDxDevice->CreateDepthStencilView(pTexture->GetResource(), &dsvDesc, cpuHandle);
 
 		return DepthStencilViewHandle{ .dxCpuHandle = cpuHandle };
+	}
+
+	ShaderResourceViewHandle GpuDevice::CreateShaderResourceView(const Buffer* pBuffer, D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc)
+	{
+		uint32 index = m_cbvSrvUavDescriptorHeap.Allocate(1);
+		m_pDxDevice->CreateShaderResourceView(pBuffer->GetResource(), &srvDesc, m_cbvSrvUavDescriptorHeap.GetCpuHandle(index));
+		return ShaderResourceViewHandle{ .index = index };
 	}
 
 	void GpuDevice::Initialize()
@@ -319,6 +326,11 @@ namespace Hydrogen
 		};
 		pList->SetDescriptorHeaps(2, descriptorHeaps);
 		pList->SetGraphicsRootSignature(m_rootSignature.Get());
+
+		H2_VERIFY_FATAL(GraphicsContext::s_frameDataAddr != 0, "Frame data address not set before acquiring graphics context!");
+		pList->SetGraphicsRootConstantBufferView(
+			static_cast<uint32>(eRootParam::FrameConstantBuffer),
+			GraphicsContext::s_frameDataAddr);
 
 		return GraphicsContext(pList);
 	}

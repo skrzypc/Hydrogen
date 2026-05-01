@@ -29,14 +29,6 @@ namespace Hydrogen
 		ID3D12GraphicsCommandList10* CmdList() const { return m_pCommandList.Get(); }
 
 		template<typename T>
-		void SetFrameData(const T& data)
-		{
-			auto [pCpuData, gpuAddress] = s_pUploadBuffer->Allocate(sizeof(T));
-			memcpy(pCpuData, &data, sizeof(T));
-			m_pCommandList->SetGraphicsRootConstantBufferView(static_cast<uint32>(eRootParam::FrameConstantBuffer), gpuAddress);
-		}
-
-		template<typename T>
 		void SetPassData(const T& data)
 		{
 			auto [pCpuData, gpuAddress] = s_pUploadBuffer->Allocate(sizeof(T));
@@ -52,6 +44,7 @@ namespace Hydrogen
 		}
 
 		inline static UploadRingBuffer* s_pUploadBuffer = nullptr;
+		inline static D3D12_GPU_VIRTUAL_ADDRESS s_frameDataAddr = 0;
 
 	private:
 		friend class GpuDevice;

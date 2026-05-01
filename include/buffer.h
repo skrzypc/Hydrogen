@@ -25,6 +25,7 @@ namespace Hydrogen
             Indirect = 1 << 5,
         };
 
+        const Desc& GetDesc() const { return m_desc; }
         void SetDesc(const Desc& desc) { m_desc = desc; }
 
         uint64 GetSize() const { return m_desc.size; }

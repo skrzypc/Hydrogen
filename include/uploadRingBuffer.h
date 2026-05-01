@@ -1,10 +1,11 @@
 #pragma once
 
 #include <d3d12.h>
-#include <wrl.h>
+#include <memory>
 
 #include "basicTypes.h"
 #include "config.h"
+#include "uploadBuffer.h"
 
 namespace Hydrogen
 {
@@ -24,8 +25,7 @@ namespace Hydrogen
 		void NextFrame(uint32 frameIndex);
 
 	private:
-		Microsoft::WRL::ComPtr<ID3D12Resource> m_pBuffer = nullptr;
-		uint8* m_mappedPtr = nullptr;
+		std::unique_ptr<UploadBuffer> m_buffer{};
 		uint64 m_sizePerFrame = 0;
 		uint64 m_frameBase = 0;
 		uint64 m_currentOffset = 0;

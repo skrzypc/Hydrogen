@@ -12,13 +12,9 @@ namespace Hydrogen
 		m_pDevice = &device;
 		m_capacity = stagingCapacity;
 
-		ResourceState initialState{};
-		m_stagingBuffer = m_pDevice->CreateBuffer(L"H2_GPU_UPLOADER_STAGING_BUFFER",
-			Buffer::Desc{ .size = stagingCapacity, .heapType = D3D12_HEAP_TYPE_UPLOAD },
-			initialState
+		m_stagingBuffer = std::make_unique<UploadBuffer>(
+			*m_pDevice, stagingCapacity, L"H2_GPU_UPLOADER_STAGING_BUFFER"
 		);
-
-		m_stagingBuffer->GetResource()->Map(0, nullptr, reinterpret_cast<void**>(&m_mappedPtr));
 	}
 
 	void GpuUploader::EnsureActiveContext()
@@ -35,7 +31,7 @@ namespace Hydrogen
 
 		EnsureActiveContext();
 
-		memcpy(m_mappedPtr + m_currentOffset, pData, byteSize);
+		memcpy(m_stagingBuffer->GetMappedPtr() + m_currentOffset, pData, byteSize);
 
 		m_activeContext->CmdList()->CopyBufferRegion(
 			pDstBuffer->GetResource(),
@@ -71,7 +67,7 @@ namespace Hydrogen
 
 		// Copy source rows into staging, applying the required row pitch alignment.
 		const uint8* pSrc = static_cast<const uint8*>(pData);
-		uint8* pDst = m_mappedPtr + footprint.Offset;
+		uint8* pDst = m_stagingBuffer->GetMappedPtr() + footprint.Offset;
 		for (UINT row = 0; row < numRows; ++row)
 		{
 			memcpy(pDst + row * footprint.Footprint.RowPitch, pSrc + row * rowSizeInBytes, rowSizeInBytes);

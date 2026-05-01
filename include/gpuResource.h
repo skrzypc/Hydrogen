@@ -18,7 +18,7 @@ namespace Hydrogen
     {
     public:
 		GpuResource() = default;
-		~GpuResource() = default;
+		virtual ~GpuResource() = default;
 		GpuResource(const GpuResource&) = delete;
 		GpuResource& operator=(const GpuResource&) = delete;
 		GpuResource(GpuResource&&) noexcept = default;

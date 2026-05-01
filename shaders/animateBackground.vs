@@ -5,7 +5,7 @@ struct VSOutput
     float2 uv : TEXCOORD0;
 };
 
-VSOutput main(uint vertexID : SV_VertexID)
+VSOutput mainVS(uint vertexID : SV_VertexID)
 {
     float2 positions[3] =
     {

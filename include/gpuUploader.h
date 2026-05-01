@@ -4,7 +4,7 @@
 #include <optional>
 
 #include "basicTypes.h"
-#include "buffer.h"
+#include "uploadBuffer.h"
 #include "texture.h"
 #include "copyContext.h"
 
@@ -31,8 +31,7 @@ namespace Hydrogen
 		GpuDevice* m_pDevice = nullptr;
 		std::optional<CopyContext> m_activeContext;
 
-		std::unique_ptr<Buffer> m_stagingBuffer;
-		uint8* m_mappedPtr = nullptr;
+		std::unique_ptr<UploadBuffer> m_stagingBuffer;
 		uint64 m_capacity = 0;
 		uint64 m_currentOffset = 0;
 	};

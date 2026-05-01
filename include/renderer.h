@@ -6,10 +6,12 @@
 #include "shaderCompiler.h"
 #include "uploadRingBuffer.h"
 #include "gpuUploader.h"
+#include "gpuScene.h"
 #include "renderPasses/clearPass.h"
 #include "renderPasses/animateBackground.h"
 #include "renderPasses/copyPass.h"
 #include "renderPasses/overlappingRectsPass.h"
+#include "renderPasses/meshPass.h"
 
 namespace Hydrogen
 {
@@ -30,6 +32,8 @@ namespace Hydrogen
 		void BeginFrame(uint32 frameIndex);
 		void EndFrame(uint32 frameIndex, uint64 fenceValue);
 
+		void UpdateFrameData();
+
 		GpuDevice m_gpuDevice;
 		SwapChain m_swapChain;
 
@@ -37,6 +41,9 @@ namespace Hydrogen
 		ShaderCompiler m_shaderCompiler;
 		UploadRingBuffer m_uploadBuffer{};
 		GpuUploader m_gpuUploader{};
+		GpuScene m_gpuScene{};
+
+		float32 m_time = 0.0f;
 
 		uint64 m_frameFenceValues[Config::FramesInFlight] = {};
 
@@ -44,6 +51,6 @@ namespace Hydrogen
 		AnimateBackgroundPass m_animateBackgroundPass{};
 		CopyPass m_copyPass{};
 		OverlappingRectsPass m_overlappingRectsPass{};
-		//GpuScene m_gpuScene;
+		MeshPass m_meshPass{};
 	};
 }

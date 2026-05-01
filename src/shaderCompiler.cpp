@@ -109,7 +109,7 @@ namespace Hydrogen
         }
 
         // Output paths
-        auto stem   = desc.sourcePath.stem().wstring();
+        auto stem   = String::ToWide(desc.name);
         auto binOut = (m_shaderOutputDir / stem).wstring() + L".bin";
         auto pdbOut = (m_shaderOutputDir / stem).wstring() + L".pdb";
 

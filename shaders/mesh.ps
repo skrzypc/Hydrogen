@@ -1,0 +1,11 @@
+struct PushConstants
+{
+    float3 color;
+};
+
+ConstantBuffer<PushConstants> g_push : register(b0, space0);
+
+float4 mainPS() : SV_Target
+{
+    return float4(g_push.color, 1.0f);
+}

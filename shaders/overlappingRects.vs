@@ -13,7 +13,7 @@ struct VSOutput
     float4 color : COLOR0;
 };
 
-VSOutput main(uint vertexID : SV_VertexID)
+VSOutput mainVS(uint vertexID : SV_VertexID)
 {
     float x = (vertexID & 1) ? g_push.rectMax.x : g_push.rectMin.x;
     float y = (vertexID >> 1) ? g_push.rectMin.y : g_push.rectMax.y;
