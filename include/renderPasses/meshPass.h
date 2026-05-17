@@ -1,9 +1,11 @@
 #pragma once
 
+#include <span>
 #include <string>
 #include "renderPass.h"
 #include "pipelineState.h"
 #include "frameGraphStructs.h"
+#include "renderScene.h"
 #include "basicTypes.h"
 
 namespace Hydrogen
@@ -15,11 +17,13 @@ namespace Hydrogen
 	public:
 		struct PushConstants
 		{
+			uint32 transformIndex;
 			float color[3];
 		};
 
 		std::string target;
 		const GpuScene* pScene = nullptr;
+		std::span<const RenderObject> renderObjects{};
 
 		void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler) override;
 		void Setup(FGBuilder& builder) override;

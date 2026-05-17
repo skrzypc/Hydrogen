@@ -419,6 +419,7 @@ FodyWeavers.xsd
 
 # CUSTOM
 
+.*/
 *.exe
 imgui.ini
 thirdParty/vcpkg

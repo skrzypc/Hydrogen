@@ -11,9 +11,10 @@ namespace Hydrogen
 
     class UploadBuffer : public Buffer
     {
+        friend class GpuDevice;
+
     public:
         UploadBuffer() = default;
-        UploadBuffer(GpuDevice& device, uint64 sizeInBytes, std::wstring_view name = L"UploadBuffer");
         ~UploadBuffer() override;
 
         UploadBuffer(const UploadBuffer&) = delete;

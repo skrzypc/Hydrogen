@@ -9,7 +9,19 @@
 
 namespace Hydrogen
 {
-	struct StaticMesh
+	struct MeshHandle
+	{
+		uint32 id = std::numeric_limits<uint32>::max();
+		bool IsValid() const { return id != std::numeric_limits<uint32>::max(); }
+		bool operator==(const MeshHandle&) const = default;
+	};
+
+	struct MeshMetadata
+	{
+		std::string name{};
+	};
+
+	struct Mesh
 	{
 		std::string name;
 

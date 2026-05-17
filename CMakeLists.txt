@@ -65,7 +65,7 @@ find_package(directxtk12    CONFIG REQUIRED)
 find_package(directxtex     CONFIG REQUIRED)
 find_package(directx-dxc    CONFIG REQUIRED)
 find_package(directx12-agility CONFIG REQUIRED)
-find_package(assimp         CONFIG REQUIRED)
+find_package(fastgltf       CONFIG REQUIRED)
 find_package(imgui          CONFIG REQUIRED)
 find_package(winpixevent    CONFIG REQUIRED)
 
@@ -76,7 +76,7 @@ target_link_libraries(Hydrogen PRIVATE
     Microsoft::DirectXTK12
     Microsoft::DirectXTex
     Microsoft::DirectXShaderCompiler
-    assimp::assimp
+    fastgltf::fastgltf
     imgui::imgui
     Microsoft::WinPixEventRuntime
 	Microsoft::DirectX12-Agility

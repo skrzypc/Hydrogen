@@ -86,15 +86,22 @@ namespace Hydrogen
 		ibv.Format = DXGI_FORMAT_R32_UINT;
 		cmd->IASetIndexBuffer(&ibv);
 
-		for (const GpuMesh& mesh : pScene->GetMeshes())
+		for (uint32 i = 0; i < static_cast<uint32>(renderObjects.size()); ++i)
 		{
+			const GpuMesh* gpuMesh = pScene->GetGpuMesh(renderObjects[i].mesh);
+			if (!gpuMesh)
+			{
+				continue;
+			}
+
 			PushConstants push{};
+			push.transformIndex = i;
 			push.color[0] = 1.0f;
 			push.color[1] = 0.7f;
 			push.color[2] = 0.4f;
 			gfx.SetPushConstants(push);
 
-			cmd->DrawIndexedInstanced(mesh.indexCount, 1, mesh.baseIndex, mesh.baseVertex, 0);
+			cmd->DrawIndexedInstanced(gpuMesh->indexCount, 1, gpuMesh->baseIndex, gpuMesh->baseVertex, 0);
 		}
 	}
 }

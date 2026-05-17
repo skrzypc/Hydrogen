@@ -12,9 +12,7 @@ namespace Hydrogen
 		m_pDevice = &device;
 		m_capacity = stagingCapacity;
 
-		m_stagingBuffer = std::make_unique<UploadBuffer>(
-			*m_pDevice, stagingCapacity, L"H2_GPU_UPLOADER_STAGING_BUFFER"
-		);
+		m_stagingBuffer = m_pDevice->CreateUploadBuffer(L"H2_GPU_UPLOADER_STAGING_BUFFER", stagingCapacity);
 	}
 
 	void GpuUploader::EnsureActiveContext()

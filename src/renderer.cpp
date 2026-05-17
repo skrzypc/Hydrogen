@@ -13,8 +13,9 @@
 
 #include "frameGraph.h"
 #include "graphicsContext.h"
-#include "meshLoader.h"
 #include "gpuScene.h"
+#include "assetUploadQueue.h"
+#include "renderScene.h"
 
 namespace Hydrogen
 {
@@ -38,10 +39,6 @@ namespace Hydrogen
 		m_animateBackgroundPass.Initialize(m_gpuDevice, m_shaderCompiler);
 		m_overlappingRectsPass.Initialize(m_gpuDevice, m_shaderCompiler);
 		m_meshPass.Initialize(m_gpuDevice, m_shaderCompiler);
-
-		auto meshes = MeshLoader::Load("data/models/stanfordBunny/bunny.obj");
-		auto [gpuMeshes, uploadFence] = m_gpuScene.AddMeshes(meshes);
-		m_gpuDevice.GetDirectCommandQueue().WaitOnQueue(m_gpuDevice.GetCopyCommandQueue(), uploadFence);
 	}
 
 	void Renderer::BeginFrame(uint32 frameIndex)
@@ -56,7 +53,26 @@ namespace Hydrogen
 		m_swapChain.Present();
 	}
 
-	void Renderer::UpdateFrameData()
+	void Renderer::ProcessUploadQueue()
+	{
+		if (!m_pUploadQueue)
+		{
+			return;
+		}
+
+		uint64 lastFence = 0ull;
+		for (auto& uploadRequest : m_pUploadQueue->Drain())
+		{
+			lastFence = m_gpuScene.UploadMesh(uploadRequest.handle, uploadRequest.mesh);
+		}
+		
+		if (lastFence != 0ull)
+		{
+			m_gpuDevice.GetDirectCommandQueue().WaitOnQueue(m_gpuDevice.GetCopyCommandQueue(), lastFence);
+		}
+	}
+
+	void Renderer::UpdateFrameData(const RenderScene& renderScene)
 	{
 		using namespace DirectX;
 
@@ -83,21 +99,31 @@ namespace Hydrogen
 		viewData.viewportSize = { static_cast<float32>(bbDesc.width), static_cast<float32>(bbDesc.height) };
 		m_gpuScene.UpdateView(viewData);
 
+		// Upload transforms
+		std::vector<DirectX::XMFLOAT4X4> matrices;
+		matrices.reserve(renderScene.objects.size());
+		for (const RenderObject& obj : renderScene.objects)
+		{
+			matrices.push_back(obj.worldMatrix);
+		}
+		m_gpuScene.UpdateTransforms(matrices);
+
 		ShaderInterop::FrameData frameData{};
-		frameData.viewBufferIndex     = m_gpuScene.GetViewBufferSrv().index;
-		frameData.mainViewIndex       = 0;
+		frameData.viewBufferIndex = m_gpuScene.GetViewBufferSrv().index;
+		frameData.mainViewIndex = 0;
 		frameData.vertexPositionBufferIndex = m_gpuScene.GetPositionSrv().index;
 		frameData.vertexNormalBufferIndex = m_gpuScene.GetNormalSrv().index;
 		frameData.vertexUvBufferIndex = m_gpuScene.GetUvSrv().index;
-		frameData.time            = m_time;
-		frameData.frameNumber     = static_cast<uint32>(m_swapChain.GetCurrentFrameNumber());
+		frameData.transformBufferIndex = m_gpuScene.GetTransformBufferSrv().index;
+		frameData.time = m_time;
+		frameData.frameNumber = static_cast<uint32>(m_swapChain.GetCurrentFrameNumber());
 
 		auto [pCpu, gpuAddr] = m_uploadBuffer.Allocate(sizeof(ShaderInterop::FrameData));
 		memcpy(pCpu, &frameData, sizeof(ShaderInterop::FrameData));
 		GraphicsContext::s_frameDataAddr = gpuAddr;
 	}
 
-	void Renderer::RenderFrame()
+	void Renderer::RenderFrame(const RenderScene& renderScene)
 	{
 		uint64 currentFrameNumber = m_swapChain.GetCurrentFrameNumber();
 		uint32 currentFrameIndex = m_swapChain.GetCurrentFrameIndex();
@@ -106,7 +132,8 @@ namespace Hydrogen
 
 		BeginFrame(currentFrameIndex);
 
-		UpdateFrameData();
+		ProcessUploadQueue();
+		UpdateFrameData(renderScene);
 
 		m_frameGraph.BeginFrame(currentFrameNumber);
 
@@ -139,6 +166,7 @@ namespace Hydrogen
 
 		m_meshPass.target = "DefaultTarget";
 		m_meshPass.pScene = &m_gpuScene;
+		m_meshPass.renderObjects = renderScene.objects;
 		m_frameGraph.AddPass("MeshPass", m_meshPass);
 
 		m_copyPass.src = "DefaultTarget";

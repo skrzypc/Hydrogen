@@ -7,11 +7,13 @@ struct FrameData
     uint  vertexPositionBufferIndex;
     uint  vertexNormalBufferIndex;
     uint  vertexUvBufferIndex;
+    uint  transformBufferIndex;
     uint  viewBufferIndex;
     uint  mainViewIndex;
     float time;
     float deltaTime;
     uint  frameNumber;
+    uint  _pad0;
 };
 
 // Matches Hydrogen::ShaderInterop::ViewData in shaderInterop.h

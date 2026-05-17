@@ -8,7 +8,7 @@
 	{ "name": "directxtk12", "version>=": "2026-03-31" },
 	{ "name": "directxtex", "version>=": "2026-03-31"},
 	{ "name": "directx-dxc", "version>=": "2026-02-20"},
-	{ "name": "assimp", "version>=": "6.0.2" },
+	{ "name": "fastgltf", "version>=": "0.9.0" },
 	{ "name": "imgui", "version>=": "1.91.8", "features": [ "docking-experimental", "dx12-binding", "win32-binding" ] },
 	{ "name": "winpixevent", "version>=": "1.0.240308001" }
   ],

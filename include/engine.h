@@ -3,6 +3,8 @@
 #include "basicTypes.h"
 #include "window.h"
 #include "renderer.h"
+#include "scene.h"
+#include "assetRegistry.h"
 
 namespace Hydrogen
 {
@@ -22,5 +24,7 @@ namespace Hydrogen
 	private:
 		Window m_window{};
 		Renderer m_renderer{};
+		Scene m_scene{};
+		AssetRegistry m_assetRegistry{};
 	};
 }

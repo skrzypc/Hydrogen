@@ -19,6 +19,7 @@
 
 #include "texture.h"
 #include "buffer.h"
+#include "uploadBuffer.h"
 
 namespace Hydrogen
 {
@@ -87,6 +88,7 @@ namespace Hydrogen
 
 		std::unique_ptr<Buffer> CreateBuffer(std::wstring_view name, const Buffer::Desc& desc, ResourceState& initialState);
 		std::unique_ptr<Buffer> CreateBuffer(std::wstring_view name, ID3D12Resource* pResource, const Buffer::Desc& desc, ResourceState& initialState);
+		std::unique_ptr<UploadBuffer> CreateUploadBuffer(std::wstring_view name, uint64 sizeInBytes);
 
 		template<typename AllocatorT>
 		AllocatorT RequestDescriptorAllocator(uint32 count, eDescriptorHeapType descHeapType)

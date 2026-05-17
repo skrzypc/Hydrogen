@@ -187,6 +187,52 @@ namespace Hydrogen
 		return pBuffer;
 	}
 
+	std::unique_ptr<UploadBuffer> GpuDevice::CreateUploadBuffer(std::wstring_view name, uint64 sizeInBytes)
+	{
+		auto pBuffer = std::make_unique<UploadBuffer>();
+
+		Buffer::Desc desc{};
+		desc.size = sizeInBytes;
+		desc.heapType = D3D12_HEAP_TYPE_UPLOAD;
+		pBuffer->SetDesc(desc);
+
+		D3D12_HEAP_PROPERTIES heapProps{};
+		heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+
+		D3D12_RESOURCE_DESC resourceDesc{};
+		resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		resourceDesc.Width = sizeInBytes;
+		resourceDesc.Height = 1;
+		resourceDesc.DepthOrArraySize = 1;
+		resourceDesc.MipLevels = 1;
+		resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+		resourceDesc.SampleDesc = { .Count = 1, .Quality = 0 };
+		resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+		H2_VERIFY_FATAL(
+			m_pDxDevice->CreateCommittedResource(
+				&heapProps,
+				D3D12_HEAP_FLAG_NONE,
+				&resourceDesc,
+				D3D12_RESOURCE_STATE_GENERIC_READ,
+				nullptr,
+				IID_PPV_ARGS(pBuffer->GetResourceAddress())),
+			"Failed to create UploadBuffer!"
+		);
+
+		pBuffer->SetName(name);
+
+		uint8* pMapped = nullptr;
+		H2_VERIFY_FATAL(
+			pBuffer->GetResource()->Map(0, nullptr, reinterpret_cast<void**>(&pMapped)),
+			"Failed to map UploadBuffer!"
+		);
+		pBuffer->m_pMapped = pMapped;
+
+		return pBuffer;
+	}
+
 	RenderTargetViewHandle GpuDevice::CreateRenderTargetViewAtIndex(const Texture* pTexture, D3D12_RENDER_TARGET_VIEW_DESC rtvDesc, uint32 rtvIndex)
 	{
 		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_rtvDescriptorHeap.GetCpuHandle(rtvIndex);

@@ -11,6 +11,7 @@ namespace Hydrogen::ShaderInterop
 		uint32 vertexPositionBufferIndex = 0u;
 		uint32 vertexNormalBufferIndex = 0u;
 		uint32 vertexUvBufferIndex = 0u;
+		uint32 transformBufferIndex = 0u;
 
 		uint32 viewBufferIndex = 0u;
 		uint32 mainViewIndex = 0u;
@@ -18,6 +19,7 @@ namespace Hydrogen::ShaderInterop
 		float32 time = 0.0f;
 		float32 deltaTime = 0.0f;
 		uint32 frameNumber = 0u;
+		uint32 _pad0 = 0u;
 	};
 
 	struct ViewData

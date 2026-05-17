@@ -4,12 +4,12 @@
 
 #include "device.h"
 #include "gpuUploader.h"
-#include "staticMesh.h"
+#include "mesh.h"
 #include "verifier.h"
 
 namespace Hydrogen
 {
-	void GpuScene::Initialize(GpuDevice& device, GpuUploader& uploader, uint32 maxVertices, uint32 maxIndices, uint32 maxViews)
+	void GpuScene::Initialize(GpuDevice& device, GpuUploader& uploader, uint32 maxVertices, uint32 maxIndices, uint32 maxObjects, uint32 maxViews)
 	{
 		m_pDevice = &device;
 		m_pUploader = &uploader;
@@ -55,11 +55,18 @@ namespace Hydrogen
 		m_indexSrv = device.CreateShaderResourceView(m_indexBuffer.get(), srvDesc);
 
 		// View buffer — CPU-writable each frame, one entry per supported view.
-		m_viewBuffer = std::make_unique<UploadBuffer>(device, maxViews * sizeof(ShaderInterop::ViewData), L"H2_SCENE_VIEW_BUFFER");
+		m_viewBuffer = device.CreateUploadBuffer(L"H2_SCENE_VIEW_BUFFER", maxViews * sizeof(ShaderInterop::ViewData));
 
 		srvDesc.Buffer.NumElements = maxViews;
 		srvDesc.Buffer.StructureByteStride = sizeof(ShaderInterop::ViewData);
 		m_viewBufferSrv = device.CreateShaderResourceView(m_viewBuffer.get(), srvDesc);
+
+		// Transform buffer — CPU-writable each frame, one 4x4 matrix per object.
+		m_transformBuffer = device.CreateUploadBuffer(L"H2_SCENE_TRANSFORMS", maxObjects * sizeof(DirectX::XMFLOAT4X4));
+
+		srvDesc.Buffer.NumElements = maxObjects;
+		srvDesc.Buffer.StructureByteStride = sizeof(DirectX::XMFLOAT4X4);
+		m_transformBufferSrv = device.CreateShaderResourceView(m_transformBuffer.get(), srvDesc);
 	}
 
 	void GpuScene::UpdateView(const ShaderInterop::ViewData& viewData, uint32 viewIndex)
@@ -67,7 +74,12 @@ namespace Hydrogen
 		m_viewBuffer->Write(&viewData, sizeof(ShaderInterop::ViewData), viewIndex * sizeof(ShaderInterop::ViewData));
 	}
 
-	std::pair<GpuMesh, uint64> GpuScene::AddMesh(const StaticMesh& src)
+	void GpuScene::UpdateTransforms(std::span<const DirectX::XMFLOAT4X4> matrices)
+	{
+		m_transformBuffer->Write(matrices.data(), matrices.size_bytes(), 0);
+	}
+
+	uint64 GpuScene::UploadMesh(MeshHandle handle, const Mesh& src)
 	{
 		const uint32 vertexCount = static_cast<uint32>(src.positions.size());
 		const uint32 indexCount = static_cast<uint32>(src.indices.size());
@@ -90,42 +102,21 @@ namespace Hydrogen
 		m_nextVertex += vertexCount;
 		m_nextIndex += indexCount;
 
-		uint64 fence = m_pUploader->Flush();
-		return { gpuMesh, fence };
+		if (handle.id >= m_gpuMeshCache.size())
+		{
+			m_gpuMeshCache.resize(handle.id + 1);
+		}
+		m_gpuMeshCache[handle.id] = gpuMesh;
+
+		return m_pUploader->Flush();
 	}
 
-	std::pair<std::vector<GpuMesh>, uint64> GpuScene::AddMeshes(std::span<const StaticMesh> meshes)
+	const GpuMesh* GpuScene::GetGpuMesh(MeshHandle handle) const
 	{
-		std::vector<GpuMesh> result;
-		result.reserve(meshes.size());
-
-		for (const StaticMesh& mesh : meshes)
+		if (handle.id >= m_gpuMeshCache.size())
 		{
-			const uint32 vertexCount = static_cast<uint32>(mesh.positions.size());
-			const uint32 indexCount = static_cast<uint32>(mesh.indices.size());
-
-			H2_VERIFY_FATAL(m_nextVertex + vertexCount <= m_maxVertices, "GpuScene vertex capacity exceeded!");
-			H2_VERIFY_FATAL(m_nextIndex + indexCount <= m_maxIndices, "GpuScene index capacity exceeded!");
-
-			m_pUploader->Upload(mesh.positions.data(), vertexCount * sizeof(DirectX::XMFLOAT3), m_positionBuffer.get(), m_nextVertex * sizeof(DirectX::XMFLOAT3));
-			m_pUploader->Upload(mesh.normals.data(), vertexCount * sizeof(DirectX::XMFLOAT3), m_normalBuffer.get(), m_nextVertex * sizeof(DirectX::XMFLOAT3));
-			m_pUploader->Upload(mesh.uvs.data(), vertexCount * sizeof(DirectX::XMFLOAT2), m_uvBuffer.get(), m_nextVertex * sizeof(DirectX::XMFLOAT2));
-			m_pUploader->Upload(mesh.indices.data(), indexCount * sizeof(uint32), m_indexBuffer.get(), m_nextIndex * sizeof(uint32));
-
-			GpuMesh& gpuMesh = m_meshes.emplace_back();
-			gpuMesh.name = mesh.name;
-			gpuMesh.baseVertex = m_nextVertex;
-			gpuMesh.vertexCount = vertexCount;
-			gpuMesh.baseIndex = m_nextIndex;
-			gpuMesh.indexCount = indexCount;
-
-			result.push_back(gpuMesh);
-
-			m_nextVertex += vertexCount;
-			m_nextIndex += indexCount;
+			return nullptr;
 		}
-
-		uint64 fence = m_pUploader->Flush();
-		return { result, fence };
+		return &m_gpuMeshCache[handle.id];
 	}
 }

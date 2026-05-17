@@ -11,7 +11,7 @@ namespace Hydrogen
 
 		const uint64 totalSize = m_sizePerFrame * Config::FramesInFlight;
 
-		m_buffer = std::make_unique<UploadBuffer>(device, totalSize, L"UploadRingBuffer");
+		m_buffer = device.CreateUploadBuffer(L"UploadRingBuffer", totalSize);
 	}
 
 	UploadRingBuffer::Allocation UploadRingBuffer::Allocate(uint64 size, uint64 alignment)

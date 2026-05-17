@@ -1,10 +1,12 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <span>
 #include <vector>
 
 #include "gpuMesh.h"
+#include "mesh.h"
 #include "buffer.h"
 #include "uploadBuffer.h"
 #include "device.h"
@@ -14,18 +16,17 @@ namespace Hydrogen
 {
 	class GpuDevice;
 	class GpuUploader;
-	struct StaticMesh;
+	struct Mesh;
 
 	class GpuScene
 	{
 	public:
-		void Initialize(GpuDevice& device, GpuUploader& uploader, uint32 maxVertices, uint32 maxIndices, uint32 maxViews = 16);
+		void Initialize(GpuDevice& device, GpuUploader& uploader, uint32 maxVertices, uint32 maxIndices, uint32 maxObjects = 100'000, uint32 maxViews = 16);
 
-		// Uploads the mesh to the GPU and flushes the copy queue.
-		// Use the returned fence with directQueue.WaitOnQueue(copyQueue, fence) before rendering.
-		std::pair<GpuMesh, uint64> AddMesh(const StaticMesh& mesh);
-		std::pair<std::vector<GpuMesh>, uint64> AddMeshes(std::span<const StaticMesh> meshes);
+		// Uploads the mesh to the GPU, registers it in the cache, and flushes the copy queue.
+		uint64 UploadMesh(MeshHandle handle, const Mesh& mesh);
 
+		const GpuMesh* GetGpuMesh(MeshHandle handle) const;
 		const std::vector<GpuMesh>& GetMeshes() const { return m_meshes; }
 
 		const Buffer* GetPositionBuffer() const { return m_positionBuffer.get(); }
@@ -40,6 +41,9 @@ namespace Hydrogen
 
 		ShaderResourceViewHandle GetViewBufferSrv() const { return m_viewBufferSrv; }
 		void UpdateView(const ShaderInterop::ViewData& viewData, uint32 viewIndex = 0);
+
+		ShaderResourceViewHandle GetTransformBufferSrv() const { return m_transformBufferSrv; }
+		void UpdateTransforms(std::span<const DirectX::XMFLOAT4X4> matrices);
 
 	private:
 		GpuDevice* m_pDevice = nullptr;
@@ -64,5 +68,10 @@ namespace Hydrogen
 
 		std::unique_ptr<UploadBuffer> m_viewBuffer;
 		ShaderResourceViewHandle m_viewBufferSrv{};
+
+		std::unique_ptr<UploadBuffer> m_transformBuffer;
+		ShaderResourceViewHandle m_transformBufferSrv{};
+
+		std::vector<GpuMesh> m_gpuMeshCache{};
 	};
 }

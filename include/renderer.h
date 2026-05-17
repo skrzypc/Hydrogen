@@ -1,5 +1,8 @@
 #pragma once
 
+#include <optional>
+#include <vector>
+
 #include "device.h"
 #include "swapChain.h"
 #include "frameGraph.h"
@@ -7,6 +10,7 @@
 #include "uploadRingBuffer.h"
 #include "gpuUploader.h"
 #include "gpuScene.h"
+#include "gpuMesh.h"
 #include "renderPasses/clearPass.h"
 #include "renderPasses/animateBackground.h"
 #include "renderPasses/copyPass.h"
@@ -15,6 +19,9 @@
 
 namespace Hydrogen
 {
+	class AssetUploadQueue;
+	struct RenderScene;
+
 	class Renderer
 	{
 	public:
@@ -26,26 +33,32 @@ namespace Hydrogen
 		Renderer& operator=(Renderer&&) noexcept = default;
 
 		void Initialize(HWND hWnd);
-		void RenderFrame();
+		void RenderFrame(const RenderScene& renderScene);
+
+		void SetUploadQueue(AssetUploadQueue* pQueue) { m_pUploadQueue = pQueue; }
 
 	private:
 		void BeginFrame(uint32 frameIndex);
 		void EndFrame(uint32 frameIndex, uint64 fenceValue);
 
-		void UpdateFrameData();
+		void UpdateFrameData(const RenderScene& renderScene);
+		void ProcessUploadQueue();
 
 		GpuDevice m_gpuDevice;
 		SwapChain m_swapChain;
 
 		FrameGraph m_frameGraph;
+
 		ShaderCompiler m_shaderCompiler;
+
 		UploadRingBuffer m_uploadBuffer{};
 		GpuUploader m_gpuUploader{};
+		AssetUploadQueue* m_pUploadQueue = nullptr;
+
 		GpuScene m_gpuScene{};
 
+		std::array<uint64, Config::FramesInFlight> m_frameFenceValues{};
 		float32 m_time = 0.0f;
-
-		uint64 m_frameFenceValues[Config::FramesInFlight] = {};
 
 		ClearPass m_clearPass{};
 		AnimateBackgroundPass m_animateBackgroundPass{};
