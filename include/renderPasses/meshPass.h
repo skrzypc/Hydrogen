@@ -18,10 +18,11 @@ namespace Hydrogen
 		struct PushConstants
 		{
 			uint32 transformIndex;
-			float color[3];
+			uint32 baseVertex;
 		};
 
 		std::string target;
+		std::string depthTarget;
 		const GpuScene* pScene = nullptr;
 		std::span<const RenderObject> renderObjects{};
 
@@ -32,6 +33,7 @@ namespace Hydrogen
 	private:
 		PipelineState m_pso{};
 		FGResourceHandle m_targetHandle{};
+		FGResourceHandle m_depthHandle{};
 		uint32 m_width = 0;
 		uint32 m_height = 0;
 	};

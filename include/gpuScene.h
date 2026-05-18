@@ -7,6 +7,7 @@
 
 #include "gpuMesh.h"
 #include "mesh.h"
+#include "assetUploadQueue.h"
 #include "buffer.h"
 #include "uploadBuffer.h"
 #include "device.h"
@@ -23,8 +24,12 @@ namespace Hydrogen
 	public:
 		void Initialize(GpuDevice& device, GpuUploader& uploader, uint32 maxVertices, uint32 maxIndices, uint32 maxObjects = 100'000, uint32 maxViews = 16);
 
-		// Uploads the mesh to the GPU, registers it in the cache, and flushes the copy queue.
-		uint64 UploadMesh(MeshHandle handle, const Mesh& mesh);
+		// Stages a single mesh and submits all pending uploads to the copy queue.
+		// Prefer AddMeshes() when uploading multiple meshes to avoid staging buffer races.
+		uint64 RegisterMesh(MeshHandle handle, const Mesh& mesh);
+
+		// Stages all meshes in one batch, then flushes once. Returns the copy queue fence.
+		uint64 RegisterMeshes(std::vector<MeshHandle>& meshHandles, std::vector<Mesh>& meshes);
 
 		const GpuMesh* GetGpuMesh(MeshHandle handle) const;
 		const std::vector<GpuMesh>& GetMeshes() const { return m_meshes; }
@@ -46,6 +51,8 @@ namespace Hydrogen
 		void UpdateTransforms(std::span<const DirectX::XMFLOAT4X4> matrices);
 
 	private:
+		void StageMesh(MeshHandle handle, const Mesh& mesh);
+
 		GpuDevice* m_pDevice = nullptr;
 		GpuUploader* m_pUploader = nullptr;
 

@@ -127,14 +127,16 @@ namespace Hydrogen
 		if (desc.flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
 		{
 			clearValue.Format = desc.format;
-			clearValue.Color[0] = clearValue.Color[1] = clearValue.Color[2] = 0.0f;
-			clearValue.Color[3] = 1.0f;
+			clearValue.Color[0] = desc.optimizedClearColor[0];
+			clearValue.Color[1] = desc.optimizedClearColor[1];
+			clearValue.Color[2] = desc.optimizedClearColor[2];
+			clearValue.Color[3] = desc.optimizedClearColor[3];
 			pClearValue = &clearValue;
 		}
 		else if (desc.flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
 		{
 			clearValue.Format = desc.format;
-			clearValue.DepthStencil = { .Depth = 1.0f, .Stencil = 0 };
+			clearValue.DepthStencil = { .Depth = desc.optimizedDepthClearValue, .Stencil = 0 };
 			pClearValue = &clearValue;
 		}
 

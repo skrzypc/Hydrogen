@@ -342,7 +342,12 @@ namespace Hydrogen
 	{
 		for (auto& node : m_textureNodes)
 		{
-			if (node.bImported || node.refCount == 0) continue;
+			if (node.bImported) continue;
+
+			// Allocate if anyone reads it, OR if a live pass writes to it.
+			bool writtenByLivePass = 
+				node.lastWritingPassIndex != std::numeric_limits<uint32>::max() && !m_passes[node.lastWritingPassIndex].bCulled;
+			if (node.refCount == 0 && !writtenByLivePass) continue;
 
 			node.pResource = m_resourceCache.AcquireTexture(node.desc, m_currentFrameNumber);
 

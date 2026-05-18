@@ -1,4 +1,6 @@
 
+#include <cmath>
+
 #include <d3d12.h>
 #include <DirectXColors.h>
 #include <DirectXMath.h>
@@ -21,7 +23,7 @@ namespace Hydrogen
 {
 	Renderer::~Renderer()
 	{
-		m_gpuDevice.GetDirectCommandQueue().WaitForIdle();
+		m_gpuDevice.WaitForIdle<eQueueType::Direct>();
 	}
 
 	void Renderer::Initialize(HWND hWnd)
@@ -36,15 +38,14 @@ namespace Hydrogen
 		m_gpuScene.Initialize(m_gpuDevice, m_gpuUploader, 5'000'000, 15'000'000);
 
 		m_clearPass.Initialize(m_gpuDevice, m_shaderCompiler);
-		m_animateBackgroundPass.Initialize(m_gpuDevice, m_shaderCompiler);
-		m_overlappingRectsPass.Initialize(m_gpuDevice, m_shaderCompiler);
+		m_clearPass.clearColor = { 0.53f, 0.81f, 0.92f, 1.0f };
 		m_meshPass.Initialize(m_gpuDevice, m_shaderCompiler);
 	}
 
 	void Renderer::BeginFrame(uint32 frameIndex)
 	{
 		m_uploadBuffer.NextFrame(frameIndex);
-		m_gpuDevice.GetDirectCommandQueue().Wait(m_frameFenceValues[frameIndex]);
+		m_gpuDevice.Wait<eQueueType::Direct>(m_frameFenceValues[frameIndex]);
 	}
 
 	void Renderer::EndFrame(uint32 frameIndex, uint64 fenceValue)
@@ -60,16 +61,42 @@ namespace Hydrogen
 			return;
 		}
 
-		uint64 lastFence = 0ull;
-		for (auto& uploadRequest : m_pUploadQueue->Drain())
+		auto requests = m_pUploadQueue->Drain();
+		if (!requests.empty())
 		{
-			lastFence = m_gpuScene.UploadMesh(uploadRequest.handle, uploadRequest.mesh);
+			// TODO: Requests should be SoAs.
+			std::vector<MeshHandle> meshHandles{};
+			meshHandles.reserve(requests.size());
+
+			std::vector<Mesh> meshes{};
+			meshes.reserve(requests.size());
+
+			for (auto&& request : requests)
+			{
+				meshHandles.push_back(request.handle);
+				meshes.emplace_back(std::move(request.mesh));
+			}
+
+			uint64 fence = m_gpuScene.RegisterMeshes(meshHandles, meshes);
+
+			// TODO: We don't want to wait
+			m_gpuDevice.WaitOnQueue<eQueueType::Direct, eQueueType::Copy>(fence);
 		}
-		
-		if (lastFence != 0ull)
-		{
-			m_gpuDevice.GetDirectCommandQueue().WaitOnQueue(m_gpuDevice.GetCopyCommandQueue(), lastFence);
-		}
+	}
+
+	// Reversed-Z LH projection: near maps to 1, far maps to 0.
+	static DirectX::XMMATRIX PerspectiveFovLH_ReversedZ(float fovY, float aspect, float nearZ, float farZ)
+	{
+		const float h = 1.0f / std::tan(fovY * 0.5f);
+		const float w = h / aspect;
+		const float A = -nearZ / (farZ - nearZ);
+		const float B = nearZ * farZ / (farZ - nearZ);
+		return DirectX::XMMATRIX(
+			w,  0,  0,  0,
+			0,  h,  0,  0,
+			0,  0,  A,  1,
+			0,  0,  B,  0
+		);
 	}
 
 	void Renderer::UpdateFrameData(const RenderScene& renderScene)
@@ -79,23 +106,23 @@ namespace Hydrogen
 		const Texture::Desc& bbDesc = m_swapChain.GetCurrentBackBuffer()->GetDesc();
 		const float32 aspect = static_cast<float32>(bbDesc.width) / static_cast<float32>(bbDesc.height);
 		constexpr float32 kNear = 0.01f;
-		constexpr float32 kFar  = 100.0f;
+		constexpr float32 kFar = 100.0f;
 
-		XMMATRIX view = XMMatrixLookAtRH(
-			XMVectorSet(0.0f, 0.1f, 0.4f, 1.0f),
-			XMVectorSet(0.0f, 0.1f, 0.0f, 1.0f),
+		XMMATRIX view = XMMatrixLookAtLH(
+			XMVectorSet(0.0f, 0.5f, -1.0f, 1.0f),
+			XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f),
 			XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f)
 		);
-		XMMATRIX proj = XMMatrixPerspectiveFovRH(XMConvertToRadians(45.0f), aspect, kNear, kFar);
-		XMMATRIX vp   = view * proj;
+		XMMATRIX proj = PerspectiveFovLH_ReversedZ(XMConvertToRadians(45.0f), aspect, kNear, kFar);
+		XMMATRIX vp = view * proj;
 
 		ShaderInterop::ViewData viewData{};
-		XMStoreFloat4x4(&viewData.viewMx,             view);
-		XMStoreFloat4x4(&viewData.projectionMx,       proj);
-		XMStoreFloat4x4(&viewData.viewProjectionMx,   vp);
+		XMStoreFloat4x4(&viewData.viewMx, view);
+		XMStoreFloat4x4(&viewData.projectionMx, proj);
+		XMStoreFloat4x4(&viewData.viewProjectionMx, vp);
 		XMStoreFloat4x4(&viewData.invViewProjectionMx, XMMatrixInverse(nullptr, vp));
-		viewData.nearPlane   = kNear;
-		viewData.farPlane    = kFar;
+		viewData.nearPlane = kNear;
+		viewData.farPlane = kFar;
 		viewData.viewportSize = { static_cast<float32>(bbDesc.width), static_cast<float32>(bbDesc.height) };
 		m_gpuScene.UpdateView(viewData);
 
@@ -150,7 +177,21 @@ namespace Hydrogen
 					.arraySize = 1,
 					.format = backBufferDesc.format,
 					.flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
-					.dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D
+					.dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+					.optimizedClearColor = m_clearPass.clearColor,
+				}
+				);
+
+			m_frameGraph.CreateTexture("SceneDepth",
+				{
+					.width = backBufferDesc.width,
+					.height = backBufferDesc.height,
+					.mipLevels = 1,
+					.arraySize = 1,
+					.format = DXGI_FORMAT_D32_FLOAT,
+					.flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL,
+					.dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+					.optimizedDepthClearValue = 0.0f,
 				}
 			);
 		}
@@ -158,13 +199,8 @@ namespace Hydrogen
 		m_clearPass.target = "DefaultTarget";
 		m_frameGraph.AddPass("ClearTarget", m_clearPass);
 
-		m_animateBackgroundPass.target = "DefaultTarget";
-		m_frameGraph.AddPass("AnimateBackground", m_animateBackgroundPass);
-
-		m_overlappingRectsPass.target = "DefaultTarget";
-		m_frameGraph.AddPass("OverlappingRects", m_overlappingRectsPass);
-
 		m_meshPass.target = "DefaultTarget";
+		m_meshPass.depthTarget = "SceneDepth";
 		m_meshPass.pScene = &m_gpuScene;
 		m_meshPass.renderObjects = renderScene.objects;
 		m_frameGraph.AddPass("MeshPass", m_meshPass);

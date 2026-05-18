@@ -381,7 +381,7 @@ namespace Hydrogen
 		return GraphicsContext(pList);
 	}
 
-	uint64 GpuDevice::ExecuteGraphicsContext(GraphicsContext ctx)
+	uint64 GpuDevice::ExecuteGraphicsContext(GraphicsContext&& ctx)
 	{
 		ID3D12GraphicsCommandList10* pList = ctx.CmdList();
 		H2_VERIFY_FATAL(pList->Close(), "Failed to close graphics command list!");
@@ -413,7 +413,7 @@ namespace Hydrogen
 		return CopyContext(pList);
 	}
 
-	uint64 GpuDevice::ExecuteCopyContext(CopyContext ctx)
+	uint64 GpuDevice::ExecuteCopyContext(CopyContext&& ctx)
 	{
 		ID3D12GraphicsCommandList10* pList = ctx.CmdList();
 		H2_VERIFY_FATAL(pList->Close(), "Failed to close copy command list!");

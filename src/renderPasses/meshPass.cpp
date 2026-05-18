@@ -36,18 +36,18 @@ namespace Hydrogen
 		const DXGI_FORMAT targetFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 
 		D3D12_RASTERIZER_DESC2 rasterizerDesc = PipelineState::DefaultRasterizer();
-		rasterizerDesc.CullMode = D3D12_CULL_MODE_NONE;
-		rasterizerDesc.FillMode = D3D12_FILL_MODE_WIREFRAME;
+		rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
+		rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
 
 		D3D12_DEPTH_STENCIL_DESC1 depthStencilDesc = PipelineState::DefaultDepthStencil();
-		depthStencilDesc.DepthEnable = FALSE;
+		depthStencilDesc.DepthEnable = TRUE;
 
 		PipelineState::GraphicsDesc psoDesc
 		{
 			.pVertexShader = &vs,
 			.pPixelShader = &ps,
 			.renderTargetFormats = std::span<const DXGI_FORMAT>(&targetFormat, 1),
-			.depthFormat = DXGI_FORMAT_UNKNOWN,
+			.depthFormat = DXGI_FORMAT_D32_FLOAT,
 			.rasterizerDesc = rasterizerDesc,
 			.blendDesc = PipelineState::DefaultBlend(),
 			.depthStencilDesc = depthStencilDesc,
@@ -60,6 +60,7 @@ namespace Hydrogen
 	void MeshPass::Setup(FGBuilder& builder)
 	{
 		m_targetHandle = builder.Write(target, FGAccess::Output::RenderTarget);
+		m_depthHandle = builder.Write(depthTarget, FGAccess::Output::DepthStencil);
 
 		const Texture::Desc& desc = builder.GetTextureDesc(target);
 		m_width = desc.width;
@@ -76,7 +77,9 @@ namespace Hydrogen
 		cmd->RSSetScissorRects(1, &scissor);
 
 		D3D12_CPU_DESCRIPTOR_HANDLE rtv = ctx.GetRTV(m_targetHandle);
-		cmd->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
+		D3D12_CPU_DESCRIPTOR_HANDLE dsv = ctx.GetDSV(m_depthHandle);
+		cmd->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, 0.0f, 0, 0, nullptr);
+		cmd->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
 		cmd->SetPipelineState(m_pso.Get());
 		cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
@@ -96,12 +99,10 @@ namespace Hydrogen
 
 			PushConstants push{};
 			push.transformIndex = i;
-			push.color[0] = 1.0f;
-			push.color[1] = 0.7f;
-			push.color[2] = 0.4f;
+			push.baseVertex = gpuMesh->baseVertex;
 			gfx.SetPushConstants(push);
 
-			cmd->DrawIndexedInstanced(gpuMesh->indexCount, 1, gpuMesh->baseIndex, gpuMesh->baseVertex, 0);
+			cmd->DrawIndexedInstanced(gpuMesh->indexCount, 1, gpuMesh->baseIndex, 0, 0);
 		}
 	}
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 #include "gpuResource.h"
 #include "basicTypes.h"
 
@@ -34,6 +36,8 @@ namespace Hydrogen
 			DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
 			D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
 			D3D12_RESOURCE_DIMENSION dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+			std::array<float, 4> optimizedClearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+			float optimizedDepthClearValue = 0.0f;
 
 			bool operator==(const Texture::Desc&) const = default;
 		};
@@ -67,6 +71,7 @@ namespace Hydrogen
 			combine(static_cast<uint32>(k.format));
 			combine(static_cast<uint32>(k.flags));
 			combine(static_cast<uint32>(k.dimension));
+			combine(k.optimizedDepthClearValue);
 
 			return seed;
 		}

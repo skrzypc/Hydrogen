@@ -12,9 +12,7 @@
 #include "gpuScene.h"
 #include "gpuMesh.h"
 #include "renderPasses/clearPass.h"
-#include "renderPasses/animateBackground.h"
 #include "renderPasses/copyPass.h"
-#include "renderPasses/overlappingRectsPass.h"
 #include "renderPasses/meshPass.h"
 
 namespace Hydrogen
@@ -61,9 +59,7 @@ namespace Hydrogen
 		float32 m_time = 0.0f;
 
 		ClearPass m_clearPass{};
-		AnimateBackgroundPass m_animateBackgroundPass{};
 		CopyPass m_copyPass{};
-		OverlappingRectsPass m_overlappingRectsPass{};
 		MeshPass m_meshPass{};
 	};
 }

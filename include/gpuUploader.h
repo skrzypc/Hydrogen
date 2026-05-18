@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <optional>
+#include <queue>
 
 #include "basicTypes.h"
 #include "uploadBuffer.h"
@@ -26,6 +27,17 @@ namespace Hydrogen
 		uint64 Flush();
 
 	private:
+		struct Segment {
+			uint64 start;
+			uint64 end;          // exclusive, 4KB-aligned
+			uint64 fenceValue;
+		};
+
+		// Returns the staging offset to write at (4KB-aligned). Retires completed
+		// segments, wraps if needed, waits for the oldest segment only if unavoidable.
+		uint64 Allocate(uint64 byteSize);
+
+		void RetireCompletedSegments();
 		void EnsureActiveContext();
 
 		GpuDevice* m_pDevice = nullptr;
@@ -33,6 +45,11 @@ namespace Hydrogen
 
 		std::unique_ptr<UploadBuffer> m_stagingBuffer;
 		uint64 m_capacity = 0;
-		uint64 m_currentOffset = 0;
+		uint64 m_writeOffset = 0;
+		uint64 m_batchStart = 0;    // start of the current unflushed batch
+
+		std::queue<Segment> m_pendingSegments;
+
+		bool m_bRequiresFlush = false;
 	};
 }

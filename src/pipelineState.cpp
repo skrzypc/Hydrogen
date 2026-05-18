@@ -125,7 +125,7 @@ namespace Hydrogen
 		{
 			.DepthEnable = TRUE,
 			.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL,
-			.DepthFunc = D3D12_COMPARISON_FUNC_LESS,
+			.DepthFunc = D3D12_COMPARISON_FUNC_GREATER,
 			.StencilEnable = FALSE,
 			.StencilReadMask = D3D12_DEFAULT_STENCIL_READ_MASK,
 			.StencilWriteMask = D3D12_DEFAULT_STENCIL_WRITE_MASK,

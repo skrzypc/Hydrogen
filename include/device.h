@@ -42,6 +42,12 @@ namespace Hydrogen
 		DSV = 3,
 	};
 
+	enum class eQueueType : uint8
+	{
+		Direct = 0,
+		Copy = 1,
+	};
+
 	struct RenderTargetViewHandle
 	{
 		D3D12_CPU_DESCRIPTOR_HANDLE dxCpuHandle{};
@@ -69,14 +75,48 @@ namespace Hydrogen
 
 		void Create();
 
-		CommandQueue& GetDirectCommandQueue() { return m_directCommandQueue; }
-		CommandQueue& GetCopyCommandQueue() { return m_copyCommandQueue; }
+		template<eQueueType Queue>
+		uint64 Signal()
+		{
+			return GetQueue<Queue>().Signal();
+		}
+
+		template<eQueueType Queue>
+		void Wait(uint64 fenceValue)
+		{
+			GetQueue<Queue>().Wait(fenceValue);
+		}
+
+		template<eQueueType Queue>
+		void WaitForIdle()
+		{
+			GetQueue<Queue>().WaitForIdle();
+		}
+
+		template<eQueueType Queue>
+		uint64 GetCompletedFenceValue()
+		{
+			return GetQueue<Queue>().GetCompletedFenceValue();
+		}
+
+		template<eQueueType QueueToStall, eQueueType QueueToWaitOn>
+		void WaitOnQueue(uint64 fenceValue)
+		{
+			GetQueue<QueueToStall>().WaitOnQueue(GetQueue<QueueToWaitOn>(), fenceValue);
+		}
+
+		// DXGI interop only — do not use for logic operations.
+		template<eQueueType Queue>
+		ID3D12CommandQueue* GetDxQueue()
+		{
+			return GetQueue<Queue>().GetDxCommandQueue();
+		}
 
 		[[nodiscard]] GraphicsContext AcquireGraphicsContext();
-		uint64 ExecuteGraphicsContext(GraphicsContext ctx);
+		uint64 ExecuteGraphicsContext(GraphicsContext&& ctx);
 
 		[[nodiscard]] CopyContext AcquireCopyContext();
-		uint64 ExecuteCopyContext(CopyContext ctx);
+		uint64 ExecuteCopyContext(CopyContext&& ctx);
 
 		IDXGIFactory7* GetDxgiFactory() const { return m_pDxgiFactory.Get(); }
 		ID3D12Device14* GetDxDevice() const { return m_pDxDevice.Get(); }
@@ -115,6 +155,19 @@ namespace Hydrogen
 		bool CheckRequiredFeatureSupport() const;
 
 		DescriptorHeap& GetDescriptorHeap(eDescriptorHeapType descHeapType);
+
+		template<eQueueType Queue>
+		CommandQueue& GetQueue()
+		{
+			if constexpr (Queue == eQueueType::Direct)
+			{
+				return m_directCommandQueue;
+			}
+			else
+			{
+				return m_copyCommandQueue;
+			}
+		}
 
 	private:
 		Microsoft::WRL::ComPtr<IDXGIFactory7> m_pDxgiFactory = nullptr;

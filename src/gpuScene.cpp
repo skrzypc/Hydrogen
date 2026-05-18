@@ -79,7 +79,7 @@ namespace Hydrogen
 		m_transformBuffer->Write(matrices.data(), matrices.size_bytes(), 0);
 	}
 
-	uint64 GpuScene::UploadMesh(MeshHandle handle, const Mesh& src)
+	void GpuScene::StageMesh(MeshHandle handle, const Mesh& src)
 	{
 		const uint32 vertexCount = static_cast<uint32>(src.positions.size());
 		const uint32 indexCount = static_cast<uint32>(src.indices.size());
@@ -107,6 +107,23 @@ namespace Hydrogen
 			m_gpuMeshCache.resize(handle.id + 1);
 		}
 		m_gpuMeshCache[handle.id] = gpuMesh;
+	}
+
+	uint64 GpuScene::RegisterMesh(MeshHandle handle, const Mesh& mesh)
+	{
+		StageMesh(handle, mesh);
+
+		return m_pUploader->Flush();
+	}
+
+	uint64 GpuScene::RegisterMeshes(std::vector<MeshHandle>& meshHandles, std::vector<Mesh>& meshes)
+	{
+		// TODO: We could enqueue this not to upload unlimited number of meshes in single frame.
+
+		for (uint32 i = 0; i < meshHandles.size(); ++i)
+		{
+			StageMesh(meshHandles[i], meshes[i]);
+		}
 
 		return m_pUploader->Flush();
 	}

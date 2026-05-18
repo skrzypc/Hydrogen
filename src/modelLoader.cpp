@@ -18,7 +18,7 @@ namespace Hydrogen
             sm.name += "_prim" + std::to_string(primIndex);
         }
 
-        // Positions
+        // Positions — negate Z to convert RH (glTF) → LH
         auto posIt = std::find_if(prim.attributes.begin(), prim.attributes.end(),
             [](const fastgltf::Attribute& a) { return a.name == "POSITION"; });
         H2_VERIFY_FATAL(posIt != prim.attributes.end(), "Mesh primitive has no POSITION attribute");
@@ -26,10 +26,10 @@ namespace Hydrogen
         sm.positions.resize(posAccessor.count);
         fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec3>(asset, posAccessor,
             [&](fastgltf::math::fvec3 v, std::size_t i) {
-                sm.positions[i] = { v.x(), v.y(), v.z() };
+                sm.positions[i] = { v.x(), v.y(), -v.z() };
             });
 
-        // Normals
+        // Normals — negate Z to convert RH → LH
         auto nrmIt = std::find_if(prim.attributes.begin(), prim.attributes.end(),
             [](const fastgltf::Attribute& a) { return a.name == "NORMAL"; });
         if (nrmIt != prim.attributes.end())
@@ -38,7 +38,7 @@ namespace Hydrogen
             sm.normals.resize(nrmAccessor.count);
             fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec3>(asset, nrmAccessor,
                 [&](fastgltf::math::fvec3 v, std::size_t i) {
-                    sm.normals[i] = { v.x(), v.y(), v.z() };
+                    sm.normals[i] = { v.x(), v.y(), -v.z() };
                 });
         }
         else
@@ -63,7 +63,7 @@ namespace Hydrogen
             sm.uvs.resize(sm.positions.size(), { 0.0f, 0.0f });
         }
 
-        // Indices
+        // Indices — swap winding CCW→CW (Z negation mirrors geometry, flipping winding)
         if (prim.indicesAccessor.has_value())
         {
             const fastgltf::Accessor& idxAccessor = asset.accessors[prim.indicesAccessor.value()];
@@ -82,10 +82,36 @@ namespace Hydrogen
             }
         }
 
+        for (std::size_t i = 0; i + 2 < sm.indices.size(); i += 3)
+        {
+            std::swap(sm.indices[i + 1], sm.indices[i + 2]);
+        }
+
+
         return sm;
     }
 
-    static void FlattenNodes(const fastgltf::Asset& asset, std::size_t nodeIndex, uint32 parentIndex, Model& model)
+    static Transform ComposeTransforms(const Transform& parent, const Transform& local)
+    {
+        using namespace DirectX;
+
+        XMVECTOR parentScale = XMLoadFloat3(&parent.scale);
+        XMVECTOR parentRot = XMLoadFloat4(&parent.rotation);
+        XMVECTOR parentPos = XMLoadFloat3(&parent.position);
+
+        XMVECTOR localScale = XMLoadFloat3(&local.scale);
+        XMVECTOR localRot = XMLoadFloat4(&local.rotation);
+        XMVECTOR localPos = XMLoadFloat3(&local.position);
+
+        Transform out{};
+        XMStoreFloat3(&out.scale, parentScale * localScale);
+        XMStoreFloat4(&out.rotation, XMQuaternionMultiply(localRot, parentRot));
+        XMStoreFloat3(&out.position, parentPos + XMVector3Rotate(parentScale * localPos, parentRot));
+        return out;
+    }
+
+    static void FlattenNodes(const fastgltf::Asset& asset, std::size_t nodeIndex, uint32 parentIndex,
+                             const Transform& parentWorldTransform, Model& model)
     {
         const fastgltf::Node& node = asset.nodes[nodeIndex];
         uint32 currentIndex = static_cast<uint32>(model.nodes.size());
@@ -94,15 +120,20 @@ namespace Hydrogen
         mn.name = std::string(node.name);
         mn.parentIndex = parentIndex;
 
+        Transform localTransform{};
         // node.transform is a std::variant<TRS, fmat4x4>
         // DecomposeNodeMatrices option ensures it's always TRS
         if (std::holds_alternative<fastgltf::TRS>(node.transform))
         {
             const auto& trs = std::get<fastgltf::TRS>(node.transform);
-            mn.localTransform.position = { trs.translation.x(), trs.translation.y(), trs.translation.z() };
-            mn.localTransform.rotation = { trs.rotation.x(), trs.rotation.y(), trs.rotation.z(), trs.rotation.w() };
-            mn.localTransform.scale = { trs.scale.x(), trs.scale.y(), trs.scale.z() };
+            // Convert RH → LH: negate Z position, negate qx/qy of rotation
+            localTransform.position = { trs.translation.x(), trs.translation.y(), -trs.translation.z() };
+            localTransform.rotation = { -trs.rotation.x(), -trs.rotation.y(), trs.rotation.z(), trs.rotation.w() };
+            localTransform.scale = { trs.scale.x(), trs.scale.y(), trs.scale.z() };
         }
+
+        Transform worldTransform = ComposeTransforms(parentWorldTransform, localTransform);
+        mn.localTransform = worldTransform;
 
         if (node.meshIndex.has_value())
         {
@@ -124,6 +155,7 @@ namespace Hydrogen
                     extra.name = model.meshes.back().name;
                     extra.parentIndex = currentIndex;
                     extra.meshIndex = meshIdx;
+                    extra.localTransform = worldTransform;
                     model.nodes.push_back(std::move(extra));
                 }
             }
@@ -140,7 +172,7 @@ namespace Hydrogen
 
         for (std::size_t childIndex : node.children)
         {
-            FlattenNodes(asset, childIndex, currentIndex, model);
+            FlattenNodes(asset, childIndex, currentIndex, worldTransform, model);
         }
     }
 
@@ -180,7 +212,7 @@ namespace Hydrogen
             const fastgltf::Scene& scene = asset.scenes[sceneIndex];
             for (std::size_t nodeIndex : scene.nodeIndices)
             {
-                FlattenNodes(asset, nodeIndex, UINT32_MAX, model);
+                FlattenNodes(asset, nodeIndex, UINT32_MAX, Transform{}, model);
             }
         }
 

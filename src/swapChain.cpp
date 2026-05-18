@@ -29,7 +29,7 @@ namespace Hydrogen
 		Microsoft::WRL::ComPtr<IDXGISwapChain1> pSwapChain = nullptr;
 		H2_VERIFY_FATAL(
 			gpuDevice.GetDxgiFactory()->CreateSwapChainForHwnd(
-				gpuDevice.GetDirectCommandQueue().GetDxCommandQueue(),
+				gpuDevice.GetDxQueue<eQueueType::Direct>(),
 				hWnd,
 				&swapChainDesc,
 				nullptr,

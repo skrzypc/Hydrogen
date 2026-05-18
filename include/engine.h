@@ -26,5 +26,6 @@ namespace Hydrogen
 		Renderer m_renderer{};
 		Scene m_scene{};
 		AssetRegistry m_assetRegistry{};
+
 	};
 }

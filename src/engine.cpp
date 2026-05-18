@@ -5,6 +5,7 @@
 #include "verifier.h"
 #include "renderScene.h"
 #include "modelLoader.h"
+#include "primitiveBuilders.h"
 #include "components/transformComponent.h"
 #include "components/meshComponent.h"
 
@@ -57,6 +58,18 @@ namespace Hydrogen
 			}
 		}
 
+		// Floor
+		{
+			Mesh floorMesh = Primitives::BuildBox({ 0.5f, 0.005f, 0.5f }, "Floor");
+			MeshHandle floorHandle = m_assetRegistry.RegisterMesh({ .name = "Floor" }, std::move(floorMesh));
+
+			Entity floor = m_scene.CreateEntity();
+			Transform floorTransform{};
+			floorTransform.position = { 0.0f, -0.1f, 0.0f };
+			m_scene.transforms.Add(floor, TransformComponent{ floorTransform });
+			m_scene.meshes.Add(floor, MeshComponent{ floorHandle });
+		}
+
 		int32 returnCode = 0;
 		while (true)
 		{
@@ -65,6 +78,7 @@ namespace Hydrogen
 				returnCode = *ecode;
 				break;
 			}
+
 
 			// Build RenderScene from ECS Scene
 			RenderScene renderScene{};
