@@ -18,6 +18,7 @@
 #include "gpuScene.h"
 #include "assetUploadQueue.h"
 #include "renderScene.h"
+#include "hydrogenMath.h"
 
 namespace Hydrogen
 {
@@ -105,24 +106,21 @@ namespace Hydrogen
 
 		const Texture::Desc& bbDesc = m_swapChain.GetCurrentBackBuffer()->GetDesc();
 		const float32 aspect = static_cast<float32>(bbDesc.width) / static_cast<float32>(bbDesc.height);
-		constexpr float32 kNear = 0.01f;
-		constexpr float32 kFar = 100.0f;
 
-		XMMATRIX view = XMMatrixLookAtLH(
-			XMVectorSet(0.0f, 0.5f, -1.0f, 1.0f),
-			XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f),
-			XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f)
-		);
-		XMMATRIX proj = PerspectiveFovLH_ReversedZ(XMConvertToRadians(45.0f), aspect, kNear, kFar);
-		XMMATRIX vp = view * proj;
+		const Matrix view = (Matrix::CreateFromQuaternion(renderScene.camera.rotation) *
+			Matrix::CreateTranslation(renderScene.camera.position)).Invert();
+		const Matrix proj = PerspectiveFovLH_ReversedZ(
+			ToRadians(renderScene.camera.fovYDeg), aspect,
+			renderScene.camera.nearZ, renderScene.camera.farZ);
+		const Matrix vp = view * proj;
 
 		ShaderInterop::ViewData viewData{};
 		XMStoreFloat4x4(&viewData.viewMx, view);
 		XMStoreFloat4x4(&viewData.projectionMx, proj);
 		XMStoreFloat4x4(&viewData.viewProjectionMx, vp);
-		XMStoreFloat4x4(&viewData.invViewProjectionMx, XMMatrixInverse(nullptr, vp));
-		viewData.nearPlane = kNear;
-		viewData.farPlane = kFar;
+		XMStoreFloat4x4(&viewData.invViewProjectionMx, vp.Invert());
+		viewData.nearPlane = renderScene.camera.nearZ;
+		viewData.farPlane = renderScene.camera.farZ;
 		viewData.viewportSize = { static_cast<float32>(bbDesc.width), static_cast<float32>(bbDesc.height) };
 		m_gpuScene.UpdateView(viewData);
 

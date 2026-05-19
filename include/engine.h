@@ -5,6 +5,8 @@
 #include "renderer.h"
 #include "scene.h"
 #include "assetRegistry.h"
+#include "entity.h"
+#include "timer.h"
 
 namespace Hydrogen
 {
@@ -26,6 +28,12 @@ namespace Hydrogen
 		Renderer m_renderer{};
 		Scene m_scene{};
 		AssetRegistry m_assetRegistry{};
+
+		Entity m_activeCamera{};
+		float32 m_yaw = 0.0f;
+		float32 m_pitch = 0.0f;
+		float32 m_cameraSpeed = 2.0f;
+		Timer m_frameTimer{};
 
 	};
 }

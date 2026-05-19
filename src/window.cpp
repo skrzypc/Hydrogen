@@ -64,6 +64,13 @@ namespace Hydrogen
 		ShowWindow(m_hwnd, SW_SHOW);
 		UpdateWindow(m_hwnd);
 
+		RAWINPUTDEVICE rid{};
+		rid.usUsagePage = 0x01;
+		rid.usUsage = 0x02;
+		rid.dwFlags = 0;
+		rid.hwndTarget = m_hwnd;
+		RegisterRawInputDevices(&rid, 1, sizeof(rid));
+
 		ProcessMessages();
 	}
 
@@ -120,14 +127,62 @@ namespace Hydrogen
 			break;
 		}
 		case WM_INPUT:
+		{
+			UINT size = sizeof(RAWINPUT);
+			RAWINPUT raw{};
+			if (GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, &raw, &size, sizeof(RAWINPUTHEADER)) != static_cast<UINT>(-1))
+			{
+				if (raw.header.dwType == RIM_TYPEMOUSE)
+				{
+					m_currentInput.mouseDeltaX += static_cast<float32>(raw.data.mouse.lLastX);
+					m_currentInput.mouseDeltaY += static_cast<float32>(raw.data.mouse.lLastY);
+				}
+			}
+			break;
+		}
 		case WM_MOUSEMOVE:
+		{
+			m_currentInput.mousePosX = static_cast<float32>(LOWORD(lParam));
+			m_currentInput.mousePosY = static_cast<float32>(HIWORD(lParam));
+			break;
+		}
 		case WM_LBUTTONDOWN:
+		{
+			m_currentInput.leftMouseDown = true;
+			break;
+		}
 		case WM_LBUTTONUP:
-		case WM_RBUTTONDOWN:
-		case WM_RBUTTONUP:
+		{
+			m_currentInput.leftMouseDown = false;
+			break;
+		}
 		case WM_MBUTTONDOWN:
+		{
+			m_currentInput.middleMouseDown = true;
+			break;
+		}
 		case WM_MBUTTONUP:
+		{
+			m_currentInput.middleMouseDown = false;
+			break;
+		}
+		case WM_RBUTTONDOWN:
+		{
+			m_currentInput.rightMouseDown = true;
+			SetCapture(hWnd);
+			break;
+		}
+		case WM_RBUTTONUP:
+		{
+			m_currentInput.rightMouseDown = false;
+			ReleaseCapture();
+			break;
+		}
 		case WM_MOUSEWHEEL:
+		{
+			m_currentInput.scrollDelta += static_cast<float32>(GET_WHEEL_DELTA_WPARAM(wParam)) / static_cast<float32>(WHEEL_DELTA);
+			break;
+		}
 		case WM_XBUTTONDOWN:
 		case WM_XBUTTONUP:
 		case WM_MOUSEHOVER:
@@ -139,13 +194,15 @@ namespace Hydrogen
 			return MA_ACTIVATEANDEAT;
 		}
 		case WM_KEYDOWN:
+		case WM_SYSKEYDOWN:
+		{
+			m_currentInput.keys[static_cast<uint8>(wParam)] = true;
+			break;
+		}
 		case WM_KEYUP:
 		case WM_SYSKEYUP:
 		{
-			break;
-		}
-		case WM_SYSKEYDOWN:
-		{
+			m_currentInput.keys[static_cast<uint8>(wParam)] = false;
 			break;
 		}
 		case WM_DESTROY:
@@ -158,8 +215,35 @@ namespace Hydrogen
 		return DefWindowProc(hWnd, uMsg, wParam, lParam);
 	}
 
+	bool Window::IsKeyDown(uint8 keyCode) const { return m_currentInput.keys[keyCode]; }
+	bool Window::IsKeyJustPressed(uint8 keyCode) const { return m_currentInput.keys[keyCode] && !m_previousInput.keys[keyCode]; }
+	bool Window::IsKeyJustReleased(uint8 keyCode) const { return !m_currentInput.keys[keyCode] && m_previousInput.keys[keyCode]; }
+
+	bool Window::IsLeftMouseDown() const { return m_currentInput.leftMouseDown; }
+	bool Window::IsLeftMouseJustPressed() const { return m_currentInput.leftMouseDown && !m_previousInput.leftMouseDown; }
+	bool Window::IsLeftMouseJustReleased() const { return !m_currentInput.leftMouseDown && m_previousInput.leftMouseDown; }
+
+	bool Window::IsMiddleMouseDown() const { return m_currentInput.middleMouseDown; }
+	bool Window::IsMiddleMouseJustPressed() const { return m_currentInput.middleMouseDown && !m_previousInput.middleMouseDown; }
+	bool Window::IsMiddleMouseJustReleased() const { return !m_currentInput.middleMouseDown && m_previousInput.middleMouseDown; }
+
+	bool Window::IsRightMouseDown() const { return m_currentInput.rightMouseDown; }
+	bool Window::IsRightMouseJustPressed() const { return m_currentInput.rightMouseDown && !m_previousInput.rightMouseDown; }
+	bool Window::IsRightMouseJustReleased() const { return !m_currentInput.rightMouseDown && m_previousInput.rightMouseDown; }
+
+	float32 Window::GetMouseDeltaX() const { return m_currentInput.mouseDeltaX; }
+	float32 Window::GetMouseDeltaY() const { return m_currentInput.mouseDeltaY; }
+	float32 Window::GetMousePosX() const { return m_currentInput.mousePosX; }
+	float32 Window::GetMousePosY() const { return m_currentInput.mousePosY; }
+	float32 Window::GetScrollDelta() const { return m_currentInput.scrollDelta; }
+
 	std::optional<int32> Window::ProcessMessages()
 	{
+		m_previousInput = m_currentInput;
+		m_currentInput.mouseDeltaX = 0.0f;
+		m_currentInput.mouseDeltaY = 0.0f;
+		m_currentInput.scrollDelta = 0.0f;
+
 		MSG msg{};
 
 		while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))

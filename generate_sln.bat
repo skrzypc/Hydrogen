@@ -30,7 +30,7 @@ call "%VS_PATH%\VC\Auxiliary\Build\vcvarsall.bat" x64
 
 echo Running CMake configure...
 
-cmake -B %BUILD_DIR% -S . ^
+cmake -B %BUILD_DIR% -S %ROOT_DIR% ^
     -G "Visual Studio 18 2026" -A x64 ^
     -DCMAKE_TOOLCHAIN_FILE="%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake" ^
     -DVCPKG_TARGET_TRIPLET=x64-windows ^
@@ -41,10 +41,11 @@ if errorlevel 1 (
     exit /b 1
 )
 
+if /i "%1"=="/silent" goto :done
 echo.
 pause
-
 echo.
 cmd /k
+:done
 
 endlocal

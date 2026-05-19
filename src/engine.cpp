@@ -1,4 +1,7 @@
 
+#include <algorithm>
+#include <DirectXMath.h>
+
 #include "engine.h"
 #include "config.h"
 #include "logger.h"
@@ -8,6 +11,8 @@
 #include "primitiveBuilders.h"
 #include "components/transformComponent.h"
 #include "components/meshComponent.h"
+#include "components/cameraComponent.h"
+#include "hydrogenMath.h"
 
 namespace Hydrogen
 {
@@ -58,6 +63,15 @@ namespace Hydrogen
 			}
 		}
 
+		// Camera
+		{
+			m_activeCamera = m_scene.CreateEntity();
+			Transform cameraTransform{};
+			cameraTransform.position = { 0.0f, 0.2f, -1.0f };
+			m_scene.transforms.Add(m_activeCamera, TransformComponent{ cameraTransform });
+			m_scene.cameras.Add(m_activeCamera, CameraComponent{});
+		}
+
 		// Floor
 		{
 			Mesh floorMesh = Primitives::BuildBox({ 0.5f, 0.005f, 0.5f }, "Floor");
@@ -80,8 +94,80 @@ namespace Hydrogen
 			}
 
 
-			// Build RenderScene from ECS Scene
+			const float32 dt = static_cast<float32>(m_frameTimer.GetSeconds());
+			m_frameTimer.Mark();
+
 			RenderScene renderScene{};
+
+			// Update camera
+			{
+				constexpr float32 sensitivity = 0.1f;
+
+				if (m_window.IsRightMouseDown())
+				{
+					m_yaw += m_window.GetMouseDeltaX() * sensitivity;
+					m_pitch += m_window.GetMouseDeltaY() * sensitivity;
+					m_pitch = std::clamp(m_pitch, -89.0f, 89.0f);
+				}
+
+				const Quaternion orientation = Quaternion::CreateFromYawPitchRoll(
+					ToRadians(m_yaw),
+					ToRadians(m_pitch),
+					0.0f);
+
+				const Vector3 forward = Vector3::Transform(Forward, orientation);
+				const Vector3 right = Vector3::Transform(Right, orientation);
+
+				Vector3 move = Vector3::Zero;
+				if (m_window.IsKeyDown('W')) { move += forward; }
+				if (m_window.IsKeyDown('S')) { move -= forward; }
+				if (m_window.IsKeyDown('D')) { move += right; }
+				if (m_window.IsKeyDown('A')) { move -= right; }
+				if (m_window.IsKeyDown('E')) { move += Up; }
+				if (m_window.IsKeyDown('Q')) { move -= Up; }
+
+				if (move.LengthSquared() > 0.0f)
+				{
+					move.Normalize();
+					move *= m_cameraSpeed * dt;
+				}
+
+				if (TransformComponent* tc = m_scene.transforms.Get(m_activeCamera))
+				{
+					tc->transform.position.x += move.x;
+					tc->transform.position.y += move.y;
+					tc->transform.position.z += move.z;
+					XMStoreFloat4(&tc->transform.rotation, orientation);
+
+					renderScene.camera.position = tc->transform.position;
+					renderScene.camera.rotation = tc->transform.rotation;
+				}
+
+				if (CameraComponent* cc = m_scene.cameras.Get(m_activeCamera))
+				{
+					if (const float32 scroll = m_window.GetScrollDelta(); scroll != 0.0f)
+					{
+						if (m_window.IsRightMouseDown())
+						{
+							m_cameraSpeed = std::clamp(m_cameraSpeed + scroll * 0.5f, 0.5f, 20.0f);
+						}
+						else
+						{
+							cc->fovYDeg = std::clamp(cc->fovYDeg - scroll * 2.0f, 10.0f, 120.0f);
+						}
+					}
+
+					if (m_window.IsMiddleMouseJustPressed())
+					{
+						cc->fovYDeg = CameraComponent{}.fovYDeg;
+					}
+
+					renderScene.camera.fovYDeg = cc->fovYDeg;
+					renderScene.camera.nearZ = cc->nearZ;
+					renderScene.camera.farZ = cc->farZ;
+				}
+			}
+
 			const auto& meshEntities = m_scene.meshes.GetEntities();
 			auto meshComponents = m_scene.meshes.GetAll();
 			for (uint32 i = 0; i < static_cast<uint32>(meshEntities.size()); ++i)
