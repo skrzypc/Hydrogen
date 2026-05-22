@@ -7,6 +7,10 @@
 
 #include <pix3.h>
 
+#include <imgui.h>
+#include <imgui_impl_dx12.h>
+#include <imgui_impl_win32.h>
+
 #include "renderer.h"
 #include "logger.h"
 #include "verifier.h"
@@ -25,6 +29,9 @@ namespace Hydrogen
 	Renderer::~Renderer()
 	{
 		m_gpuDevice.WaitForIdle<eQueueType::Direct>();
+		m_imguiPass.Shutdown();
+		ImGui_ImplWin32_Shutdown();
+		ImGui::DestroyContext();
 	}
 
 	void Renderer::Initialize(HWND hWnd)
@@ -41,12 +48,17 @@ namespace Hydrogen
 		m_clearPass.Initialize(m_gpuDevice, m_shaderCompiler);
 		m_clearPass.clearColor = { 0.53f, 0.81f, 0.92f, 1.0f };
 		m_meshPass.Initialize(m_gpuDevice, m_shaderCompiler);
+
+		ImGui::CreateContext();
+		ImGui_ImplWin32_Init(hWnd);
+		m_imguiPass.Initialize(m_gpuDevice, m_shaderCompiler);
 	}
 
-	void Renderer::BeginFrame(uint32 frameIndex)
+	void Renderer::BeginFrame()
 	{
-		m_uploadBuffer.NextFrame(frameIndex);
-		m_gpuDevice.Wait<eQueueType::Direct>(m_frameFenceValues[frameIndex]);
+		m_currentFrameIndex = m_swapChain.GetCurrentFrameIndex();
+		m_uploadBuffer.NextFrame(m_currentFrameIndex);
+		m_gpuDevice.Wait<eQueueType::Direct>(m_frameFenceValues[m_currentFrameIndex]);
 	}
 
 	void Renderer::EndFrame(uint32 frameIndex, uint64 fenceValue)
@@ -148,14 +160,11 @@ namespace Hydrogen
 		GraphicsContext::s_frameDataAddr = gpuAddr;
 	}
 
-	void Renderer::RenderFrame(const RenderScene& renderScene)
+	void Renderer::RenderFrame(const RenderScene& renderScene, ImDrawData* drawData)
 	{
 		uint64 currentFrameNumber = m_swapChain.GetCurrentFrameNumber();
-		uint32 currentFrameIndex = m_swapChain.GetCurrentFrameIndex();
 
-		//H2_INFO(eLogLevel::Minimal, "Current frame: {}", currentFrameNumber);
-
-		BeginFrame(currentFrameIndex);
+		BeginFrame();
 
 		ProcessUploadQueue();
 		UpdateFrameData(renderScene);
@@ -203,6 +212,10 @@ namespace Hydrogen
 		m_meshPass.renderObjects = renderScene.objects;
 		m_frameGraph.AddPass("MeshPass", m_meshPass);
 
+		m_imguiPass.pDrawData = drawData;
+		m_imguiPass.target = "DefaultTarget";
+		m_frameGraph.AddPass("ImGui", m_imguiPass);
+
 		m_copyPass.src = "DefaultTarget";
 		m_copyPass.dst = "Backbuffer";
 		m_frameGraph.AddPass("CopyToBackbuffer", m_copyPass);
@@ -213,6 +226,6 @@ namespace Hydrogen
 
 		uint64 fenceValue = m_gpuDevice.ExecuteGraphicsContext(std::move(gfx));
 
-		EndFrame(currentFrameIndex, fenceValue);
+		EndFrame(m_currentFrameIndex, fenceValue);
 	}
 }

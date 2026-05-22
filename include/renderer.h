@@ -14,6 +14,9 @@
 #include "renderPasses/clearPass.h"
 #include "renderPasses/copyPass.h"
 #include "renderPasses/meshPass.h"
+#include "renderPasses/imguiPass.h"
+
+struct ImDrawData;
 
 namespace Hydrogen
 {
@@ -31,12 +34,12 @@ namespace Hydrogen
 		Renderer& operator=(Renderer&&) noexcept = default;
 
 		void Initialize(HWND hWnd);
-		void RenderFrame(const RenderScene& renderScene);
+		void RenderFrame(const RenderScene& renderScene, ImDrawData* drawData);
 
 		void SetUploadQueue(AssetUploadQueue* pQueue) { m_pUploadQueue = pQueue; }
 
 	private:
-		void BeginFrame(uint32 frameIndex);
+		void BeginFrame();
 		void EndFrame(uint32 frameIndex, uint64 fenceValue);
 
 		void UpdateFrameData(const RenderScene& renderScene);
@@ -56,10 +59,12 @@ namespace Hydrogen
 		GpuScene m_gpuScene{};
 
 		std::array<uint64, Config::FramesInFlight> m_frameFenceValues{};
+		uint32 m_currentFrameIndex = 0;
 		float32 m_time = 0.0f;
 
 		ClearPass m_clearPass{};
 		CopyPass m_copyPass{};
 		MeshPass m_meshPass{};
+		ImguiPass m_imguiPass{};
 	};
 }

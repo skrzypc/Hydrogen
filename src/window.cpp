@@ -2,6 +2,9 @@
 #include "window.h"
 #include "logger.h"
 
+#include <imgui_impl_win32.h>
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 namespace Hydrogen
 {
 	Window::~Window()
@@ -106,6 +109,11 @@ namespace Hydrogen
 
 	LRESULT Window::WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
+		if (ImGui_ImplWin32_WndProcHandler(hWnd, uMsg, wParam, lParam))
+		{
+			return true;
+		}
+
 		switch (uMsg)
 		{
 		case WM_ACTIVATEAPP:

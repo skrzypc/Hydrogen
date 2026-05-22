@@ -105,6 +105,27 @@ namespace Hydrogen
 			GetQueue<QueueToStall>().WaitOnQueue(GetQueue<QueueToWaitOn>(), fenceValue);
 		}
 
+		template<eDescriptorHeapType HeapType>
+		const DescriptorHeap& GetDescriptorHeap() const
+		{
+			if constexpr (HeapType == eDescriptorHeapType::CBV_SRV_UAV)
+			{
+				return m_cbvSrvUavDescriptorHeap;
+			}
+			else if constexpr (HeapType == eDescriptorHeapType::Sampler)
+			{
+				return m_samplerDescriptorHeap;
+			}
+			else if constexpr (HeapType == eDescriptorHeapType::RTV)
+			{
+				return m_rtvDescriptorHeap;
+			}
+			else
+			{
+				return m_dsvDescriptorHeap;
+			}
+		}
+
 		// DXGI interop only — do not use for logic operations.
 		template<eQueueType Queue>
 		ID3D12CommandQueue* GetDxQueue()

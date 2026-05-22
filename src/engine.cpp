@@ -2,6 +2,10 @@
 #include <algorithm>
 #include <DirectXMath.h>
 
+#include <imgui.h>
+#include <imgui_impl_dx12.h>
+#include <imgui_impl_win32.h>
+
 #include "engine.h"
 #include "config.h"
 #include "logger.h"
@@ -94,6 +98,10 @@ namespace Hydrogen
 			}
 
 
+			ImGui_ImplDX12_NewFrame();
+			ImGui_ImplWin32_NewFrame();
+			ImGui::NewFrame();
+
 			const float32 dt = static_cast<float32>(m_frameTimer.GetSeconds());
 			m_frameTimer.Mark();
 
@@ -184,7 +192,26 @@ namespace Hydrogen
 				renderScene.objects.push_back(obj);
 			}
 
-			m_renderer.RenderFrame(renderScene);
+			{
+				ImGui::Begin("Debug");
+				ImGui::Text("FPS: %.1f (%.2f ms)", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
+				if (const TransformComponent* tc = m_scene.transforms.Get(m_activeCamera))
+				{
+					ImGui::Text("Pos: %.2f %.2f %.2f", tc->transform.position.x, tc->transform.position.y, tc->transform.position.z);
+					ImGui::Text("Yaw: %.1f  Pitch: %.1f", m_yaw, m_pitch);
+				}
+				ImGui::Text("Speed: %.2f", m_cameraSpeed);
+				if (const CameraComponent* cc = m_scene.cameras.Get(m_activeCamera))
+				{
+					ImGui::Text("FOV: %.1f", cc->fovYDeg);
+				}
+				ImGui::End();
+			}
+
+			ImGui::Render();
+			ImDrawData* drawData = ImGui::GetDrawData();
+
+			m_renderer.RenderFrame(renderScene, drawData);
 		}
 
 		return returnCode;
