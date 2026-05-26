@@ -426,3 +426,4 @@ thirdParty/vcpkg
 thirdParty/vcpkg/*
 thirdParty/vcpkg_installed/*
 build/*
+data/models/*

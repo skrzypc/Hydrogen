@@ -1,0 +1,23 @@
+#pragma once
+
+#include "renderBackend.h"
+#include "renderPasses/clearPass.h"
+#include "renderPasses/meshPass.h"
+
+namespace Hydrogen
+{
+    class RasterBackend : public IRenderBackend
+    {
+    public:
+        void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler, GpuScene& gpuScene) override;
+        void Shutdown() override;
+        std::string_view Render(FrameGraph& frameGraph, const RenderScene& scene, const Texture::Desc& outputDesc) override;
+        void BuildUI() override;
+        const char* GetName() const override { return "Raster"; }
+
+    private:
+        GpuScene* m_pGpuScene = nullptr;
+        ClearPass m_clearPass{};
+        MeshPass  m_meshPass{};
+    };
+}

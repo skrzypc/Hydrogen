@@ -178,12 +178,19 @@ namespace Hydrogen
 		{
 			m_currentInput.rightMouseDown = true;
 			SetCapture(hWnd);
+			RECT clientRect{};
+			GetClientRect(hWnd, &clientRect);
+			MapWindowPoints(hWnd, nullptr, reinterpret_cast<POINT*>(&clientRect), 2);
+			ClipCursor(&clientRect);
+			ShowCursor(FALSE);
 			break;
 		}
 		case WM_RBUTTONUP:
 		{
 			m_currentInput.rightMouseDown = false;
 			ReleaseCapture();
+			ClipCursor(nullptr);
+			ShowCursor(TRUE);
 			break;
 		}
 		case WM_MOUSEWHEEL:

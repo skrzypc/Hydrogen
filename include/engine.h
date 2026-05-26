@@ -32,7 +32,7 @@ namespace Hydrogen
 		Entity m_activeCamera{};
 		float32 m_yaw = 0.0f;
 		float32 m_pitch = 0.0f;
-		float32 m_cameraSpeed = 2.0f;
+		float32 m_cameraSpeed = 15.0f;
 		Timer m_frameTimer{};
 
 	};

@@ -181,7 +181,7 @@ namespace Hydrogen
         std::filesystem::path filePath(path);
         std::filesystem::path directory = filePath.parent_path();
 
-        fastgltf::Parser parser;
+        fastgltf::Parser parser(static_cast<fastgltf::Extensions>(std::numeric_limits<uint64>::max()));
 
         auto mappedFile = fastgltf::MappedGltfFile::FromPath(filePath);
         H2_VERIFY_FATAL(mappedFile.error() == fastgltf::Error::None, "Failed to open file: {}", path);

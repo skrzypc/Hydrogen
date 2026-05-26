@@ -11,9 +11,10 @@
 #include "gpuUploader.h"
 #include "gpuScene.h"
 #include "gpuMesh.h"
-#include "renderPasses/clearPass.h"
+#include <memory>
+
+#include "renderBackends/renderBackend.h"
 #include "renderPasses/copyPass.h"
-#include "renderPasses/meshPass.h"
 #include "renderPasses/imguiPass.h"
 
 struct ImDrawData;
@@ -37,6 +38,8 @@ namespace Hydrogen
 		void RenderFrame(const RenderScene& renderScene, ImDrawData* drawData);
 
 		void SetUploadQueue(AssetUploadQueue* pQueue) { m_pUploadQueue = pQueue; }
+		void SwitchBackend(eRenderBackendType type);
+		void BuildBackendUI();
 
 	private:
 		void BeginFrame();
@@ -44,6 +47,7 @@ namespace Hydrogen
 
 		void UpdateFrameData(const RenderScene& renderScene);
 		void ProcessUploadQueue();
+		void CreateBackend(eRenderBackendType type);
 
 		GpuDevice m_gpuDevice;
 		SwapChain m_swapChain;
@@ -62,9 +66,10 @@ namespace Hydrogen
 		uint32 m_currentFrameIndex = 0;
 		float32 m_time = 0.0f;
 
-		ClearPass m_clearPass{};
+		std::unique_ptr<IRenderBackend> m_backend;
+		eRenderBackendType m_backendType = eRenderBackendType::Raster;
+
 		CopyPass m_copyPass{};
-		MeshPass m_meshPass{};
 		ImguiPass m_imguiPass{};
 	};
 }

@@ -41,7 +41,8 @@ namespace Hydrogen
 
 		// Load model and populate scene
 		{
-			Model model = ModelLoader::Load("data/models/stanfordBunny/scene.gltf");
+			//Model model = ModelLoader::Load("data/models/stanfordBunny/scene.gltf");
+			Model model = ModelLoader::Load("data/models/SponzaNew/MainSponza.gltf");
 
 			std::vector<MeshHandle> handles;
 			for (Mesh& mesh : model.meshes)
@@ -207,6 +208,8 @@ namespace Hydrogen
 				}
 				ImGui::End();
 			}
+
+			m_renderer.BuildBackendUI();
 
 			ImGui::Render();
 			ImDrawData* drawData = ImGui::GetDrawData();

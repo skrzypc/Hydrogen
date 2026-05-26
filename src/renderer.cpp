@@ -1,5 +1,6 @@
 
 #include <cmath>
+#include <string_view>
 
 #include <d3d12.h>
 #include <DirectXColors.h>
@@ -12,6 +13,7 @@
 #include <imgui_impl_win32.h>
 
 #include "renderer.h"
+#include "renderBackends/rasterBackend.h"
 #include "logger.h"
 #include "verifier.h"
 #include "stringUtilities.h"
@@ -29,6 +31,7 @@ namespace Hydrogen
 	Renderer::~Renderer()
 	{
 		m_gpuDevice.WaitForIdle<eQueueType::Direct>();
+		m_backend->Shutdown();
 		m_imguiPass.Shutdown();
 		ImGui_ImplWin32_Shutdown();
 		ImGui::DestroyContext();
@@ -43,11 +46,9 @@ namespace Hydrogen
 		m_uploadBuffer.Initialize(m_gpuDevice, 1024 * 1024); // 1 MiB per frame
 		GraphicsContext::s_pUploadBuffer = &m_uploadBuffer;
 		m_gpuUploader.Initialize(m_gpuDevice, 256 * 1024 * 1024);
-		m_gpuScene.Initialize(m_gpuDevice, m_gpuUploader, 5'000'000, 15'000'000);
+		m_gpuScene.Initialize(m_gpuDevice, m_gpuUploader, 10'000'000, 30'000'000);
 
-		m_clearPass.Initialize(m_gpuDevice, m_shaderCompiler);
-		m_clearPass.clearColor = { 0.53f, 0.81f, 0.92f, 1.0f };
-		m_meshPass.Initialize(m_gpuDevice, m_shaderCompiler);
+		CreateBackend(eRenderBackendType::Raster);
 
 		ImGui::CreateContext();
 		ImGui_ImplWin32_Init(hWnd);
@@ -95,6 +96,36 @@ namespace Hydrogen
 			// TODO: We don't want to wait
 			m_gpuDevice.WaitOnQueue<eQueueType::Direct, eQueueType::Copy>(fence);
 		}
+	}
+
+	void Renderer::CreateBackend(eRenderBackendType type)
+	{
+		if (type == eRenderBackendType::Raster)
+		{
+			m_backend = std::make_unique<RasterBackend>();
+			m_backend->Initialize(m_gpuDevice, m_shaderCompiler, m_gpuScene);
+		}
+
+		m_backendType = type;
+	}
+
+	void Renderer::SwitchBackend(eRenderBackendType type)
+	{
+		if (m_backendType == type)
+		{
+			return;
+		}
+
+		m_gpuDevice.WaitForIdle<eQueueType::Direct>();
+		m_backend->Shutdown();
+		m_backend.reset();
+
+		CreateBackend(type);
+	}
+
+	void Renderer::BuildBackendUI()
+	{
+		m_backend->BuildUI();
 	}
 
 	// Reversed-Z LH projection: near maps to 1, far maps to 0.
@@ -171,52 +202,16 @@ namespace Hydrogen
 
 		m_frameGraph.BeginFrame(currentFrameNumber);
 
-		// Define all frame resources.
-		{
-			m_frameGraph.ImportTexture("Backbuffer", m_swapChain.GetCurrentBackBuffer());
-			const Texture::Desc& backBufferDesc = m_swapChain.GetCurrentBackBuffer()->GetDesc();
+		m_frameGraph.ImportTexture("Backbuffer", m_swapChain.GetCurrentBackBuffer());
+		const Texture::Desc& backBufferDesc = m_swapChain.GetCurrentBackBuffer()->GetDesc();
 
-			m_frameGraph.CreateTexture("DefaultTarget",
-				{
-					.width = backBufferDesc.width,
-					.height = backBufferDesc.height,
-					.mipLevels = 1,
-					.arraySize = 1,
-					.format = backBufferDesc.format,
-					.flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
-					.dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
-					.optimizedClearColor = m_clearPass.clearColor,
-				}
-				);
-
-			m_frameGraph.CreateTexture("SceneDepth",
-				{
-					.width = backBufferDesc.width,
-					.height = backBufferDesc.height,
-					.mipLevels = 1,
-					.arraySize = 1,
-					.format = DXGI_FORMAT_D32_FLOAT,
-					.flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL,
-					.dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
-					.optimizedDepthClearValue = 0.0f,
-				}
-			);
-		}
-
-		m_clearPass.target = "DefaultTarget";
-		m_frameGraph.AddPass("ClearTarget", m_clearPass);
-
-		m_meshPass.target = "DefaultTarget";
-		m_meshPass.depthTarget = "SceneDepth";
-		m_meshPass.pScene = &m_gpuScene;
-		m_meshPass.renderObjects = renderScene.objects;
-		m_frameGraph.AddPass("MeshPass", m_meshPass);
+		std::string_view backendOutput = m_backend->Render(m_frameGraph, renderScene, backBufferDesc);
 
 		m_imguiPass.pDrawData = drawData;
-		m_imguiPass.target = "DefaultTarget";
+		m_imguiPass.target = backendOutput;
 		m_frameGraph.AddPass("ImGui", m_imguiPass);
 
-		m_copyPass.src = "DefaultTarget";
+		m_copyPass.src = backendOutput;
 		m_copyPass.dst = "Backbuffer";
 		m_frameGraph.AddPass("CopyToBackbuffer", m_copyPass);
 
