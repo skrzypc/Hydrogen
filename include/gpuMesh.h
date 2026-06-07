@@ -15,5 +15,7 @@ namespace Hydrogen
 
 		uint32 baseIndex = 0;
 		uint32 indexCount = 0;
+
+		uint64 blasAddress = 0;
 	};
 }

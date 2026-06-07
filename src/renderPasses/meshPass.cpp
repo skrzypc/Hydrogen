@@ -99,7 +99,7 @@ namespace Hydrogen
 
 			PushConstants push{};
 			push.transformIndex = i;
-			push.baseVertex = gpuMesh->baseVertex;
+			push.baseVertex = gpuMesh->baseVertex; // TODO: Do we need this?
 			gfx.SetPushConstants(push);
 
 			cmd->DrawIndexedInstanced(gpuMesh->indexCount, 1, gpuMesh->baseIndex, 0, 0);

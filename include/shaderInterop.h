@@ -19,7 +19,7 @@ namespace Hydrogen::ShaderInterop
 		float32 time = 0.0f;
 		float32 deltaTime = 0.0f;
 		uint32 frameNumber = 0u;
-		uint32 _pad0 = 0u;
+		uint32 tlasIndex = 0u;
 	};
 
 	struct ViewData

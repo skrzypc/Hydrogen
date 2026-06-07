@@ -8,6 +8,7 @@
 #include "frameGraph.h"
 #include "shaderCompiler.h"
 #include "uploadRingBuffer.h"
+#include "uploadBuffer.h"
 #include "gpuUploader.h"
 #include "gpuScene.h"
 #include "gpuMesh.h"
@@ -61,6 +62,10 @@ namespace Hydrogen
 		AssetUploadQueue* m_pUploadQueue = nullptr;
 
 		GpuScene m_gpuScene{};
+
+		std::unique_ptr<UploadBuffer> m_viewBuffer;
+		ShaderResourceViewHandle m_viewBufferSrv{};
+		uint32 m_maxViews = 16;
 
 		std::array<uint64, Config::FramesInFlight> m_frameFenceValues{};
 		uint32 m_currentFrameIndex = 0;

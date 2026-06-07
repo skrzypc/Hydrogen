@@ -420,6 +420,8 @@ FodyWeavers.xsd
 # CUSTOM
 
 .*/
+*.md
+!README.md
 *.exe
 imgui.ini
 thirdParty/vcpkg

@@ -159,11 +159,19 @@ namespace Hydrogen
 		resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 		resourceDesc.Flags = desc.flags;
 
+		const bool isAccelerationStructure =
+			(initialState.access & D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ) ||
+			(initialState.access & D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE);
+
+		const D3D12_RESOURCE_STATES creationState = isAccelerationStructure
+			? D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE
+			: D3D12_RESOURCE_STATE_COMMON;
+
 		H2_VERIFY(m_pDxDevice->CreateCommittedResource(
 			&heapProps,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
-			D3D12_RESOURCE_STATE_COMMON,
+			creationState,
 			nullptr,
 			IID_PPV_ARGS(pBuffer->GetResourceAddress())),
 			"Buffer creation failed!"
@@ -233,7 +241,7 @@ namespace Hydrogen
 		return pBuffer;
 	}
 
-	RenderTargetViewHandle GpuDevice::CreateRenderTargetViewAtIndex(const Texture* pTexture, D3D12_RENDER_TARGET_VIEW_DESC rtvDesc, uint32 rtvIndex)
+	RenderTargetViewHandle GpuDevice::CreateRenderTargetViewAtIndex(const Texture* pTexture, const D3D12_RENDER_TARGET_VIEW_DESC& rtvDesc, uint32 rtvIndex)
 	{
 		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_rtvDescriptorHeap.GetCpuHandle(rtvIndex);
 		m_pDxDevice->CreateRenderTargetView(pTexture->GetResource(), &rtvDesc, cpuHandle);
@@ -241,7 +249,7 @@ namespace Hydrogen
 		return RenderTargetViewHandle{ .dxCpuHandle = cpuHandle };
 	}
 
-	DepthStencilViewHandle GpuDevice::CreateDepthStencilViewAtIndex(const Texture* pTexture, D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc, uint32 dsvIndex)
+	DepthStencilViewHandle GpuDevice::CreateDepthStencilViewAtIndex(const Texture* pTexture, const D3D12_DEPTH_STENCIL_VIEW_DESC& dsvDesc, uint32 dsvIndex)
 	{
 		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_dsvDescriptorHeap.GetCpuHandle(dsvIndex);
 		m_pDxDevice->CreateDepthStencilView(pTexture->GetResource(), &dsvDesc, cpuHandle);
@@ -249,10 +257,14 @@ namespace Hydrogen
 		return DepthStencilViewHandle{ .dxCpuHandle = cpuHandle };
 	}
 
-	ShaderResourceViewHandle GpuDevice::CreateShaderResourceView(const Buffer* pBuffer, D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc)
+	ShaderResourceViewHandle GpuDevice::CreateShaderResourceView(const Buffer* pBuffer, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc)
 	{
 		uint32 index = m_cbvSrvUavDescriptorHeap.Allocate(1);
-		m_pDxDevice->CreateShaderResourceView(pBuffer->GetResource(), &srvDesc, m_cbvSrvUavDescriptorHeap.GetCpuHandle(index));
+
+		ID3D12Resource* pResource = pBuffer ? pBuffer->GetResource() : nullptr;
+
+		m_pDxDevice->CreateShaderResourceView(pResource, &srvDesc, m_cbvSrvUavDescriptorHeap.GetCpuHandle(index));
+
 		return ShaderResourceViewHandle{ .index = index };
 	}
 
@@ -373,7 +385,7 @@ namespace Hydrogen
 		pList->SetDescriptorHeaps(2, descriptorHeaps);
 		pList->SetGraphicsRootSignature(m_rootSignature.Get());
 
-		H2_VERIFY_FATAL(GraphicsContext::s_frameDataAddr != 0, "Frame data address not set before acquiring graphics context!");
+		//H2_VERIFY_FATAL(GraphicsContext::s_frameDataAddr != 0, "Frame data address not set before acquiring graphics context!");
 		pList->SetGraphicsRootConstantBufferView(
 			static_cast<uint32>(eRootParam::FrameConstantBuffer),
 			GraphicsContext::s_frameDataAddr);

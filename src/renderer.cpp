@@ -48,6 +48,17 @@ namespace Hydrogen
 		m_gpuUploader.Initialize(m_gpuDevice, 256 * 1024 * 1024);
 		m_gpuScene.Initialize(m_gpuDevice, m_gpuUploader, 10'000'000, 30'000'000);
 
+		m_viewBuffer = m_gpuDevice.CreateUploadBuffer(L"H2_VIEW_BUFFER", m_maxViews * sizeof(ShaderInterop::ViewData));
+		D3D12_SHADER_RESOURCE_VIEW_DESC viewSrvDesc{};
+		viewSrvDesc.Format                     = DXGI_FORMAT_UNKNOWN;
+		viewSrvDesc.ViewDimension              = D3D12_SRV_DIMENSION_BUFFER;
+		viewSrvDesc.Shader4ComponentMapping    = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		viewSrvDesc.Buffer.FirstElement        = 0;
+		viewSrvDesc.Buffer.Flags               = D3D12_BUFFER_SRV_FLAG_NONE;
+		viewSrvDesc.Buffer.NumElements         = m_maxViews;
+		viewSrvDesc.Buffer.StructureByteStride = sizeof(ShaderInterop::ViewData);
+		m_viewBufferSrv = m_gpuDevice.CreateShaderResourceView(m_viewBuffer.get(), viewSrvDesc);
+
 		CreateBackend(eRenderBackendType::Raster);
 
 		ImGui::CreateContext();
@@ -91,10 +102,7 @@ namespace Hydrogen
 				meshes.emplace_back(std::move(request.mesh));
 			}
 
-			uint64 fence = m_gpuScene.RegisterMeshes(meshHandles, meshes);
-
-			// TODO: We don't want to wait
-			m_gpuDevice.WaitOnQueue<eQueueType::Direct, eQueueType::Copy>(fence);
+			m_gpuScene.RegisterMeshes(meshHandles, meshes);
 		}
 	}
 
@@ -162,29 +170,23 @@ namespace Hydrogen
 		XMStoreFloat4x4(&viewData.projectionMx, proj);
 		XMStoreFloat4x4(&viewData.viewProjectionMx, vp);
 		XMStoreFloat4x4(&viewData.invViewProjectionMx, vp.Invert());
-		viewData.nearPlane = renderScene.camera.nearZ;
-		viewData.farPlane = renderScene.camera.farZ;
+		viewData.nearPlane    = renderScene.camera.nearZ;
+		viewData.farPlane     = renderScene.camera.farZ;
 		viewData.viewportSize = { static_cast<float32>(bbDesc.width), static_cast<float32>(bbDesc.height) };
-		m_gpuScene.UpdateView(viewData);
+		m_viewBuffer->Write(&viewData, sizeof(ShaderInterop::ViewData), 0);
 
-		// Upload transforms
-		std::vector<DirectX::XMFLOAT4X4> matrices;
-		matrices.reserve(renderScene.objects.size());
-		for (const RenderObject& obj : renderScene.objects)
-		{
-			matrices.push_back(obj.worldMatrix);
-		}
-		m_gpuScene.UpdateTransforms(matrices);
+		const SceneBindings bindings = m_gpuScene.Update(renderScene, m_currentFrameIndex);
 
 		ShaderInterop::FrameData frameData{};
-		frameData.viewBufferIndex = m_gpuScene.GetViewBufferSrv().index;
-		frameData.mainViewIndex = 0;
-		frameData.vertexPositionBufferIndex = m_gpuScene.GetPositionSrv().index;
-		frameData.vertexNormalBufferIndex = m_gpuScene.GetNormalSrv().index;
-		frameData.vertexUvBufferIndex = m_gpuScene.GetUvSrv().index;
-		frameData.transformBufferIndex = m_gpuScene.GetTransformBufferSrv().index;
-		frameData.time = m_time;
-		frameData.frameNumber = static_cast<uint32>(m_swapChain.GetCurrentFrameNumber());
+		frameData.viewBufferIndex           = m_viewBufferSrv.index;
+		frameData.mainViewIndex             = 0;
+		frameData.vertexPositionBufferIndex = bindings.positionBufferIndex;
+		frameData.vertexNormalBufferIndex   = bindings.normalBufferIndex;
+		frameData.vertexUvBufferIndex       = bindings.uvBufferIndex;
+		frameData.transformBufferIndex      = bindings.transformBufferIndex;
+		frameData.tlasIndex                 = bindings.tlasIndex;
+		frameData.time                      = m_time;
+		frameData.frameNumber               = static_cast<uint32>(m_swapChain.GetCurrentFrameNumber());
 
 		auto [pCpu, gpuAddr] = m_uploadBuffer.Allocate(sizeof(ShaderInterop::FrameData));
 		memcpy(pCpu, &frameData, sizeof(ShaderInterop::FrameData));
