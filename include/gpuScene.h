@@ -30,6 +30,7 @@ namespace Hydrogen
 		uint32 uvBufferIndex = 0;
 		uint32 indexBufferIndex = 0;
 		uint32 transformBufferIndex = 0;
+		uint32 tlasIndex = 0;
 	};
 
 	class GpuScene
