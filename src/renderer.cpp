@@ -50,12 +50,12 @@ namespace Hydrogen
 
 		m_viewBuffer = m_gpuDevice.CreateUploadBuffer(L"H2_VIEW_BUFFER", m_maxViews * sizeof(ShaderInterop::ViewData));
 		D3D12_SHADER_RESOURCE_VIEW_DESC viewSrvDesc{};
-		viewSrvDesc.Format                     = DXGI_FORMAT_UNKNOWN;
-		viewSrvDesc.ViewDimension              = D3D12_SRV_DIMENSION_BUFFER;
-		viewSrvDesc.Shader4ComponentMapping    = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		viewSrvDesc.Buffer.FirstElement        = 0;
-		viewSrvDesc.Buffer.Flags               = D3D12_BUFFER_SRV_FLAG_NONE;
-		viewSrvDesc.Buffer.NumElements         = m_maxViews;
+		viewSrvDesc.Format = DXGI_FORMAT_UNKNOWN;
+		viewSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+		viewSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		viewSrvDesc.Buffer.FirstElement = 0;
+		viewSrvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+		viewSrvDesc.Buffer.NumElements = m_maxViews;
 		viewSrvDesc.Buffer.StructureByteStride = sizeof(ShaderInterop::ViewData);
 		m_viewBufferSrv = m_gpuDevice.CreateShaderResourceView(m_viewBuffer.get(), viewSrvDesc);
 
@@ -170,8 +170,8 @@ namespace Hydrogen
 		XMStoreFloat4x4(&viewData.projectionMx, proj);
 		XMStoreFloat4x4(&viewData.viewProjectionMx, vp);
 		XMStoreFloat4x4(&viewData.invViewProjectionMx, vp.Invert());
-		viewData.nearPlane    = renderScene.camera.nearZ;
-		viewData.farPlane     = renderScene.camera.farZ;
+		viewData.nearPlane = renderScene.camera.nearZ;
+		viewData.farPlane = renderScene.camera.farZ;
 		viewData.viewportSize = { static_cast<float32>(bbDesc.width), static_cast<float32>(bbDesc.height) };
 		m_viewBuffer->Write(&viewData, sizeof(ShaderInterop::ViewData), 0);
 

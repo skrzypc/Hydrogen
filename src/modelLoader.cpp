@@ -138,12 +138,12 @@ namespace Hydrogen
         if (node.meshIndex.has_value())
         {
             const fastgltf::Mesh& mesh = asset.meshes[node.meshIndex.value()];
-            for (uint32 p = 0; p < static_cast<uint32>(mesh.primitives.size()); ++p)
+            for (uint32 primitiveIndex = 0; primitiveIndex < static_cast<uint32>(mesh.primitives.size()); ++primitiveIndex)
             {
                 uint32 meshIdx = static_cast<uint32>(model.meshes.size());
-                model.meshes.push_back(ExtractPrimitive(asset, mesh.primitives[p], mesh.name, p));
+                model.meshes.push_back(ExtractPrimitive(asset, mesh.primitives[primitiveIndex], mesh.name, primitiveIndex));
 
-                if (p == 0)
+                if (primitiveIndex == 0)
                 {
                     mn.meshIndex = meshIdx;
                     model.nodes.push_back(std::move(mn));
@@ -212,7 +212,7 @@ namespace Hydrogen
             const fastgltf::Scene& scene = asset.scenes[sceneIndex];
             for (std::size_t nodeIndex : scene.nodeIndices)
             {
-                FlattenNodes(asset, nodeIndex, UINT32_MAX, Transform{}, model);
+                FlattenNodes(asset, nodeIndex, std::numeric_limits<uint32>::max(), Transform{}, model);
             }
         }
 

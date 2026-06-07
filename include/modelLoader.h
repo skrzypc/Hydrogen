@@ -15,8 +15,8 @@ namespace Hydrogen
     {
         std::string name{};
         Transform localTransform{};
-        uint32_t parentIndex = UINT32_MAX; // UINT32_MAX = root
-        std::optional<uint32_t> meshIndex{}; // index into Model::meshes
+        uint32 parentIndex = std::numeric_limits<uint32>::max(); // root node
+        std::optional<uint32> meshIndex{}; // index into Model::meshes
     };
 
     struct Model

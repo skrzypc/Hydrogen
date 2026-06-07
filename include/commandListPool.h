@@ -26,7 +26,7 @@ namespace Hydrogen
 		GpuDevice* m_pDevice = nullptr;
 		D3D12_COMMAND_LIST_TYPE m_type{};
 
-		std::vector<Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList10>> m_allLists;
-		std::vector<ID3D12GraphicsCommandList10*> m_freeLists;
+		std::vector<Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList10>> m_allLists{};
+		std::vector<ID3D12GraphicsCommandList10*> m_freeLists{};
 	};
 }

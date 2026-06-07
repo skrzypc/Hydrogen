@@ -48,9 +48,9 @@ namespace Hydrogen
 		const GpuMesh* GetGpuMesh(MeshHandle handle) const;
 
 	private:
-		struct PendingMeshUpload { uint32 meshIndex; uint32 handleId; uint64 copyFence; };
-		struct PendingBLAS { uint32 meshIndex; uint32 handleId; uint32 blasBufferIndex; uint64 directFence; };
-		struct QueuedMesh { MeshHandle handle; Mesh mesh; };
+		struct PendingMeshUpload { uint32 meshIndex = 0; uint32 handleId = 0; uint64 copyFence = 0; };
+		struct PendingBLAS { uint32 meshIndex = 0; uint32 handleId = 0; uint32 blasBufferIndex = 0; uint64 directFence = 0; };
+		struct QueuedMesh { MeshHandle handle{}; Mesh mesh{}; };
 
 		void DrainUploadQueue();
 		void StageMesh(MeshHandle handle, const Mesh& mesh);
@@ -70,33 +70,33 @@ namespace Hydrogen
 		std::vector<GpuMesh> m_meshes{};
 		std::vector<GpuMesh> m_gpuMeshCache{};
 
-		std::unique_ptr<Buffer> m_positionBuffer;
+		std::unique_ptr<Buffer> m_positionBuffer{};
 		ShaderResourceViewHandle m_positionSrv{};
 
-		std::unique_ptr<Buffer> m_indexBuffer;
+		std::unique_ptr<Buffer> m_indexBuffer{};
 		ShaderResourceViewHandle m_indexSrv{};
 
-		std::unique_ptr<Buffer> m_normalBuffer;
+		std::unique_ptr<Buffer> m_normalBuffer{};
 		ShaderResourceViewHandle m_normalSrv{};
 
-		std::unique_ptr<Buffer> m_uvBuffer;
+		std::unique_ptr<Buffer> m_uvBuffer{};
 		ShaderResourceViewHandle m_uvSrv{};
 
-		std::unique_ptr<UploadBuffer> m_transformBuffer;
+		std::unique_ptr<UploadBuffer> m_transformBuffer{};
 		ShaderResourceViewHandle m_transformBufferSrv{};
 
 		// Async mesh pipeline
-		std::queue<QueuedMesh> m_meshUploadQueue;
+		std::queue<QueuedMesh> m_meshUploadQueue{};
 		uint32 m_maxMeshUploadsPerFrame = 32;
-		std::vector<PendingMeshUpload> m_pendingUploads;
-		std::vector<PendingBLAS> m_pendingBLASBuilds;
+		std::vector<PendingMeshUpload> m_pendingUploads{};
+		std::vector<PendingBLAS> m_pendingBLASBuilds{};
 
 		// BLAS — one per registered mesh, built once
-		std::array<std::unique_ptr<Buffer>, Config::FramesInFlight> m_blasScratch;
-		std::vector<std::unique_ptr<Buffer>> m_blasBuffers;
+		std::array<std::unique_ptr<Buffer>, Config::FramesInFlight> m_blasScratch{};
+		std::vector<std::unique_ptr<Buffer>> m_blasBuffers{};
 
 		// Instance descs — triple-buffered, written by CPU each frame, read by BuildTlasPass
-		std::array<std::unique_ptr<UploadBuffer>, Config::FramesInFlight> m_instanceDescs;
+		std::array<std::unique_ptr<UploadBuffer>, Config::FramesInFlight> m_instanceDescs{};
 		uint32 m_lastInstanceCount = 0;
 
 		uint32 m_maxObjects = 0;

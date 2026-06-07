@@ -42,9 +42,9 @@ namespace Hydrogen::Primitives
             { { 0, 0, -1 }, { -hx, -hy, -hz }, { -hx,  hy, -hz }, {  hx,  hy, -hz }, {  hx, -hy, -hz } },
         };
 
-        for (uint32 f = 0; f < 6; ++f)
+        for (uint32 faceIndex = 0; faceIndex < 6; ++faceIndex)
         {
-            const Face& face = faces[f];
+            const Face& face = faces[faceIndex];
             const uint32 baseVertex = static_cast<uint32>(mesh.positions.size());
 
             mesh.positions.push_back(face.v0);

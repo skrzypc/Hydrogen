@@ -69,6 +69,6 @@ namespace Hydrogen
         Desc m_desc{};
         Microsoft::WRL::ComPtr<IDxcBlob> m_pBinary = nullptr;
 
-        uint128 m_hash;
+        uint128 m_hash{};
     };
 }

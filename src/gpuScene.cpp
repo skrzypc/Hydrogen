@@ -93,7 +93,10 @@ namespace Hydrogen
 
 	void GpuScene::DrainUploadQueue()
 	{
-		if (m_meshUploadQueue.empty()) { return; }
+		if (m_meshUploadQueue.empty())
+		{
+			return;
+		}
 
 		const uint32 firstPendingIdx = static_cast<uint32>(m_pendingUploads.size());
 		uint32 count = 0;
@@ -117,7 +120,10 @@ namespace Hydrogen
 
 	void GpuScene::PromoteCompletedUploads()
 	{
-		if (m_pendingUploads.empty()) { return; }
+		if (m_pendingUploads.empty())
+		{
+			return;
+		}
 
 		const uint64 completedCopy = m_pDevice->GetCompletedFenceValue<eQueueType::Copy>();
 
@@ -125,8 +131,14 @@ namespace Hydrogen
 		std::vector<PendingMeshUpload> remaining;
 		for (auto& entry : m_pendingUploads)
 		{
-			if (entry.copyFence <= completedCopy) { ready.push_back(entry); }
-			else { remaining.push_back(entry); }
+			if (entry.copyFence <= completedCopy)
+			{
+				ready.push_back(entry);
+			}
+			else
+			{
+				remaining.push_back(entry);
+			}
 		}
 		m_pendingUploads = std::move(remaining);
 
@@ -214,13 +226,19 @@ namespace Hydrogen
 		const uint64 fence = m_pDevice->ExecuteGraphicsContext(std::move(gfx));
 		for (auto& entry : m_pendingBLASBuilds)
 		{
-			if (entry.directFence == 0) { entry.directFence = fence; }
+			if (entry.directFence == 0)
+			{
+				entry.directFence = fence;
+			}
 		}
 	}
 
 	void GpuScene::PromoteCompletedBLAS()
 	{
-		if (m_pendingBLASBuilds.empty()) { return; }
+		if (m_pendingBLASBuilds.empty())
+		{
+			return;
+		}
 
 		const uint64 completedDirect = m_pDevice->GetCompletedFenceValue<eQueueType::Direct>();
 

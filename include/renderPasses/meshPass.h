@@ -17,8 +17,8 @@ namespace Hydrogen
 	public:
 		struct PushConstants
 		{
-			uint32 transformIndex;
-			uint32 baseVertex;
+			uint32 transformIndex = 0;
+			uint32 baseVertex = 0;
 		};
 
 		std::string target;

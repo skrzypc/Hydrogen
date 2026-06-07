@@ -27,6 +27,6 @@ namespace Hydrogen
 
 		std::vector<Microsoft::WRL::ComPtr<ID3D12CommandAllocator>> m_allAllocators{};
 		std::vector<ID3D12CommandAllocator*> m_freeAllocators{};
-		std::vector<std::pair<uint64, ID3D12CommandAllocator*>> m_inFlightAllocators;
+		std::vector<std::pair<uint64, ID3D12CommandAllocator*>> m_inFlightAllocators{};
 	};
 }

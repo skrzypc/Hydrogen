@@ -28,9 +28,9 @@ namespace Hydrogen
 
 	private:
 		struct Segment {
-			uint64 start;
-			uint64 end;          // exclusive, 4KB-aligned
-			uint64 fenceValue;
+			uint64 start = 0;
+			uint64 end = 0;      // exclusive, 4KB-aligned
+			uint64 fenceValue = 0;
 		};
 
 		// Returns the staging offset to write at (4KB-aligned). Retires completed
