@@ -44,6 +44,31 @@ namespace Hydrogen
 			});
 	}
 
+	Buffer* FGResourceCache::AcquireBuffer(const Buffer::Desc& desc, uint64 currentFrame)
+	{
+		auto it = m_freeBuffers.find(desc);
+		if (it != m_freeBuffers.end() && !it->second.empty())
+		{
+			// Reuse existing resource
+			Buffer* pBuffer = it->second.back();
+			it->second.pop_back();
+			m_activeBuffers.insert(pBuffer);
+
+			return pBuffer;
+		}
+
+		return CreateBuffer(desc);
+	}
+
+	void FGResourceCache::ReleaseBuffer(Buffer* pBuffer, uint64 currentFrame)
+	{
+		H2_VERIFY_FATAL(m_activeBuffers.contains(pBuffer), "Releasing unknown buffer");
+
+		m_activeBuffers.erase(pBuffer);
+
+		m_freeBuffers[pBuffer->GetDesc()].push_back(pBuffer);
+	}
+
 	RenderTargetViewHandle FGResourceCache::GetRTV(const Texture* pTexture, const FGSubresourceRange& range)
 	{
 		uint64 subresourceRangeHash = HashRange(range);
@@ -146,6 +171,18 @@ namespace Hydrogen
 		Texture* pRaw = pTexture.get();
 		m_ownedTextures.push_back(std::move(pTexture));
 		m_activeTextures.insert(pRaw);
+
+		return pRaw;
+	}
+
+	Buffer* FGResourceCache::CreateBuffer(const Buffer::Desc& desc)
+	{
+		ResourceState initialState{};
+		auto pBuffer = m_pDevice->CreateBuffer(L"FrameGraphBuffer", desc, initialState);
+
+		Buffer* pRaw = pBuffer.get();
+		m_ownedBuffers.push_back(std::move(pBuffer));
+		m_activeBuffers.insert(pRaw);
 
 		return pRaw;
 	}

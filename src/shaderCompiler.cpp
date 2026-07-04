@@ -108,7 +108,7 @@ namespace Hydrogen
             addArg(define.value.empty() ? define.name : define.name + L"=" + define.value);
         }
 
-        // Output paths
+        // Write paths
         auto stem   = String::ToWide(desc.name);
         auto binOut = (m_shaderOutputDir / stem).wstring() + L".bin";
         auto pdbOut = (m_shaderOutputDir / stem).wstring() + L".pdb";

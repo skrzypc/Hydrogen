@@ -45,7 +45,7 @@ namespace Hydrogen
 
 	void ImguiPass::Setup(FGBuilder& builder)
 	{
-		m_targetHandle = builder.Write(target, FGAccess::Output::RenderTarget);
+		m_targetHandle = builder.Write(target, FGAccess::Write::RenderTarget);
 	}
 
 	void ImguiPass::Execute(FGExecuteContext& ctx, GraphicsContext& gfx)

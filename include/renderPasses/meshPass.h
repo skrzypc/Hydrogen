@@ -21,7 +21,7 @@ namespace Hydrogen
 			uint32 baseVertex = 0;
 		};
 
-		std::string target;
+		std::string renderTarget;
 		std::string depthTarget;
 		const GpuScene* pScene = nullptr;
 		std::span<const RenderObject> renderObjects{};

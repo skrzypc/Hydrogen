@@ -51,11 +51,9 @@ namespace Hydrogen
 		srvDesc.Buffer.StructureByteStride = sizeof(DirectX::XMFLOAT4X4);
 		m_transformBufferSrv = device.CreateShaderResourceView(m_transformBuffer.get(), srvDesc);
 
-		// Instance descs — triple-buffered, written by CPU each frame
 		for (uint32 i = 0; i < Config::FramesInFlight; ++i)
 		{
-			m_instanceDescs[i] = device.CreateUploadBuffer(L"H2_SCENE_TLAS_INSTANCES",
-				maxObjects * sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
+			m_instanceDescs[i] = device.CreateUploadBuffer(L"H2_SCENE_TLAS_INSTANCES", maxObjects * sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
 		}
 	}
 
@@ -105,6 +103,7 @@ namespace Hydrogen
 		{
 			QueuedMesh& queued = m_meshUploadQueue.front();
 			const uint32 meshIndex = static_cast<uint32>(m_meshes.size());
+
 			StageMesh(queued.handle, queued.mesh);
 			m_pendingUploads.push_back(PendingMeshUpload{ meshIndex, queued.handle.id, 0 });
 			m_meshUploadQueue.pop();
@@ -127,8 +126,8 @@ namespace Hydrogen
 
 		const uint64 completedCopy = m_pDevice->GetCompletedFenceValue<eQueueType::Copy>();
 
-		std::vector<PendingMeshUpload> ready;
-		std::vector<PendingMeshUpload> remaining;
+		std::vector<PendingMeshUpload> ready{};
+		std::vector<PendingMeshUpload> remaining{};
 		for (auto& entry : m_pendingUploads)
 		{
 			if (entry.copyFence <= completedCopy)
@@ -144,52 +143,61 @@ namespace Hydrogen
 
 		if (!ready.empty())
 		{
-			BuildPendingBLAS(ready);
+			BuildPendingBlas(ready);
 		}
 	}
 
-	void GpuScene::BuildPendingBLAS(std::span<const PendingMeshUpload> uploads)
+	void GpuScene::BuildPendingBlas(std::span<const PendingMeshUpload> uploads)
 	{
-		uint64 maxScratch = 0;
-		std::vector<D3D12_RAYTRACING_GEOMETRY_DESC>                        geomDescs(uploads.size());
-		std::vector<D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO> prebuildInfos(uploads.size());
+		uint64 totalScratchSize = 0ull;
+		std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> rtGeometryDescs(uploads.size());
+		std::vector<D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO> blasPrebuildInfos(uploads.size());
+		std::vector<uint64> scratchOffsets(uploads.size());
 
 		for (uint32 i = 0; i < uploads.size(); ++i)
 		{
 			const GpuMesh& mesh = m_meshes[uploads[i].meshIndex];
 
-			geomDescs[i] = {};
-			geomDescs[i].Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
-			geomDescs[i].Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
-			geomDescs[i].Triangles.VertexBuffer.StartAddress = m_positionBuffer->GetResource()->GetGPUVirtualAddress() + mesh.baseVertex * sizeof(DirectX::XMFLOAT3);
-			geomDescs[i].Triangles.VertexBuffer.StrideInBytes = sizeof(DirectX::XMFLOAT3);
-			geomDescs[i].Triangles.VertexCount = mesh.vertexCount;
-			geomDescs[i].Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
-			geomDescs[i].Triangles.IndexBuffer = m_indexBuffer->GetResource()->GetGPUVirtualAddress() + mesh.baseIndex * sizeof(uint32);
-			geomDescs[i].Triangles.IndexCount = mesh.indexCount;
-			geomDescs[i].Triangles.IndexFormat = DXGI_FORMAT_R32_UINT;
+			rtGeometryDescs[i] = {};
+			rtGeometryDescs[i].Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
+			rtGeometryDescs[i].Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
+			rtGeometryDescs[i].Triangles.VertexBuffer.StartAddress = m_positionBuffer->GetResource()->GetGPUVirtualAddress() + mesh.baseVertex * sizeof(DirectX::XMFLOAT3);
+			rtGeometryDescs[i].Triangles.VertexBuffer.StrideInBytes = sizeof(DirectX::XMFLOAT3);
+			rtGeometryDescs[i].Triangles.VertexCount = mesh.vertexCount;
+			rtGeometryDescs[i].Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
+			rtGeometryDescs[i].Triangles.IndexBuffer = m_indexBuffer->GetResource()->GetGPUVirtualAddress() + mesh.baseIndex * sizeof(uint32);
+			rtGeometryDescs[i].Triangles.IndexCount = mesh.indexCount;
+			rtGeometryDescs[i].Triangles.IndexFormat = DXGI_FORMAT_R32_UINT;
 
 			D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs{};
 			inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
 			inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
 			inputs.NumDescs = 1;
-			inputs.pGeometryDescs = &geomDescs[i];
+			inputs.pGeometryDescs = &rtGeometryDescs[i];
 
-			m_pDevice->GetDxDevice()->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &prebuildInfos[i]);
-			maxScratch = std::max(maxScratch, prebuildInfos[i].ScratchDataSizeInBytes);
+			m_pDevice->GetDxDevice()->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &blasPrebuildInfos[i]);
+
+			scratchOffsets[i] = totalScratchSize;
+			const uint64 alignedScratch = (blasPrebuildInfos[i].ScratchDataSizeInBytes + D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1)
+				& ~static_cast<uint64>(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1);
+			totalScratchSize += alignedScratch;
 		}
 
 		auto& scratch = m_blasScratch[m_currentFrameIndex];
-		if (!scratch || scratch->GetDesc().size < maxScratch)
+		if (!scratch || scratch->GetDesc().size < totalScratchSize)
 		{
 			ResourceState uavState{};
 			scratch = m_pDevice->CreateBuffer(L"H2_BLAS_SCRATCH",
-				Buffer::Desc{ .size = maxScratch, .flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS },
+				Buffer::Desc{ .size = totalScratchSize, .flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS },
 				uavState);
 		}
+		const D3D12_GPU_VIRTUAL_ADDRESS scratchBase = scratch->GetResource()->GetGPUVirtualAddress();
 
-		GraphicsContext gfx = m_pDevice->AcquireGraphicsContext();
+		GraphicsContext graphicsContext = m_pDevice->AcquireGraphicsContext();
 		const uint32 firstBlasIdx = static_cast<uint32>(m_blasBuffers.size());
+
+		std::vector<D3D12_BUFFER_BARRIER> blasBarriers;
+		blasBarriers.reserve(uploads.size());
 
 		for (uint32 i = 0; i < uploads.size(); ++i)
 		{
@@ -197,34 +205,51 @@ namespace Hydrogen
 
 			ResourceState asState{};
 			asState.access = D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE;
+
 			m_blasBuffers.push_back(m_pDevice->CreateBuffer(
-				String::ToWide("H2_BLAS_" + mesh.name),
-				Buffer::Desc{ .size = prebuildInfos[i].ResultDataMaxSizeInBytes, .flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS },
-				asState));
+				String::ToWide(String::Format("H2_BLAS_{}", String::ToUpper(mesh.name))),
+				Buffer::Desc{
+					.size = blasPrebuildInfos[i].ResultDataMaxSizeInBytes,
+					.flags = D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE },
+					asState));
 
 			D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs{};
 			inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
 			inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
 			inputs.NumDescs = 1;
-			inputs.pGeometryDescs = &geomDescs[i];
+			inputs.pGeometryDescs = &rtGeometryDescs[i];
 
 			D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc{};
 			buildDesc.Inputs = inputs;
 			buildDesc.DestAccelerationStructureData = m_blasBuffers.back()->GetResource()->GetGPUVirtualAddress();
-			buildDesc.ScratchAccelerationStructureData = scratch->GetResource()->GetGPUVirtualAddress();
+			buildDesc.ScratchAccelerationStructureData = scratchBase + scratchOffsets[i];
 
-			gfx.CmdList()->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
+			graphicsContext.CmdList()->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
 
-			D3D12_RESOURCE_BARRIER barrier{};
-			barrier.Type          = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-			barrier.UAV.pResource = m_blasBuffers.back()->GetResource();
-			gfx.CmdList()->ResourceBarrier(1, &barrier);
+			blasBarriers.push_back(D3D12_BUFFER_BARRIER
+				{
+					.SyncBefore = D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE,
+					.SyncAfter = D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE,
+					.AccessBefore = D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE,
+					.AccessAfter = D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ,
+					.pResource = m_blasBuffers.back()->GetResource(),
+					.Offset = 0,
+					.Size = UINT64_MAX,
+				});
 
-			m_pendingBLASBuilds.push_back(PendingBLAS{ uploads[i].meshIndex, uploads[i].handleId, firstBlasIdx + i, 0 });
+			m_pendingBlasBuilds.push_back(PendingBlas{ uploads[i].meshIndex, uploads[i].handleId, firstBlasIdx + i, 0 });
 		}
 
-		const uint64 fence = m_pDevice->ExecuteGraphicsContext(std::move(gfx));
-		for (auto& entry : m_pendingBLASBuilds)
+		D3D12_BARRIER_GROUP blasBarrierGroup
+		{
+			.Type = D3D12_BARRIER_TYPE_BUFFER,
+			.NumBarriers = static_cast<uint32>(blasBarriers.size()),
+			.pBufferBarriers = blasBarriers.data(),
+		};
+		graphicsContext.CmdList()->Barrier(1, &blasBarrierGroup);
+
+		const uint64 fence = m_pDevice->ExecuteGraphicsContext(std::move(graphicsContext));
+		for (auto& entry : m_pendingBlasBuilds)
 		{
 			if (entry.directFence == 0)
 			{
@@ -235,15 +260,15 @@ namespace Hydrogen
 
 	void GpuScene::PromoteCompletedBLAS()
 	{
-		if (m_pendingBLASBuilds.empty())
+		if (m_pendingBlasBuilds.empty())
 		{
 			return;
 		}
 
 		const uint64 completedDirect = m_pDevice->GetCompletedFenceValue<eQueueType::Direct>();
 
-		std::vector<PendingBLAS> remaining;
-		for (auto& entry : m_pendingBLASBuilds)
+		std::vector<PendingBlas> remaining;
+		for (auto& entry : m_pendingBlasBuilds)
 		{
 			if (entry.directFence <= completedDirect)
 			{
@@ -256,7 +281,7 @@ namespace Hydrogen
 				remaining.push_back(entry);
 			}
 		}
-		m_pendingBLASBuilds = std::move(remaining);
+		m_pendingBlasBuilds = std::move(remaining);
 	}
 
 	void GpuScene::UpdateTransforms(std::span<const RenderObject> objects)

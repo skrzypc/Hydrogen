@@ -16,8 +16,8 @@ namespace Hydrogen
 
 		void Setup(FGBuilder& builder) override
 		{
-			m_srcHandle = builder.Read(src, FGAccess::Input::CopySrc);
-			m_dstHandle = builder.Write(dst, FGAccess::Output::CopyDst);
+			m_srcHandle = builder.Read(src, FGAccess::Read::CopySrc);
+			m_dstHandle = builder.Write(dst, FGAccess::Write::CopyDst);
 		}
 
 		void Execute(FGExecuteContext& ctx, GraphicsContext& gfx) override;

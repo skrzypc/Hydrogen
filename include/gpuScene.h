@@ -47,16 +47,19 @@ namespace Hydrogen
 		const Buffer* GetIndexBuffer() const { return m_indexBuffer.get(); }
 		const GpuMesh* GetGpuMesh(MeshHandle handle) const;
 
+		const UploadBuffer* GetInstanceDescs() const { return m_instanceDescs[m_currentFrameIndex].get(); }
+		uint32 GetInstanceCount() const { return m_lastInstanceCount; }
+
 	private:
 		struct PendingMeshUpload { uint32 meshIndex = 0; uint32 handleId = 0; uint64 copyFence = 0; };
-		struct PendingBLAS { uint32 meshIndex = 0; uint32 handleId = 0; uint32 blasBufferIndex = 0; uint64 directFence = 0; };
+		struct PendingBlas { uint32 meshIndex = 0; uint32 handleId = 0; uint32 blasBufferIndex = 0; uint64 directFence = 0; };
 		struct QueuedMesh { MeshHandle handle{}; Mesh mesh{}; };
 
 		void DrainUploadQueue();
 		void StageMesh(MeshHandle handle, const Mesh& mesh);
 		void PromoteCompletedUploads();
 		void PromoteCompletedBLAS();
-		void BuildPendingBLAS(std::span<const PendingMeshUpload> uploads);
+		void BuildPendingBlas(std::span<const PendingMeshUpload> uploads);
 		void UpdateTransforms(std::span<const RenderObject> objects);
 
 		GpuDevice* m_pDevice = nullptr;
@@ -89,7 +92,7 @@ namespace Hydrogen
 		std::queue<QueuedMesh> m_meshUploadQueue{};
 		uint32 m_maxMeshUploadsPerFrame = 32;
 		std::vector<PendingMeshUpload> m_pendingUploads{};
-		std::vector<PendingBLAS> m_pendingBLASBuilds{};
+		std::vector<PendingBlas> m_pendingBlasBuilds{};
 
 		// BLAS — one per registered mesh, built once
 		std::array<std::unique_ptr<Buffer>, Config::FramesInFlight> m_blasScratch{};

@@ -178,15 +178,15 @@ namespace Hydrogen
 		const SceneBindings bindings = m_gpuScene.Update(renderScene, m_currentFrameIndex);
 
 		ShaderInterop::FrameData frameData{};
-		frameData.viewBufferIndex           = m_viewBufferSrv.index;
-		frameData.mainViewIndex             = 0;
+		frameData.viewBufferIndex = m_viewBufferSrv.index;
+		frameData.mainViewIndex = 0;
 		frameData.vertexPositionBufferIndex = bindings.positionBufferIndex;
-		frameData.vertexNormalBufferIndex   = bindings.normalBufferIndex;
-		frameData.vertexUvBufferIndex       = bindings.uvBufferIndex;
-		frameData.transformBufferIndex      = bindings.transformBufferIndex;
-		frameData.tlasIndex                 = bindings.tlasIndex;
-		frameData.time                      = m_time;
-		frameData.frameNumber               = static_cast<uint32>(m_swapChain.GetCurrentFrameNumber());
+		frameData.vertexNormalBufferIndex = bindings.normalBufferIndex;
+		frameData.vertexUvBufferIndex = bindings.uvBufferIndex;
+		frameData.transformBufferIndex = bindings.transformBufferIndex;
+		frameData.time = m_time;
+		frameData.frameNumber = static_cast<uint32>(m_swapChain.GetCurrentFrameNumber());
+		m_backend->FillFrameData(frameData);
 
 		auto [pCpu, gpuAddr] = m_uploadBuffer.Allocate(sizeof(ShaderInterop::FrameData));
 		memcpy(pCpu, &frameData, sizeof(ShaderInterop::FrameData));

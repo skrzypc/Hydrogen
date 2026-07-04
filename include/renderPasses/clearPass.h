@@ -17,7 +17,7 @@ namespace Hydrogen
 
 		void Setup(FGBuilder& builder) override
 		{
-			m_handle = builder.Write(target, FGAccess::Output::RenderTarget);
+			m_handle = builder.Write(target, FGAccess::Write::RenderTarget);
 		}
 
 		void Execute(FGExecuteContext& ctx, GraphicsContext& gfx) override;

@@ -20,17 +20,17 @@ namespace Hydrogen
 		FGBuilder& operator=(FGBuilder&&) noexcept = default;
 
 	public:
-		FGResourceHandle Read(FGResourceHandle handle, FGAccess::Input access);
-		FGResourceHandle Write(FGResourceHandle handle, FGAccess::Output access);
+		FGResourceHandle Read(FGResourceHandle handle, FGAccess::Read access);
+		FGResourceHandle Write(FGResourceHandle handle, FGAccess::Write access);
 
-		FGResourceHandle Read(std::string_view name, FGAccess::Input access);
-		FGResourceHandle Write(std::string_view name, FGAccess::Output access);
+		FGResourceHandle Read(std::string_view name, FGAccess::Read access);
+		FGResourceHandle Write(std::string_view name, FGAccess::Write access);
 
 		const Texture::Desc& GetTextureDesc(std::string_view name) const;
 
 	private:
-		FGPassNodeAccess ResolveRead(FGAccess::Input access);
-		FGPassNodeAccess ResolveWrite(FGAccess::Output access);
+		FGPassNodeAccess ResolveRead(FGAccess::Read access);
+		FGPassNodeAccess ResolveWrite(FGAccess::Write access);
 
 		FGResourceHandle AccessInternal(FGResourceHandle handle, FGPassNodeType direction, FGPassNodeAccess access, FGSubresourceRange range);
 

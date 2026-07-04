@@ -167,6 +167,8 @@ namespace Hydrogen
 		RenderTargetViewHandle CreateRenderTargetViewAtIndex(const Texture* pTexture, const D3D12_RENDER_TARGET_VIEW_DESC& rtvDesc, uint32 rtvIndex);
 		DepthStencilViewHandle CreateDepthStencilViewAtIndex(const Texture* pTexture, const D3D12_DEPTH_STENCIL_VIEW_DESC& dsvDesc, uint32 dsvIndex);
 		ShaderResourceViewHandle CreateShaderResourceView(const Buffer* pBuffer, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc);
+		ShaderResourceViewHandle CreateShaderResourceView(const Texture* pTexture, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc);
+		void UpdateShaderResourceView(ShaderResourceViewHandle handle, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc);
 
 		RenderTargetViewHandle GetRenderTargetHandle(uint32 index) const { return RenderTargetViewHandle{ .dxCpuHandle = m_rtvDescriptorHeap.GetCpuHandle(index) }; }
 		DepthStencilViewHandle GetDepthStencilHandle(uint32 index) const { return DepthStencilViewHandle{ .dxCpuHandle = m_dsvDescriptorHeap.GetCpuHandle(index) }; }

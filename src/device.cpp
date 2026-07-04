@@ -143,12 +143,11 @@ namespace Hydrogen
 	std::unique_ptr<Buffer> GpuDevice::CreateBuffer(std::wstring_view name, const Buffer::Desc& desc, ResourceState& initialState)
 	{
 		auto pBuffer = std::make_unique<Buffer>();
-		pBuffer->SetDesc(desc);
 
 		D3D12_HEAP_PROPERTIES heapProps = {};
 		heapProps.Type = desc.heapType;
 
-		D3D12_RESOURCE_DESC resourceDesc = {};
+		D3D12_RESOURCE_DESC1 resourceDesc = {};
 		resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
 		resourceDesc.Width = desc.size;
 		resourceDesc.Height = 1;
@@ -159,25 +158,30 @@ namespace Hydrogen
 		resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 		resourceDesc.Flags = desc.flags;
 
-		const bool isAccelerationStructure =
-			(initialState.access & D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ) ||
-			(initialState.access & D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE);
+		if (resourceDesc.Flags & D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE)
+		{
+			// Must be set for AS.
+			resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+		}
 
-		const D3D12_RESOURCE_STATES creationState = isAccelerationStructure
-			? D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE
-			: D3D12_RESOURCE_STATE_COMMON;
+		// Buffers have no layout — CreateCommittedResource3 requires UNDEFINED for buffer resources.
+		initialState.layout = D3D12_BARRIER_LAYOUT_UNDEFINED;
 
-		H2_VERIFY(m_pDxDevice->CreateCommittedResource(
+		H2_VERIFY(m_pDxDevice->CreateCommittedResource3(
 			&heapProps,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
-			creationState,
+			initialState.layout,
+			nullptr,
+			nullptr,
+			0,
 			nullptr,
 			IID_PPV_ARGS(pBuffer->GetResourceAddress())),
 			"Buffer creation failed!"
 		);
 
 		pBuffer->SetName(name);
+		pBuffer->SetDesc(desc);
 		pBuffer->SetState(initialState);
 
 		return pBuffer;
@@ -260,12 +264,22 @@ namespace Hydrogen
 	ShaderResourceViewHandle GpuDevice::CreateShaderResourceView(const Buffer* pBuffer, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc)
 	{
 		uint32 index = m_cbvSrvUavDescriptorHeap.Allocate(1);
-
 		ID3D12Resource* pResource = pBuffer ? pBuffer->GetResource() : nullptr;
-
 		m_pDxDevice->CreateShaderResourceView(pResource, &srvDesc, m_cbvSrvUavDescriptorHeap.GetCpuHandle(index));
-
 		return ShaderResourceViewHandle{ .index = index };
+	}
+
+	ShaderResourceViewHandle GpuDevice::CreateShaderResourceView(const Texture* pTexture, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc)
+	{
+		uint32 index = m_cbvSrvUavDescriptorHeap.Allocate(1);
+		ID3D12Resource* pResource = pTexture ? pTexture->GetResource() : nullptr;
+		m_pDxDevice->CreateShaderResourceView(pResource, &srvDesc, m_cbvSrvUavDescriptorHeap.GetCpuHandle(index));
+		return ShaderResourceViewHandle{ .index = index };
+	}
+
+	void GpuDevice::UpdateShaderResourceView(ShaderResourceViewHandle handle, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc)
+	{
+		m_pDxDevice->CreateShaderResourceView(nullptr, &srvDesc, m_cbvSrvUavDescriptorHeap.GetCpuHandle(handle.index));
 	}
 
 	void GpuDevice::Initialize()

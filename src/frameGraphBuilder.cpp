@@ -11,22 +11,22 @@ namespace Hydrogen
 		: m_frameGraph(frameGraph), m_pass(pass)
 	{}
 
-	FGResourceHandle FGBuilder::Read(FGResourceHandle handle, FGAccess::Input access)
+	FGResourceHandle FGBuilder::Read(FGResourceHandle handle, FGAccess::Read access)
 	{
-		return AccessInternal(handle, FGPassNodeType::Input, ResolveRead(access), FGSubresourceRange{});
+		return AccessInternal(handle, FGPassNodeType::Read, ResolveRead(access), FGSubresourceRange{});
 	}
 
-	FGResourceHandle FGBuilder::Write(FGResourceHandle handle, FGAccess::Output access)
+	FGResourceHandle FGBuilder::Write(FGResourceHandle handle, FGAccess::Write access)
 	{
-		return AccessInternal(handle, FGPassNodeType::Output, ResolveWrite(access), FGSubresourceRange{});
+		return AccessInternal(handle, FGPassNodeType::Write, ResolveWrite(access), FGSubresourceRange{});
 	}
 
-	FGResourceHandle FGBuilder::Read(std::string_view name, FGAccess::Input access)
+	FGResourceHandle FGBuilder::Read(std::string_view name, FGAccess::Read access)
 	{
 		return Read(m_frameGraph.GetResource(name), access);
 	}
 
-	FGResourceHandle FGBuilder::Write(std::string_view name, FGAccess::Output access)
+	FGResourceHandle FGBuilder::Write(std::string_view name, FGAccess::Write access)
 	{
 		FGResourceHandle handle = Write(m_frameGraph.GetResource(name), access);
 		m_frameGraph.m_resourceRegistry[String::ToUpper(name)] = handle;
@@ -39,11 +39,11 @@ namespace Hydrogen
 		return m_frameGraph.m_textureNodes[handle.index].desc;
 	}
 
-	FGPassNodeAccess FGBuilder::ResolveRead(FGAccess::Input readAccess)
+	FGPassNodeAccess FGBuilder::ResolveRead(FGAccess::Read readAccess)
 	{
 		switch (readAccess)
 		{
-		case FGAccess::Input::ShaderResource:
+		case FGAccess::Read::ShaderResource:
 			return FGPassNodeAccess
 			{
 				ResourceState{ D3D12_BARRIER_SYNC_ALL_SHADING, D3D12_BARRIER_ACCESS_SHADER_RESOURCE, D3D12_BARRIER_LAYOUT_SHADER_RESOURCE },
@@ -51,7 +51,7 @@ namespace Hydrogen
 				FGUsage::SRV
 			};
 
-		case FGAccess::Input::DepthStencil:
+		case FGAccess::Read::DepthStencil:
 			return FGPassNodeAccess
 			{
 				ResourceState{ D3D12_BARRIER_SYNC_DEPTH_STENCIL, D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ, D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_READ },
@@ -59,7 +59,7 @@ namespace Hydrogen
 				FGUsage::DSV
 			};
 
-		case FGAccess::Input::UnorderedAccess:
+		case FGAccess::Read::UnorderedAccess:
 			return FGPassNodeAccess
 			{
 				ResourceState{ D3D12_BARRIER_SYNC_ALL_SHADING, D3D12_BARRIER_ACCESS_UNORDERED_ACCESS, D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS },
@@ -67,7 +67,15 @@ namespace Hydrogen
 				FGUsage::UAV
 			};
 
-		case FGAccess::Input::CopySrc:
+		case FGAccess::Read::AccelerationStructure:
+			return FGPassNodeAccess
+			{
+				ResourceState{ D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE, D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ, D3D12_BARRIER_LAYOUT_UNDEFINED },
+				D3D12_RESOURCE_FLAG_NONE,
+				FGUsage::SRV
+			};
+
+		case FGAccess::Read::CopySrc:
 			return FGPassNodeAccess
 			{
 				ResourceState{ D3D12_BARRIER_SYNC_COPY, D3D12_BARRIER_ACCESS_COPY_SOURCE, D3D12_BARRIER_LAYOUT_COPY_SOURCE },
@@ -80,11 +88,11 @@ namespace Hydrogen
 		}
 	}
 
-	FGPassNodeAccess FGBuilder::ResolveWrite(FGAccess::Output writeAccess)
+	FGPassNodeAccess FGBuilder::ResolveWrite(FGAccess::Write writeAccess)
 	{
 		switch (writeAccess)
 		{
-		case FGAccess::Output::RenderTarget:
+		case FGAccess::Write::RenderTarget:
 			return FGPassNodeAccess
 			{
 				ResourceState{ D3D12_BARRIER_SYNC_RENDER_TARGET, D3D12_BARRIER_ACCESS_RENDER_TARGET, D3D12_BARRIER_LAYOUT_RENDER_TARGET },
@@ -92,7 +100,7 @@ namespace Hydrogen
 				FGUsage::RTV
 			};
 
-		case FGAccess::Output::DepthStencil:
+		case FGAccess::Write::DepthStencil:
 			return FGPassNodeAccess
 			{
 				ResourceState{ D3D12_BARRIER_SYNC_DEPTH_STENCIL, D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE, D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE },
@@ -100,7 +108,7 @@ namespace Hydrogen
 				FGUsage::DSV
 			};
 
-		case FGAccess::Output::UnorderedAccess:
+		case FGAccess::Write::UnorderedAccess:
 			return FGPassNodeAccess
 			{
 				ResourceState{ D3D12_BARRIER_SYNC_ALL_SHADING, D3D12_BARRIER_ACCESS_UNORDERED_ACCESS, D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS },
@@ -108,7 +116,15 @@ namespace Hydrogen
 				FGUsage::UAV
 			};
 
-		case FGAccess::Output::CopyDst:
+		case FGAccess::Write::AccelerationStructure:
+			return FGPassNodeAccess
+			{
+				ResourceState{ D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE, D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE, D3D12_BARRIER_LAYOUT_UNDEFINED },
+				D3D12_RESOURCE_FLAG_NONE,
+				FGUsage::UAV
+			};
+
+		case FGAccess::Write::CopyDst:
 			return FGPassNodeAccess
 			{
 				ResourceState{ D3D12_BARRIER_SYNC_COPY, D3D12_BARRIER_ACCESS_COPY_DEST, D3D12_BARRIER_LAYOUT_COPY_DEST },
@@ -125,43 +141,49 @@ namespace Hydrogen
 	{
 		H2_VERIFY(handle.IsValid(), "Accessing invalid handle!");
 
-		FGTextureNode& node = m_frameGraph.m_textureNodes[handle.index];
-
-		if (direction == FGPassNodeType::Output)
+		if (handle.IsBuffer())
 		{
-			H2_VERIFY(handle.version == node.versions[0], "Stale handle usage detected");
+			FGBufferNode& node = m_frameGraph.m_bufferNodes[handle.index];
 
-			node.flags |= access.resourceFlags;
-
-			//uint32 mipStart = range.mipOffset;
-			//uint32 mipEnd = (range.mipLevelsCount == 0xffffffff) ? node.desc.mipLevels : mipStart + range.mipLevelsCount;
-			//uint32 arrayStart = range.arrayOffset;
-			//uint32 arrayEnd = (range.arraySlicesCount == 0xffffffff) ? node.desc.arraySize : arrayStart + range.arraySlicesCount;
-
-			//for (uint32 array = arrayStart; array < arrayEnd; ++array)
-			//{
-			//	for (uint32 mip = mipStart; mip < mipEnd; ++mip)
-			//	{
-			//		node.versions[mip + array * node.desc.mipLevels]++;
-			//	}
-			//}
-
-			node.lastWritingPassIndex = m_pass.index;
-
-			if (node.bImported)
+			if (direction == FGPassNodeType::Write)
 			{
-				m_pass.bHasSideEffect = true;
+				node.flags |= access.resourceFlags;
+				node.lastWritingPassIndex = m_pass.index;
+				if (node.bImported)
+				{
+					m_pass.bHasSideEffect = true;
+				}
+				handle.version++;
 			}
-
-			handle.version++;
-			node.versions[0]++;
+			else
+			{
+				node.refCount++;
+			}
 		}
 		else
 		{
-			H2_VERIFY(handle.version == node.versions[0], "Stale handle usage detected");
+			FGTextureNode& node = m_frameGraph.m_textureNodes[handle.index];
 
-			// Increment ref count — keeps this node and its producer alive during culling
-			node.refCount++;
+			if (direction == FGPassNodeType::Write)
+			{
+				H2_VERIFY(handle.version == node.versions[0], "Stale handle usage detected");
+
+				node.flags |= access.resourceFlags;
+				node.lastWritingPassIndex = m_pass.index;
+
+				if (node.bImported)
+				{
+					m_pass.bHasSideEffect = true;
+				}
+
+				handle.version++;
+				node.versions[0]++;
+			}
+			else
+			{
+				H2_VERIFY(handle.version == node.versions[0], "Stale handle usage detected");
+				node.refCount++;
+			}
 		}
 
 		m_pass.nodes.push_back(

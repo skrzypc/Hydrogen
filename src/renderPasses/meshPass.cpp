@@ -59,10 +59,11 @@ namespace Hydrogen
 
 	void MeshPass::Setup(FGBuilder& builder)
 	{
-		m_targetHandle = builder.Write(target, FGAccess::Output::RenderTarget);
-		m_depthHandle = builder.Write(depthTarget, FGAccess::Output::DepthStencil);
+		m_targetHandle = builder.Write(renderTarget, FGAccess::Write::RenderTarget);
+		m_depthHandle = builder.Write(depthTarget, FGAccess::Write::DepthStencil);
+		builder.Read("TLAS", FGAccess::Read::AccelerationStructure);
 
-		const Texture::Desc& desc = builder.GetTextureDesc(target);
+		const Texture::Desc& desc = builder.GetTextureDesc(renderTarget);
 		m_width = desc.width;
 		m_height = desc.height;
 	}

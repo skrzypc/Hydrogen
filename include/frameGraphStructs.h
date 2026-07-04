@@ -24,11 +24,11 @@ namespace Hydrogen
 		Undefined = 255,
 	};
 
-	// FG Input/Output.
+	// FG Read/Write.
 	enum class FGPassNodeType : uint8
 	{
-		Input = 0,
-		Output = 1,
+		Read = 0,
+		Write = 1,
 		Unknown
 	};
 
@@ -43,19 +43,21 @@ namespace Hydrogen
 
 	namespace FGAccess
 	{
-		enum class Input : uint8
+		enum class Read : uint8
 		{
 			ShaderResource,
 			DepthStencil,
 			UnorderedAccess,
+			AccelerationStructure,
 			CopySrc,
 		};
 
-		enum class Output : uint8
+		enum class Write : uint8
 		{
 			RenderTarget,
 			DepthStencil,
 			UnorderedAccess,
+			AccelerationStructure,
 			CopyDst,
 		};
 	}
@@ -125,7 +127,7 @@ namespace Hydrogen
 		ResourceState resourceState{};
 
 		uint32 refCount = 0;
-		uint32 lastWritingPassIndex = -1;
+		uint32 lastWritingPassIndex = std::numeric_limits<uint32>::max();
 
 		bool bImported = false;
 	};
@@ -168,13 +170,20 @@ namespace Hydrogen
 
 		ID3D12Resource* GetResource(FGResourceHandle handle) const
 		{
-			H2_VERIFY_FATAL(handle.IsTexture() && m_resourceMap.contains(handle.index), "No resource found for handle!");
+			const uint32 key = ResourceKey(handle);
+			H2_VERIFY_FATAL(m_resourceMap.contains(key), "No resource found for handle!");
 
-			return m_resourceMap.at(handle.index);
+			return m_resourceMap.at(key);
 		}
 
 	private:
 		friend class FrameGraph;
+
+		// Texture and buffer handles have separate index spaces, so combine type and index into a unique key.
+		static uint32 ResourceKey(FGResourceHandle handle)
+		{
+			return (static_cast<uint32>(handle.type) << 16) | handle.index;
+		}
 
 		std::unordered_map<uint32, D3D12_CPU_DESCRIPTOR_HANDLE> m_rtvMap;
 		std::unordered_map<uint32, D3D12_CPU_DESCRIPTOR_HANDLE> m_dsvMap;

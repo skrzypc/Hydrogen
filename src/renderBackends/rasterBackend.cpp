@@ -6,15 +6,18 @@
 
 #include "frameGraph.h"
 #include "gpuScene.h"
+#include "shaderInterop.h"
 
 namespace Hydrogen
 {
     void RasterBackend::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler, GpuScene& gpuScene)
     {
+        m_pDevice = &device;
         m_pGpuScene = &gpuScene;
         m_clearPass.Initialize(device, shaderCompiler);
         m_clearPass.clearColor = { 0.53f, 0.81f, 0.92f, 1.0f };
         m_meshPass.Initialize(device, shaderCompiler);
+        m_buildTlasPass.Initialize(device, shaderCompiler);
     }
 
     void RasterBackend::Shutdown()
@@ -23,6 +26,26 @@ namespace Hydrogen
     }
 
     std::string_view RasterBackend::Render(FrameGraph& frameGraph, const RenderScene& scene, const Texture::Desc& outputDesc)
+    {
+        DefineFrameGraphResources(frameGraph, scene, outputDesc);
+
+        m_clearPass.target = "SceneColor";
+        frameGraph.AddPass("ClearTarget", m_clearPass);
+
+        m_buildTlasPass.pScene = m_pGpuScene;
+        m_buildTlasPass.renderObjects = scene.objects;
+        frameGraph.AddPass("BuildTLAS", m_buildTlasPass);
+
+        m_meshPass.renderTarget = "SceneColor";
+        m_meshPass.depthTarget = "SceneDepth";
+        m_meshPass.pScene = m_pGpuScene;
+        m_meshPass.renderObjects = scene.objects;
+        frameGraph.AddPass("MeshPass", m_meshPass);
+
+        return "SceneColor";
+    }
+
+    void RasterBackend::DefineFrameGraphResources(FrameGraph& frameGraph, const RenderScene& scene, const Texture::Desc& outputDesc)
     {
         frameGraph.CreateTexture("SceneColor",
             {
@@ -48,16 +71,19 @@ namespace Hydrogen
                 .optimizedDepthClearValue = 0.0f,
             });
 
-        m_clearPass.target = "SceneColor";
-        frameGraph.AddPass("ClearTarget", m_clearPass);
+        const uint32 instanceCount = static_cast<uint32>(scene.objects.size());
+        const BuildTlasPass::TlasSizes tlasSizes = m_buildTlasPass.QuerySizes(instanceCount);
 
-        m_meshPass.target = "SceneColor";
-        m_meshPass.depthTarget = "SceneDepth";
-        m_meshPass.pScene = m_pGpuScene;
-        m_meshPass.renderObjects = scene.objects;
-        frameGraph.AddPass("MeshPass", m_meshPass);
+        m_buildTlasPass.m_tlasHandle = frameGraph.CreateBuffer("TLAS",
+            Buffer::Desc{ .size = tlasSizes.resultSize, .flags = D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE });
 
-        return "SceneColor";
+        m_buildTlasPass.m_scratchHandle = frameGraph.CreateBuffer("TLASScratch",
+            Buffer::Desc{ .size = tlasSizes.scratchSize, .flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS });
+    }
+
+    void RasterBackend::FillFrameData(ShaderInterop::FrameData& frameData)
+    {
+        frameData.tlasIndex = m_buildTlasPass.GetTlasSrvIndex();
     }
 
     void RasterBackend::BuildUI()

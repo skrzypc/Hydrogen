@@ -52,7 +52,22 @@ namespace Hydrogen
 
 	FGResourceHandle FrameGraph::CreateBuffer(std::string_view name, Buffer::Desc desc)
 	{
-		return FGResourceHandle{};
+		H2_VERIFY(!m_resourceRegistry.contains(String::ToUpper(name)), "Resource '{}' already exists!", name);
+
+		FGBufferNode node{};
+		node.name = std::string(name);
+		node.desc = desc;
+		node.flags = desc.flags;
+
+		m_bufferNodes.push_back(std::move(node));
+
+		FGResourceHandle handle{};
+		handle.index = static_cast<uint16>(m_bufferNodes.size() - 1);
+		handle.type = FGResourceType::Buffer;
+		handle.version = 0;
+
+		m_resourceRegistry[String::ToUpper(name)] = handle;
+		return handle;
 	}
 
 	void FrameGraph::ImportTexture(std::string_view name, Texture* pTexture)
@@ -82,6 +97,24 @@ namespace Hydrogen
 
 	void FrameGraph::ImportBuffer(std::string_view name, Buffer* pBuffer)
 	{
+		H2_VERIFY(!m_resourceRegistry.contains(String::ToUpper(name)), "Resource '{}' already exists!", name);
+
+		FGBufferNode node{};
+		node.name = std::string(name);
+		node.pResource = pBuffer;
+		node.desc = pBuffer->GetDesc();
+		node.flags = pBuffer->GetDesc().flags;
+		node.resourceState = pBuffer->GetState();
+		node.bImported = true;
+
+		m_bufferNodes.push_back(std::move(node));
+
+		FGResourceHandle handle{};
+		handle.index = static_cast<uint16>(m_bufferNodes.size() - 1);
+		handle.type = FGResourceType::Buffer;
+		handle.version = 0;
+
+		m_resourceRegistry[String::ToUpper(name)] = handle;
 	}
 
 	FGResourceHandle FrameGraph::GetResource(std::string_view name) const
@@ -101,9 +134,9 @@ namespace Hydrogen
 		pass.Setup(builder);
 
 		fgPass.executeFn = [&pass](FGExecuteContext& ctx, GraphicsContext& gfx)
-		{
-			pass.Execute(ctx, gfx);
-		};
+			{
+				pass.Execute(ctx, gfx);
+			};
 	}
 
 
@@ -161,6 +194,7 @@ namespace Hydrogen
 
 			{
 				PIXScopedEvent(cmd, PIX_COLOR_INDEX(pass.index), pass.name.c_str());
+				//H2_INFO(eLogLevel::Verbose, "Frame graph executing pass: {}", pass.name);
 				pass.executeFn(m_executeContext, gfx);
 			}
 		}
@@ -186,7 +220,7 @@ namespace Hydrogen
 			if (node.bImported) continue;
 			if (node.pResource == nullptr) continue;
 
-			//m_resourceCache.ReleaseBuffer(node.pResource, m_currentFrame);
+			m_resourceCache.ReleaseBuffer(node.pResource, m_currentFrameNumber);
 			node.pResource = nullptr;
 		}
 
@@ -203,21 +237,74 @@ namespace Hydrogen
 
 	void FrameGraph::BuildAdjacencyList()
 	{
-		// Define dependencies between all passes.
-		for (uint32 passIdx = 0; passIdx < m_passes.size(); ++passIdx)
-		{
-			for (auto& node : m_passes[passIdx].nodes)
+		// Producer Pass -> WRITES
+		// Consumer Pass -> READS
+		std::unordered_map<uint32, uint32> lastProducer{};
+		std::unordered_map<uint32, std::vector<uint32>> consumersAfterLastWrite{};
+
+		auto resourceKey = [](const FGResourceHandle& handle) -> uint32
 			{
-				if (node.type != FGPassNodeType::Input) continue;
+				return (static_cast<uint32>(handle.type) << 16) | handle.index;
+			};
 
-				uint32 producerIdx = node.handle.IsTexture()
-					? m_textureNodes[node.handle.index].lastWritingPassIndex
-					: m_bufferNodes[node.handle.index].lastWritingPassIndex;
+		auto addDependency = [&](uint32 passIndex, uint32 dependencyPassIndex)
+			{
+				if (dependencyPassIndex == std::numeric_limits<uint32>::max() || dependencyPassIndex == passIndex)
+				{
+					return;
+				}
 
-				if (producerIdx == std::numeric_limits<uint32>::max()) continue;
+				m_passes[passIndex].dependencies.push_back(dependencyPassIndex);
+				m_passes[dependencyPassIndex].dependents.push_back(passIndex);
+			};
 
-				m_passes[passIdx].dependencies.push_back(producerIdx);
-				m_passes[producerIdx].dependents.push_back(passIdx);
+		// Define dependencies between all passes.
+		for (uint32 passIndex = 0; passIndex < m_passes.size(); ++passIndex)
+		{
+			// Read nodes
+			for (auto& node : m_passes[passIndex].nodes)
+			{
+				if (node.type != FGPassNodeType::Read)
+				{
+					continue;
+				}
+
+				uint32 resourceIndex = resourceKey(node.handle);
+
+				if (lastProducer.contains(resourceIndex))
+				{
+					addDependency(passIndex, lastProducer[resourceIndex]);
+				}
+
+				consumersAfterLastWrite[resourceIndex].push_back(passIndex);
+			}
+
+			// Write nodes
+			for (auto& node : m_passes[passIndex].nodes)
+			{
+				if (node.type != FGPassNodeType::Write)
+				{
+					continue;
+				}
+
+				uint32 resourceIndex = resourceKey(node.handle);
+				
+				if (lastProducer.contains(resourceIndex))
+				{
+					addDependency(passIndex, lastProducer[resourceIndex]);
+				}
+
+				if (consumersAfterLastWrite.contains(resourceIndex))
+				{
+					for (uint32 consumerPassIndex : consumersAfterLastWrite[resourceIndex])
+					{
+						addDependency(passIndex, consumerPassIndex);
+					}
+
+					consumersAfterLastWrite[resourceIndex].clear();
+				}
+				
+				lastProducer[resourceIndex] = passIndex;
 			}
 		}
 	}
@@ -308,7 +395,7 @@ namespace Hydrogen
 			pass.refCount = 0;
 			for (auto& node : pass.nodes)
 			{
-				if (node.type != FGPassNodeType::Output)
+				if (node.type != FGPassNodeType::Write)
 				{
 					continue;
 				}
@@ -345,7 +432,7 @@ namespace Hydrogen
 			if (node.bImported) continue;
 
 			// Allocate if anyone reads it, OR if a live pass writes to it.
-			bool writtenByLivePass = 
+			bool writtenByLivePass =
 				node.lastWritingPassIndex != std::numeric_limits<uint32>::max() && !m_passes[node.lastWritingPassIndex].bCulled;
 			if (node.refCount == 0 && !writtenByLivePass) continue;
 
@@ -358,9 +445,14 @@ namespace Hydrogen
 
 		for (auto& node : m_bufferNodes)
 		{
-			if (node.bImported || node.refCount == 0) continue;
+			if (node.bImported) continue;
 
-			//node.pResource = m_resourceCache.AcquireBuffer(node.desc, m_currentFrameNumber);
+			// Allocate if anyone reads it, OR if a live pass writes to it (e.g. write-only scratch).
+			bool writtenByLivePass =
+				node.lastWritingPassIndex != std::numeric_limits<uint32>::max() && !m_passes[node.lastWritingPassIndex].bCulled;
+			if (node.refCount == 0 && !writtenByLivePass) continue;
+
+			node.pResource = m_resourceCache.AcquireBuffer(node.desc, m_currentFrameNumber);
 
 			H2_VERIFY(node.pResource != nullptr, "Failed to allocate buffer resource for node: {}", node.name);
 
@@ -376,7 +468,7 @@ namespace Hydrogen
 
 			for (auto& passNode : pass.nodes)
 			{
-				bool isWrite = passNode.type == FGPassNodeType::Output;
+				bool isWrite = passNode.type == FGPassNodeType::Write;
 
 				if (passNode.handle.IsTexture())
 				{
@@ -471,34 +563,43 @@ namespace Hydrogen
 
 			for (auto& passNode : pass.nodes)
 			{
-				if (!passNode.handle.IsTexture()) continue;
+				const uint32 key = FGExecuteContext::ResourceKey(passNode.handle);
 
-				FGTextureNode& node = m_textureNodes[passNode.handle.index];
-
-				switch (passNode.access.resourceUsage)
+				if (passNode.handle.IsTexture())
 				{
-				case FGUsage::RTV:
-					// Does it make sense to copy this to the execute context?
-					m_executeContext.m_rtvMap[passNode.handle.index] = m_resourceCache.GetRTV(node.pResource, passNode.range).dxCpuHandle;
-					break;
+					FGTextureNode& node = m_textureNodes[passNode.handle.index];
 
-				case FGUsage::DSV:
-					// Does it make sense to copy this to the execute context?
-					m_executeContext.m_dsvMap[passNode.handle.index] = m_resourceCache.GetDSV(node.pResource, passNode.range).dxCpuHandle;
-					break;
+					switch (passNode.access.resourceUsage)
+					{
+					case FGUsage::RTV:
+						m_executeContext.m_rtvMap[key] = m_resourceCache.GetRTV(node.pResource, passNode.range).dxCpuHandle;
+						break;
 
-				case FGUsage::SRV:
-				case FGUsage::UAV:
-					// TODO: bindless
-					break;
+					case FGUsage::DSV:
+						m_executeContext.m_dsvMap[key] = m_resourceCache.GetDSV(node.pResource, passNode.range).dxCpuHandle;
+						break;
 
-				case FGUsage::None:
-					break;
+					case FGUsage::SRV:
+					case FGUsage::UAV:
+						// TODO: bindless
+						break;
+
+					case FGUsage::None:
+						break;
+					}
+
+					m_executeContext.m_resourceMap[key] = node.pResource->GetResource();
 				}
-
-				m_executeContext.m_resourceMap[passNode.handle.index] = node.pResource->GetResource();
+				else if (passNode.handle.IsBuffer())
+				{
+					FGBufferNode& node = m_bufferNodes[passNode.handle.index];
+					if (node.pResource)
+					{
+						m_executeContext.m_resourceMap[key] = node.pResource->GetResource();
+					}
 				}
 			}
+		}
 	}
 
 	void FrameGraph::RestoreImportedResources(ID3D12GraphicsCommandList7* cmd)
