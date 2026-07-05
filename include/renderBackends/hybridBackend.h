@@ -7,7 +7,7 @@
 
 namespace Hydrogen
 {
-    class RasterBackend : public IRenderBackend
+    class HybridBackend : public IRenderBackend
     {
     public:
         void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler, GpuScene& gpuScene) override;
@@ -17,7 +17,7 @@ namespace Hydrogen
         void FillFrameData(ShaderInterop::FrameData& frameData) override;
         void BuildUI() override;
 
-        const char* GetName() const override { return "Raster"; }
+        const char* GetName() const override { return "Hybrid"; }
 
     private:
         void DefineFrameGraphResources(FrameGraph& frameGraph, const RenderScene& scene, const Texture::Desc& outputDesc);

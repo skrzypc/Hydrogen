@@ -72,7 +72,7 @@ namespace Hydrogen
 		float32 m_time = 0.0f;
 
 		std::unique_ptr<IRenderBackend> m_backend;
-		eRenderBackendType m_backendType = eRenderBackendType::Raster;
+		eRenderBackendType m_backendType = eRenderBackendType::Hybrid;
 
 		CopyPass m_copyPass{};
 		ImguiPass m_imguiPass{};

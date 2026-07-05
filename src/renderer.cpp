@@ -13,7 +13,8 @@
 #include <imgui_impl_win32.h>
 
 #include "renderer.h"
-#include "renderBackends/rasterBackend.h"
+#include "renderBackends/hybridBackend.h"
+#include "renderBackends/pathTracerBackend.h"
 #include "logger.h"
 #include "verifier.h"
 #include "stringUtilities.h"
@@ -59,7 +60,7 @@ namespace Hydrogen
 		viewSrvDesc.Buffer.StructureByteStride = sizeof(ShaderInterop::ViewData);
 		m_viewBufferSrv = m_gpuDevice.CreateShaderResourceView(m_viewBuffer.get(), viewSrvDesc);
 
-		CreateBackend(eRenderBackendType::Raster);
+		CreateBackend(eRenderBackendType::Hybrid);
 
 		ImGui::CreateContext();
 		ImGui_ImplWin32_Init(hWnd);
@@ -108,12 +109,20 @@ namespace Hydrogen
 
 	void Renderer::CreateBackend(eRenderBackendType type)
 	{
-		if (type == eRenderBackendType::Raster)
+		switch (type)
 		{
-			m_backend = std::make_unique<RasterBackend>();
-			m_backend->Initialize(m_gpuDevice, m_shaderCompiler, m_gpuScene);
+		case eRenderBackendType::Hybrid:
+			m_backend = std::make_unique<HybridBackend>();
+			break;
+		case eRenderBackendType::PathTracer:
+			m_backend = std::make_unique<PathTracerBackend>();
+			break;
+		default:
+			H2_VERIFY_FATAL(false, "Unknown render backend type!");
+			break;
 		}
 
+		m_backend->Initialize(m_gpuDevice, m_shaderCompiler, m_gpuScene);
 		m_backendType = type;
 	}
 
@@ -133,6 +142,22 @@ namespace Hydrogen
 
 	void Renderer::BuildBackendUI()
 	{
+		static constexpr std::array<const char*, static_cast<size_t>(eRenderBackendType::Count)> backendNames =
+		{
+			"Hybrid",
+			"PathTracer",
+		};
+
+		ImGui::Begin("Renderer");
+
+		int selected = static_cast<int>(m_backendType);
+		if (ImGui::Combo("Backend", &selected, backendNames.data(), static_cast<int>(backendNames.size())))
+		{
+			SwitchBackend(static_cast<eRenderBackendType>(selected));
+		}
+
+		ImGui::End();
+
 		m_backend->BuildUI();
 	}
 
