@@ -12,13 +12,13 @@
 
 namespace Hydrogen
 {
-	void GpuScene::Initialize(GpuDevice& device, GpuUploader& uploader, uint32 maxVertices, uint32 maxIndices, uint32 maxObjects, uint32 maxViews)
+	void GpuScene::Initialize(GpuDevice& device, GpuUploader& uploader, uint32 maxVertices, uint32 maxIndices, uint32 sceneCapacity, uint32 maxViews)
 	{
 		m_pDevice = &device;
 		m_pUploader = &uploader;
 		m_maxVertices = maxVertices;
 		m_maxIndices = maxIndices;
-		m_maxObjects = maxObjects;
+		m_sceneCapacity = sceneCapacity;
 
 		ResourceState initialState{};
 
@@ -46,27 +46,38 @@ namespace Hydrogen
 		srvDesc.Buffer.StructureByteStride = sizeof(uint32);
 		m_indexSrv = device.CreateShaderResourceView(m_indexBuffer.get(), srvDesc);
 
-		m_transformBuffer = device.CreateUploadBuffer(L"H2_SCENE_TRANSFORMS", maxObjects * sizeof(DirectX::XMFLOAT4X4));
-		srvDesc.Buffer.NumElements = maxObjects;
+		m_transformBuffer = device.CreateUploadBuffer(L"H2_SCENE_TRANSFORMS", m_sceneCapacity * sizeof(DirectX::XMFLOAT4X4));
+		srvDesc.Buffer.NumElements = m_sceneCapacity;
 		srvDesc.Buffer.StructureByteStride = sizeof(DirectX::XMFLOAT4X4);
 		m_transformBufferSrv = device.CreateShaderResourceView(m_transformBuffer.get(), srvDesc);
 
 		for (uint32 i = 0; i < Config::FramesInFlight; ++i)
 		{
-			m_instanceDescs[i] = device.CreateUploadBuffer(L"H2_SCENE_TLAS_INSTANCES", maxObjects * sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
+			m_instanceDescs[i] = device.CreateUploadBuffer(L"H2_SCENE_TLAS_INSTANCES", m_sceneCapacity * sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
 		}
 	}
 
-	void GpuScene::RegisterMesh(MeshHandle handle, const Mesh& mesh)
+	void GpuScene::RegisterMesh(MeshHandle handle, Mesh&& mesh)
 	{
-		m_meshUploadQueue.push(QueuedMesh{ handle, mesh });
+		if (handle.id >= m_gpuMeshCache.size())
+		{
+			m_gpuMeshCache.resize(handle.id + 1);
+		}
+
+		if (m_gpuMeshCache[handle.id].state != GpuMeshState::Empty)
+		{
+			return;
+		}
+
+		m_gpuMeshCache[handle.id].state = GpuMeshState::Registered;
+		m_meshUploadQueue.push(MeshUploadData{ handle, std::move(mesh) });
 	}
 
 	void GpuScene::RegisterMeshes(std::vector<MeshHandle>& meshHandles, std::vector<Mesh>& meshes)
 	{
 		for (uint32 i = 0; i < meshHandles.size(); ++i)
 		{
-			m_meshUploadQueue.push(QueuedMesh{ meshHandles[i], std::move(meshes[i]) });
+			RegisterMesh(meshHandles[i], std::move(meshes[i]));
 		}
 	}
 
@@ -74,9 +85,9 @@ namespace Hydrogen
 	{
 		m_currentFrameIndex = frameIndex;
 
-		DrainUploadQueue();
-		PromoteCompletedUploads();
-		PromoteCompletedBLAS();
+		ProcessMeshUploads();
+		ProcessBlasBuilds();
+		PublishReadyMeshes();
 
 		UpdateTransforms(renderScene.objects);
 
@@ -89,49 +100,49 @@ namespace Hydrogen
 		return bindings;
 	}
 
-	void GpuScene::DrainUploadQueue()
+	void GpuScene::ProcessMeshUploads()
 	{
 		if (m_meshUploadQueue.empty())
 		{
 			return;
 		}
 
-		const uint32 firstPendingIdx = static_cast<uint32>(m_pendingUploads.size());
+		const uint32 firstPendingIdx = static_cast<uint32>(m_inFlightMeshUploads.size());
 		uint32 count = 0;
 
 		while (!m_meshUploadQueue.empty() && count < m_maxMeshUploadsPerFrame)
 		{
-			QueuedMesh& queued = m_meshUploadQueue.front();
-			const uint32 meshIndex = static_cast<uint32>(m_meshes.size());
+			MeshUploadData& queued = m_meshUploadQueue.front();
 
-			StageMesh(queued.handle, queued.mesh);
-			m_pendingUploads.push_back(PendingMeshUpload{ meshIndex, queued.handle.id, 0 });
+			UploadMeshGeometry(queued.handle, queued.mesh);
+			m_inFlightMeshUploads.push_back(InFlightMeshUploadData{ queued.handle, 0 });
 			m_meshUploadQueue.pop();
 			++count;
 		}
 
 		const uint64 fence = m_pUploader->Flush();
-		for (uint32 i = firstPendingIdx; i < static_cast<uint32>(m_pendingUploads.size()); ++i)
+		for (uint32 i = firstPendingIdx; i < static_cast<uint32>(m_inFlightMeshUploads.size()); ++i)
 		{
-			m_pendingUploads[i].copyFence = fence;
+			m_inFlightMeshUploads[i].copyFence = fence;
 		}
 	}
 
-	void GpuScene::PromoteCompletedUploads()
+	void GpuScene::ProcessBlasBuilds()
 	{
-		if (m_pendingUploads.empty())
+		if (m_inFlightMeshUploads.empty())
 		{
 			return;
 		}
 
 		const uint64 completedCopy = m_pDevice->GetCompletedFenceValue<eQueueType::Copy>();
 
-		std::vector<PendingMeshUpload> ready{};
-		std::vector<PendingMeshUpload> remaining{};
-		for (auto& entry : m_pendingUploads)
+		std::vector<InFlightMeshUploadData> ready{};
+		std::vector<InFlightMeshUploadData> remaining{};
+		for (auto& entry : m_inFlightMeshUploads)
 		{
 			if (entry.copyFence <= completedCopy)
 			{
+				m_gpuMeshCache[entry.handle.id].state = GpuMeshState::GeometryReady;
 				ready.push_back(entry);
 			}
 			else
@@ -139,15 +150,15 @@ namespace Hydrogen
 				remaining.push_back(entry);
 			}
 		}
-		m_pendingUploads = std::move(remaining);
+		m_inFlightMeshUploads = std::move(remaining);
 
 		if (!ready.empty())
 		{
-			BuildPendingBlas(ready);
+			BuildBlas(ready);
 		}
 	}
 
-	void GpuScene::BuildPendingBlas(std::span<const PendingMeshUpload> uploads)
+	void GpuScene::BuildBlas(std::span<const InFlightMeshUploadData> uploads)
 	{
 		uint64 totalScratchSize = 0ull;
 		std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> rtGeometryDescs(uploads.size());
@@ -156,7 +167,7 @@ namespace Hydrogen
 
 		for (uint32 i = 0; i < uploads.size(); ++i)
 		{
-			const GpuMesh& mesh = m_meshes[uploads[i].meshIndex];
+			const GpuMesh& mesh = m_gpuMeshCache[uploads[i].handle.id];
 
 			rtGeometryDescs[i] = {};
 			rtGeometryDescs[i].Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
@@ -183,7 +194,7 @@ namespace Hydrogen
 			totalScratchSize += alignedScratch;
 		}
 
-		auto& scratch = m_blasScratch[m_currentFrameIndex];
+		auto& scratch = m_blasScratchBuffers[m_currentFrameIndex];
 		if (!scratch || scratch->GetDesc().size < totalScratchSize)
 		{
 			ResourceState uavState{};
@@ -201,7 +212,7 @@ namespace Hydrogen
 
 		for (uint32 i = 0; i < uploads.size(); ++i)
 		{
-			const GpuMesh& mesh = m_meshes[uploads[i].meshIndex];
+			const GpuMesh& mesh = m_gpuMeshCache[uploads[i].handle.id];
 
 			ResourceState asState{};
 			asState.access = D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE;
@@ -237,7 +248,7 @@ namespace Hydrogen
 					.Size = UINT64_MAX,
 				});
 
-			m_pendingBlasBuilds.push_back(PendingBlas{ uploads[i].meshIndex, uploads[i].handleId, firstBlasIdx + i, 0 });
+			m_inFlightBlasBuilds.push_back(InFlightBlasBuildData{ uploads[i].handle, firstBlasIdx + i, 0 });
 		}
 
 		D3D12_BARRIER_GROUP blasBarrierGroup
@@ -249,43 +260,45 @@ namespace Hydrogen
 		graphicsContext.CmdList()->Barrier(1, &blasBarrierGroup);
 
 		const uint64 fence = m_pDevice->ExecuteGraphicsContext(std::move(graphicsContext));
-		for (auto& entry : m_pendingBlasBuilds)
+		for (auto& entry : m_inFlightBlasBuilds)
 		{
-			if (entry.directFence == 0)
+			if (entry.buildFence == 0)
 			{
-				entry.directFence = fence;
+				entry.buildFence = fence;
 			}
 		}
 	}
 
-	void GpuScene::PromoteCompletedBLAS()
+	void GpuScene::PublishReadyMeshes()
 	{
-		if (m_pendingBlasBuilds.empty())
+		if (m_inFlightBlasBuilds.empty())
 		{
 			return;
 		}
 
 		const uint64 completedDirect = m_pDevice->GetCompletedFenceValue<eQueueType::Direct>();
 
-		std::vector<PendingBlas> remaining;
-		for (auto& entry : m_pendingBlasBuilds)
+		std::vector<InFlightBlasBuildData> remaining;
+		for (auto& entry : m_inFlightBlasBuilds)
 		{
-			if (entry.directFence <= completedDirect)
+			if (entry.buildFence <= completedDirect)
 			{
-				const uint64 address = m_blasBuffers[entry.blasBufferIndex]->GetResource()->GetGPUVirtualAddress();
-				m_meshes[entry.meshIndex].blasAddress = address;
-				m_gpuMeshCache[entry.handleId].blasAddress = address;
+				GpuMesh& gpuMesh = m_gpuMeshCache[entry.handle.id];
+				gpuMesh.blasAddress = m_blasBuffers[entry.blasBufferIndex]->GetResource()->GetGPUVirtualAddress();
+				gpuMesh.state = GpuMeshState::BlasReady;
 			}
 			else
 			{
 				remaining.push_back(entry);
 			}
 		}
-		m_pendingBlasBuilds = std::move(remaining);
+		m_inFlightBlasBuilds = std::move(remaining);
 	}
 
 	void GpuScene::UpdateTransforms(std::span<const RenderObject> objects)
 	{
+		H2_VERIFY_FATAL(objects.size() <= m_sceneCapacity, "RenderScene object count exceeds scene capacity!");
+
 		auto* pDescs = reinterpret_cast<D3D12_RAYTRACING_INSTANCE_DESC*>(
 			m_instanceDescs[m_currentFrameIndex]->GetMappedPtr());
 
@@ -297,24 +310,25 @@ namespace Hydrogen
 			m_transformBuffer->Write(&obj.worldMatrix, sizeof(DirectX::XMFLOAT4X4), transformIndex * sizeof(DirectX::XMFLOAT4X4));
 
 			const GpuMesh* pMesh = GetGpuMesh(obj.mesh);
-			D3D12_RAYTRACING_INSTANCE_DESC& desc = pDescs[transformIndex];
-			desc = {};
-			desc.InstanceMask = (pMesh && pMesh->blasAddress != 0) ? 0xFF : 0x00;
-			if (pMesh && pMesh->blasAddress != 0)
+			if (!pMesh || pMesh->state != GpuMeshState::BlasReady)
 			{
-				DirectX::XMMATRIX worldMatrix = DirectX::XMLoadFloat4x4(&obj.worldMatrix);
-				DirectX::XMMATRIX worldMatrixT = DirectX::XMMatrixTranspose(worldMatrix);
-				memcpy(desc.Transform, &worldMatrixT, sizeof(desc.Transform));
-				desc.InstanceID = transformIndex;
-				desc.AccelerationStructure = pMesh->blasAddress;
-				++instanceCount;
+				continue;
 			}
+
+			D3D12_RAYTRACING_INSTANCE_DESC& desc = pDescs[instanceCount];
+			desc = {};
+			DirectX::XMMATRIX worldMatrixT = DirectX::XMMatrixTranspose(DirectX::XMLoadFloat4x4(&obj.worldMatrix));
+			memcpy(desc.Transform, &worldMatrixT, sizeof(desc.Transform));
+			desc.InstanceID = transformIndex;
+			desc.InstanceMask = 0xFF;
+			desc.AccelerationStructure = pMesh->blasAddress;
+			++instanceCount;
 		}
 
 		m_lastInstanceCount = instanceCount;
 	}
 
-	void GpuScene::StageMesh(MeshHandle handle, const Mesh& src)
+	void GpuScene::UploadMeshGeometry(MeshHandle handle, const Mesh& src)
 	{
 		const uint32 vertexCount = static_cast<uint32>(src.positions.size());
 		const uint32 indexCount = static_cast<uint32>(src.indices.size());
@@ -327,7 +341,7 @@ namespace Hydrogen
 		m_pUploader->Upload(src.uvs.data(), vertexCount * sizeof(DirectX::XMFLOAT2), m_uvBuffer.get(), m_nextVertex * sizeof(DirectX::XMFLOAT2));
 		m_pUploader->Upload(src.indices.data(), indexCount * sizeof(uint32), m_indexBuffer.get(), m_nextIndex * sizeof(uint32));
 
-		GpuMesh& gpuMesh = m_meshes.emplace_back();
+		GpuMesh& gpuMesh = m_gpuMeshCache[handle.id];
 		gpuMesh.name = src.name;
 		gpuMesh.baseVertex = m_nextVertex;
 		gpuMesh.vertexCount = vertexCount;
@@ -336,12 +350,6 @@ namespace Hydrogen
 
 		m_nextVertex += vertexCount;
 		m_nextIndex += indexCount;
-
-		if (handle.id >= m_gpuMeshCache.size())
-		{
-			m_gpuMeshCache.resize(handle.id + 1);
-		}
-		m_gpuMeshCache[handle.id] = gpuMesh;
 	}
 
 	const GpuMesh* GpuScene::GetGpuMesh(MeshHandle handle) const

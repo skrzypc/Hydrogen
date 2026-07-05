@@ -93,7 +93,7 @@ namespace Hydrogen
 		for (uint32 i = 0; i < static_cast<uint32>(renderObjects.size()); ++i)
 		{
 			const GpuMesh* gpuMesh = pScene->GetGpuMesh(renderObjects[i].mesh);
-			if (!gpuMesh)
+			if (!gpuMesh || gpuMesh->state < GpuMeshState::GeometryReady)
 			{
 				continue;
 			}

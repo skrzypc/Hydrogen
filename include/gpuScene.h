@@ -36,10 +36,10 @@ namespace Hydrogen
 	class GpuScene
 	{
 	public:
-		void Initialize(GpuDevice& device, GpuUploader& uploader, uint32 maxVertices, uint32 maxIndices, uint32 maxObjects = 100'000, uint32 maxViews = 16);
+		void Initialize(GpuDevice& device, GpuUploader& uploader, uint32 maxVertices, uint32 maxIndices, uint32 sceneCapacity = 100'000, uint32 maxViews = 16);
 
 		// Enqueues a mesh for upload. Actual GPU upload happens during Update(), up to m_maxMeshUploadsPerFrame per frame.
-		void RegisterMesh(MeshHandle handle, const Mesh& mesh);
+		void RegisterMesh(MeshHandle handle, Mesh&& mesh);
 		void RegisterMeshes(std::vector<MeshHandle>& meshHandles, std::vector<Mesh>& meshes);
 
 		SceneBindings Update(const RenderScene& renderScene, uint32 frameIndex);
@@ -51,15 +51,17 @@ namespace Hydrogen
 		uint32 GetInstanceCount() const { return m_lastInstanceCount; }
 
 	private:
-		struct PendingMeshUpload { uint32 meshIndex = 0; uint32 handleId = 0; uint64 copyFence = 0; };
-		struct PendingBlas { uint32 meshIndex = 0; uint32 handleId = 0; uint32 blasBufferIndex = 0; uint64 directFence = 0; };
-		struct QueuedMesh { MeshHandle handle{}; Mesh mesh{}; };
+		struct MeshUploadData { MeshHandle handle{}; Mesh mesh{}; };
+		struct InFlightMeshUploadData { MeshHandle handle{}; uint64 copyFence = 0; };
+		struct InFlightBlasBuildData { MeshHandle handle{}; uint32 blasBufferIndex = 0; uint64 buildFence = 0; };
 
-		void DrainUploadQueue();
-		void StageMesh(MeshHandle handle, const Mesh& mesh);
-		void PromoteCompletedUploads();
-		void PromoteCompletedBLAS();
-		void BuildPendingBlas(std::span<const PendingMeshUpload> uploads);
+		void ProcessMeshUploads();
+		void ProcessBlasBuilds();
+		void PublishReadyMeshes();
+
+		void UploadMeshGeometry(MeshHandle handle, const Mesh& mesh);
+		void BuildBlas(std::span<const InFlightMeshUploadData> uploads);
+
 		void UpdateTransforms(std::span<const RenderObject> objects);
 
 		GpuDevice* m_pDevice = nullptr;
@@ -67,10 +69,10 @@ namespace Hydrogen
 
 		uint32 m_maxVertices = 0;
 		uint32 m_maxIndices = 0;
+		uint32 m_sceneCapacity = 0;
 		uint32 m_nextVertex = 0;
 		uint32 m_nextIndex = 0;
 
-		std::vector<GpuMesh> m_meshes{};
 		std::vector<GpuMesh> m_gpuMeshCache{};
 
 		std::unique_ptr<Buffer> m_positionBuffer{};
@@ -89,20 +91,17 @@ namespace Hydrogen
 		ShaderResourceViewHandle m_transformBufferSrv{};
 
 		// Async mesh pipeline
-		std::queue<QueuedMesh> m_meshUploadQueue{};
-		uint32 m_maxMeshUploadsPerFrame = 32;
-		std::vector<PendingMeshUpload> m_pendingUploads{};
-		std::vector<PendingBlas> m_pendingBlasBuilds{};
+		static constexpr uint32 m_maxMeshUploadsPerFrame = 32;
+		std::queue<MeshUploadData> m_meshUploadQueue{};
+		std::vector<InFlightMeshUploadData> m_inFlightMeshUploads{};
+		std::vector<InFlightBlasBuildData> m_inFlightBlasBuilds{};
 
-		// BLAS — one per registered mesh, built once
-		std::array<std::unique_ptr<Buffer>, Config::FramesInFlight> m_blasScratch{};
+		std::array<std::unique_ptr<Buffer>, Config::FramesInFlight> m_blasScratchBuffers{};
 		std::vector<std::unique_ptr<Buffer>> m_blasBuffers{};
 
-		// Instance descs — triple-buffered, written by CPU each frame, read by BuildTlasPass
 		std::array<std::unique_ptr<UploadBuffer>, Config::FramesInFlight> m_instanceDescs{};
 		uint32 m_lastInstanceCount = 0;
 
-		uint32 m_maxObjects = 0;
 		uint32 m_currentFrameIndex = 0;
 	};
 }
