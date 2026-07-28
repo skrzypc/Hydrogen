@@ -81,7 +81,7 @@ namespace Hydrogen
             Buffer::Desc{ .size = tlasSizes.scratchSize, .flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS });
     }
 
-    void HybridBackend::FillFrameData(ShaderInterop::FrameData& frameData)
+    void HybridBackend::FillFrameData(FrameData& frameData)
     {
         frameData.tlasIndex = m_buildTlasPass.GetTlasSrvIndex();
     }

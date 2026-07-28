@@ -17,7 +17,7 @@ namespace Hydrogen
     enum class eRenderBackendType : uint8
     {
         Hybrid = 0,
-        PathTracer,
+        RayTracing,
         Count
     };
 
@@ -32,7 +32,7 @@ namespace Hydrogen
         virtual std::string_view Render(FrameGraph& frameGraph, const RenderScene& scene, const Texture::Desc& outputDesc) = 0;
 
         // TODO: consider per-backend FrameData struct if backends diverge significantly
-        virtual void FillFrameData(ShaderInterop::FrameData& frameData) {}
+        virtual void FillFrameData(FrameData& frameData) {}
 
         virtual void BuildUI() {}
 

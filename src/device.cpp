@@ -282,6 +282,19 @@ namespace Hydrogen
 		m_pDxDevice->CreateShaderResourceView(nullptr, &srvDesc, m_cbvSrvUavDescriptorHeap.GetCpuHandle(handle.index));
 	}
 
+	UnorderedAccessViewHandle GpuDevice::CreateUnorderedAccessView(const Texture* pTexture, const D3D12_UNORDERED_ACCESS_VIEW_DESC& uavDesc)
+	{
+		uint32 index = m_cbvSrvUavDescriptorHeap.Allocate(1);
+		ID3D12Resource* pResource = pTexture ? pTexture->GetResource() : nullptr;
+		m_pDxDevice->CreateUnorderedAccessView(pResource, nullptr, &uavDesc, m_cbvSrvUavDescriptorHeap.GetCpuHandle(index));
+		return UnorderedAccessViewHandle{ .index = index };
+	}
+
+	void GpuDevice::UpdateUnorderedAccessView(UnorderedAccessViewHandle handle, ID3D12Resource* pResource, const D3D12_UNORDERED_ACCESS_VIEW_DESC& uavDesc)
+	{
+		m_pDxDevice->CreateUnorderedAccessView(pResource, nullptr, &uavDesc, m_cbvSrvUavDescriptorHeap.GetCpuHandle(handle.index));
+	}
+
 	void GpuDevice::Initialize()
 	{
 		m_directCommandQueue.Initialize(

@@ -1,42 +1,54 @@
 #pragma once
 
+#ifdef __cplusplus
 #include <DirectXMath.h>
-
 #include "basicTypes.h"
 
-namespace Hydrogen::ShaderInterop
+namespace Hydrogen
 {
+	using float2 = DirectX::XMFLOAT2;
+	using float3 = DirectX::XMFLOAT3;
+	using float4x4 = DirectX::XMFLOAT4X4;
+	using uint2 = DirectX::XMUINT2;
+	using uint = uint32;
+#endif
+
 	struct FrameData
 	{
-		uint32 vertexPositionBufferIndex = 0u;
-		uint32 vertexNormalBufferIndex = 0u;
-		uint32 vertexUvBufferIndex = 0u;
-		uint32 transformBufferIndex = 0u;
+		uint vertexPositionBufferIndex;
+		uint vertexNormalBufferIndex;
+		uint vertexUvBufferIndex;
+		uint transformBufferIndex;
 
-		uint32 viewBufferIndex = 0u;
-		uint32 mainViewIndex = 0u;
+		uint outputTargetUavIndex;
 
-		float32 time = 0.0f;
-		float32 deltaTime = 0.0f;
-		uint32 frameNumber = 0u;
-		uint32 tlasIndex = 0u;
+		uint viewBufferIndex;
+		uint mainViewIndex;
+
+		uint tlasIndex;
+
+		float time;
+		float deltaTime;
+		uint frameNumber;
 	};
 
 	struct ViewData
 	{
-		DirectX::XMFLOAT4X4 viewMx{};
-		DirectX::XMFLOAT4X4 projectionMx{};
-		DirectX::XMFLOAT4X4 viewProjectionMx{};
-		DirectX::XMFLOAT4X4 invViewProjectionMx{};
+		float4x4 viewMx;
+		float4x4 projectionMx;
+		float4x4 viewProjectionMx;
+		float4x4 invViewProjectionMx;
 
-		DirectX::XMFLOAT3 worldPosition{};
-		float32 nearPlane = 0.0f;
+		float3 worldPosition;
+		float nearPlane;
 
-		DirectX::XMFLOAT3 worldDirection{};
-		float32 farPlane = 0.0f;
+		float3 worldDirection;
+		float farPlane;
 
-		DirectX::XMFLOAT2 viewportSize{};
-		uint32 _pad0 = 0u;
-		uint32 _pad1 = 0u;
+		float2 viewportSize;
+		uint2 _pad;
 	};
-}
+
+#ifdef __cplusplus
+} // namespace Hydrogen
+#endif

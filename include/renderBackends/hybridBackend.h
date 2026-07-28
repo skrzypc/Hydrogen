@@ -14,7 +14,7 @@ namespace Hydrogen
         void Shutdown() override;
 
         std::string_view Render(FrameGraph& frameGraph, const RenderScene& scene, const Texture::Desc& outputDesc) override;
-        void FillFrameData(ShaderInterop::FrameData& frameData) override;
+        void FillFrameData(FrameData& frameData) override;
         void BuildUI() override;
 
         const char* GetName() const override { return "Hybrid"; }

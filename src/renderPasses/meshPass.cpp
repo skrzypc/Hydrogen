@@ -13,7 +13,7 @@ namespace Hydrogen
 	{
 		Shader::Desc vsDesc
 		{
-			.sourcePath = "mesh.vs",
+			.sourcePath = "mesh.vs.hlsl",
 			.name = "MeshVS",
 			.entryPoint = "mainVS",
 			.type = eShaderType::VS,
@@ -21,7 +21,7 @@ namespace Hydrogen
 
 		Shader::Desc psDesc
 		{
-			.sourcePath = "mesh.ps",
+			.sourcePath = "mesh.ps.hlsl",
 			.name = "MeshPS",
 			.entryPoint = "mainPS",
 			.type = eShaderType::PS,

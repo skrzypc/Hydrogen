@@ -14,7 +14,7 @@
 
 #include "renderer.h"
 #include "renderBackends/hybridBackend.h"
-#include "renderBackends/pathTracerBackend.h"
+#include "renderBackends/rayTracingBackend.h"
 #include "logger.h"
 #include "verifier.h"
 #include "stringUtilities.h"
@@ -49,7 +49,7 @@ namespace Hydrogen
 		m_gpuUploader.Initialize(m_gpuDevice, 256 * 1024 * 1024);
 		m_gpuScene.Initialize(m_gpuDevice, m_gpuUploader, 10'000'000, 30'000'000);
 
-		m_viewBuffer = m_gpuDevice.CreateUploadBuffer(L"H2_VIEW_BUFFER", m_maxViews * sizeof(ShaderInterop::ViewData));
+		m_viewBuffer = m_gpuDevice.CreateUploadBuffer(L"H2_VIEW_BUFFER", m_maxViews * sizeof(ViewData));
 		D3D12_SHADER_RESOURCE_VIEW_DESC viewSrvDesc{};
 		viewSrvDesc.Format = DXGI_FORMAT_UNKNOWN;
 		viewSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
@@ -57,7 +57,7 @@ namespace Hydrogen
 		viewSrvDesc.Buffer.FirstElement = 0;
 		viewSrvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
 		viewSrvDesc.Buffer.NumElements = m_maxViews;
-		viewSrvDesc.Buffer.StructureByteStride = sizeof(ShaderInterop::ViewData);
+		viewSrvDesc.Buffer.StructureByteStride = sizeof(ViewData);
 		m_viewBufferSrv = m_gpuDevice.CreateShaderResourceView(m_viewBuffer.get(), viewSrvDesc);
 
 		CreateBackend(eRenderBackendType::Hybrid);
@@ -114,8 +114,8 @@ namespace Hydrogen
 		case eRenderBackendType::Hybrid:
 			m_backend = std::make_unique<HybridBackend>();
 			break;
-		case eRenderBackendType::PathTracer:
-			m_backend = std::make_unique<PathTracerBackend>();
+		case eRenderBackendType::RayTracing:
+			m_backend = std::make_unique<RayTracingBackend>();
 			break;
 		default:
 			H2_VERIFY_FATAL(false, "Unknown render backend type!");
@@ -145,7 +145,7 @@ namespace Hydrogen
 		static constexpr std::array<const char*, static_cast<size_t>(eRenderBackendType::Count)> backendNames =
 		{
 			"Hybrid",
-			"PathTracer",
+			"RayTracing",
 		};
 
 		ImGui::Begin("Renderer");
@@ -190,19 +190,21 @@ namespace Hydrogen
 			renderScene.camera.nearZ, renderScene.camera.farZ);
 		const Matrix vp = view * proj;
 
-		ShaderInterop::ViewData viewData{};
+		ViewData viewData{};
 		XMStoreFloat4x4(&viewData.viewMx, view);
 		XMStoreFloat4x4(&viewData.projectionMx, proj);
 		XMStoreFloat4x4(&viewData.viewProjectionMx, vp);
 		XMStoreFloat4x4(&viewData.invViewProjectionMx, vp.Invert());
+		viewData.worldPosition = renderScene.camera.position;
+		viewData.worldDirection = Vector3::Transform(Forward, renderScene.camera.rotation);
 		viewData.nearPlane = renderScene.camera.nearZ;
 		viewData.farPlane = renderScene.camera.farZ;
 		viewData.viewportSize = { static_cast<float32>(bbDesc.width), static_cast<float32>(bbDesc.height) };
-		m_viewBuffer->Write(&viewData, sizeof(ShaderInterop::ViewData), 0);
+		m_viewBuffer->Write(&viewData, sizeof(ViewData), 0);
 
 		const SceneBindings bindings = m_gpuScene.Update(renderScene, m_currentFrameIndex);
 
-		ShaderInterop::FrameData frameData{};
+		FrameData frameData{};
 		frameData.viewBufferIndex = m_viewBufferSrv.index;
 		frameData.mainViewIndex = 0;
 		frameData.vertexPositionBufferIndex = bindings.positionBufferIndex;
@@ -213,8 +215,8 @@ namespace Hydrogen
 		frameData.frameNumber = static_cast<uint32>(m_swapChain.GetCurrentFrameNumber());
 		m_backend->FillFrameData(frameData);
 
-		auto [pCpu, gpuAddr] = m_uploadBuffer.Allocate(sizeof(ShaderInterop::FrameData));
-		memcpy(pCpu, &frameData, sizeof(ShaderInterop::FrameData));
+		auto [pCpu, gpuAddr] = m_uploadBuffer.Allocate(sizeof(FrameData));
+		memcpy(pCpu, &frameData, sizeof(FrameData));
 		GraphicsContext::s_frameDataAddr = gpuAddr;
 	}
 

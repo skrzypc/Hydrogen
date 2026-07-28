@@ -63,7 +63,7 @@ namespace Hydrogen
 
 		GpuScene m_gpuScene{};
 
-		std::unique_ptr<UploadBuffer> m_viewBuffer;
+		std::unique_ptr<UploadBuffer> m_viewBuffer = nullptr;
 		ShaderResourceViewHandle m_viewBufferSrv{};
 		uint32 m_maxViews = 16;
 
@@ -71,7 +71,7 @@ namespace Hydrogen
 		uint32 m_currentFrameIndex = 0;
 		float32 m_time = 0.0f;
 
-		std::unique_ptr<IRenderBackend> m_backend;
+		std::unique_ptr<IRenderBackend> m_backend = nullptr;
 		eRenderBackendType m_backendType = eRenderBackendType::Hybrid;
 
 		CopyPass m_copyPass{};

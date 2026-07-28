@@ -1,4 +1,4 @@
-#include "renderBackends/pathTracerBackend.h"
+#include "renderBackends/rayTracingBackend.h"
 
 #include <string_view>
 
@@ -10,35 +10,36 @@
 
 namespace Hydrogen
 {
-    void PathTracerBackend::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler, GpuScene& gpuScene)
+    void RayTracingBackend::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler, GpuScene& gpuScene)
     {
         m_pDevice = &device;
         m_pGpuScene = &gpuScene;
-        m_clearPass.Initialize(device, shaderCompiler);
-        m_clearPass.clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+
         m_buildTlasPass.Initialize(device, shaderCompiler);
+        m_rayTraceDispatchPass.Initialize(device, shaderCompiler);
     }
 
-    void PathTracerBackend::Shutdown()
+    void RayTracingBackend::Shutdown()
     {
 
     }
 
-    std::string_view PathTracerBackend::Render(FrameGraph& frameGraph, const RenderScene& scene, const Texture::Desc& outputDesc)
+    std::string_view RayTracingBackend::Render(FrameGraph& frameGraph, const RenderScene& scene, const Texture::Desc& outputDesc)
     {
         DefineFrameGraphResources(frameGraph, scene, outputDesc);
-
-        m_clearPass.target = "SceneColor";
-        frameGraph.AddPass("ClearTarget", m_clearPass);
 
         m_buildTlasPass.pScene = m_pGpuScene;
         m_buildTlasPass.renderObjects = scene.objects;
         frameGraph.AddPass("BuildTLAS", m_buildTlasPass);
 
+        m_rayTraceDispatchPass.tlasHandle = m_buildTlasPass.m_tlasHandle;
+        m_rayTraceDispatchPass.outputTarget = "SceneColor";
+        frameGraph.AddPass("RayTraceDispatch", m_rayTraceDispatchPass);
+
         return "SceneColor";
     }
 
-    void PathTracerBackend::DefineFrameGraphResources(FrameGraph& frameGraph, const RenderScene& scene, const Texture::Desc& outputDesc)
+    void RayTracingBackend::DefineFrameGraphResources(FrameGraph& frameGraph, const RenderScene& scene, const Texture::Desc& outputDesc)
     {
         frameGraph.CreateTexture("SceneColor",
             {
@@ -47,12 +48,13 @@ namespace Hydrogen
                 .mipLevels = 1,
                 .arraySize = 1,
                 .format = outputDesc.format,
-                .flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+                .flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
                 .dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
-                .optimizedClearColor = m_clearPass.clearColor,
+                .optimizedClearColor = { 0.0f, 0.0f, 0.0f, 1.0f },
             });
 
         const uint32 instanceCount = static_cast<uint32>(scene.objects.size());
+        // TODO: Move to gpudevice?
         const BuildTlasPass::TlasSizes tlasSizes = m_buildTlasPass.QuerySizes(instanceCount);
 
         m_buildTlasPass.m_tlasHandle = frameGraph.CreateBuffer("TLAS",
@@ -62,12 +64,13 @@ namespace Hydrogen
             Buffer::Desc{ .size = tlasSizes.scratchSize, .flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS });
     }
 
-    void PathTracerBackend::FillFrameData(ShaderInterop::FrameData& frameData)
+    void RayTracingBackend::FillFrameData(FrameData& frameData)
     {
         frameData.tlasIndex = m_buildTlasPass.GetTlasSrvIndex();
+        frameData.outputTargetUavIndex = m_rayTraceDispatchPass.GetOutputUavIndex();
     }
 
-    void PathTracerBackend::BuildUI()
+    void RayTracingBackend::BuildUI()
     {
 
     }

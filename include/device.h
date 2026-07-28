@@ -63,6 +63,11 @@ namespace Hydrogen
 		uint32 index = 0;
 	};
 
+	struct UnorderedAccessViewHandle
+	{
+		uint32 index = 0;
+	};
+
 	class GpuDevice
 	{
 	public:
@@ -169,6 +174,9 @@ namespace Hydrogen
 		ShaderResourceViewHandle CreateShaderResourceView(const Buffer* pBuffer, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc);
 		ShaderResourceViewHandle CreateShaderResourceView(const Texture* pTexture, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc);
 		void UpdateShaderResourceView(ShaderResourceViewHandle handle, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc);
+
+		UnorderedAccessViewHandle CreateUnorderedAccessView(const Texture* pTexture, const D3D12_UNORDERED_ACCESS_VIEW_DESC& uavDesc);
+		void UpdateUnorderedAccessView(UnorderedAccessViewHandle handle, ID3D12Resource* pResource, const D3D12_UNORDERED_ACCESS_VIEW_DESC& uavDesc);
 
 		RenderTargetViewHandle GetRenderTargetHandle(uint32 index) const { return RenderTargetViewHandle{ .dxCpuHandle = m_rtvDescriptorHeap.GetCpuHandle(index) }; }
 		DepthStencilViewHandle GetDepthStencilHandle(uint32 index) const { return DepthStencilViewHandle{ .dxCpuHandle = m_dsvDescriptorHeap.GetCpuHandle(index) }; }

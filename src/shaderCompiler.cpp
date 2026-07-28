@@ -89,8 +89,12 @@ namespace Hydrogen
         // Source name (for error messages and PIX)
         addArg(String::ToWide(desc.name));
 
-        // Entry point
-        addArg(L"-E"); addArg(String::ToWide(desc.entryPoint));
+        // Entry point — library targets (RT) compile every [shader(...)] export
+        // together and don't take a single -E entry point.
+        if (desc.type != eShaderType::RT)
+        {
+            addArg(L"-E"); addArg(String::ToWide(desc.entryPoint));
+        }
 
         // Target profile
         addArg(L"-T"); addArg(m_targetStrings.at(desc.type));
