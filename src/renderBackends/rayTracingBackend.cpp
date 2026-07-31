@@ -29,10 +29,8 @@ namespace Hydrogen
         DefineFrameGraphResources(frameGraph, scene, outputDesc);
 
         m_buildTlasPass.pScene = m_pGpuScene;
-        m_buildTlasPass.renderObjects = scene.objects;
         frameGraph.AddPass("BuildTLAS", m_buildTlasPass);
 
-        m_rayTraceDispatchPass.tlasHandle = m_buildTlasPass.m_tlasHandle;
         m_rayTraceDispatchPass.outputTarget = "SceneColor";
         frameGraph.AddPass("RayTraceDispatch", m_rayTraceDispatchPass);
 
@@ -54,20 +52,13 @@ namespace Hydrogen
             });
 
         const uint32 instanceCount = static_cast<uint32>(scene.objects.size());
-        // TODO: Move to gpudevice?
-        const BuildTlasPass::TlasSizes tlasSizes = m_buildTlasPass.QuerySizes(instanceCount);
+        const AccelerationStructureSizes tlasSizes = m_pDevice->GetTlasPrebuildSizes(instanceCount);
 
-        m_buildTlasPass.m_tlasHandle = frameGraph.CreateBuffer("TLAS",
+        frameGraph.CreateBuffer("TLAS",
             Buffer::Desc{ .size = tlasSizes.resultSize, .flags = D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE });
 
-        m_buildTlasPass.m_scratchHandle = frameGraph.CreateBuffer("TLASScratch",
+        frameGraph.CreateBuffer("TLASScratch",
             Buffer::Desc{ .size = tlasSizes.scratchSize, .flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS });
-    }
-
-    void RayTracingBackend::FillFrameData(FrameData& frameData)
-    {
-        frameData.tlasIndex = m_buildTlasPass.GetTlasSrvIndex();
-        frameData.outputTargetUavIndex = m_rayTraceDispatchPass.GetOutputUavIndex();
     }
 
     void RayTracingBackend::BuildUI()

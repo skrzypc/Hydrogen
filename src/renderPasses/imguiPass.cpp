@@ -45,12 +45,12 @@ namespace Hydrogen
 
 	void ImguiPass::Setup(FGBuilder& builder)
 	{
-		m_targetHandle = builder.Write(target, FGAccess::Write::RenderTarget);
+		builder.Write(target, FGAccess::Write::RenderTarget);
 	}
 
 	void ImguiPass::Execute(FGExecuteContext& ctx, GraphicsContext& gfx)
 	{
-		D3D12_CPU_DESCRIPTOR_HANDLE rtv = ctx.GetRTV(m_targetHandle);
+		D3D12_CPU_DESCRIPTOR_HANDLE rtv = ctx.GetRTV(target);
 		gfx.CmdList()->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
 
 		ImGui_ImplDX12_RenderDrawData(pDrawData, gfx.CmdList());

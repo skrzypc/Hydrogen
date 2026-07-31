@@ -20,12 +20,8 @@ namespace Hydrogen
 		uint vertexUvBufferIndex;
 		uint transformBufferIndex;
 
-		uint outputTargetUavIndex;
-
 		uint viewBufferIndex;
 		uint mainViewIndex;
-
-		uint tlasIndex;
 
 		float time;
 		float deltaTime;

@@ -30,7 +30,6 @@ namespace Hydrogen
 			FreeListIndexAllocator descAllocator{};
 		};
 
-		FGResourceHandle m_targetHandle{};
 		HeapSlotAllocator m_descriptorBundle{};
 	};
 }

@@ -60,7 +60,7 @@ namespace Hydrogen
 		viewSrvDesc.Buffer.StructureByteStride = sizeof(ViewData);
 		m_viewBufferSrv = m_gpuDevice.CreateShaderResourceView(m_viewBuffer.get(), viewSrvDesc);
 
-		CreateBackend(eRenderBackendType::Hybrid);
+		CreateBackend(eRenderBackendType::RayTracing);
 
 		ImGui::CreateContext();
 		ImGui_ImplWin32_Init(hWnd);
@@ -227,7 +227,6 @@ namespace Hydrogen
 		BeginFrame();
 
 		ProcessUploadQueue();
-		UpdateFrameData(renderScene);
 
 		m_frameGraph.BeginFrame(currentFrameNumber);
 
@@ -235,6 +234,8 @@ namespace Hydrogen
 		const Texture::Desc& backBufferDesc = m_swapChain.GetCurrentBackBuffer()->GetDesc();
 
 		std::string_view backendOutput = m_backend->Render(m_frameGraph, renderScene, backBufferDesc);
+
+		UpdateFrameData(renderScene);
 
 		m_imguiPass.pDrawData = drawData;
 		m_imguiPass.target = backendOutput;
@@ -246,6 +247,7 @@ namespace Hydrogen
 
 		m_frameGraph.Compile();
 		GraphicsContext gfx = m_frameGraph.Execute();
+
 		m_frameGraph.Reset();
 
 		uint64 fenceValue = m_gpuDevice.ExecuteGraphicsContext(std::move(gfx));

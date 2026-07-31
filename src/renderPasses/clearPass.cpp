@@ -5,6 +5,6 @@ namespace Hydrogen
 {
 	void ClearPass::Execute(FGExecuteContext& ctx, GraphicsContext& gfx)
 	{
-		gfx.CmdList()->ClearRenderTargetView(ctx.GetRTV(m_handle), clearColor.data(), 0, nullptr);
+		gfx.CmdList()->ClearRenderTargetView(ctx.GetRTV(target), clearColor.data(), 0, nullptr);
 	}
 }

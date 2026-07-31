@@ -245,6 +245,24 @@ namespace Hydrogen
 		return pBuffer;
 	}
 
+	AccelerationStructureSizes GpuDevice::GetTlasPrebuildSizes(uint32 instanceCount) const
+	{
+		D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS tlasInputs{};
+		tlasInputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
+		tlasInputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+		tlasInputs.NumDescs = instanceCount;
+		tlasInputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+
+		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuild{};
+		m_pDxDevice->GetRaytracingAccelerationStructurePrebuildInfo(&tlasInputs, &prebuild);
+
+		return AccelerationStructureSizes
+		{
+			.resultSize = prebuild.ResultDataMaxSizeInBytes,
+			.scratchSize = prebuild.ScratchDataSizeInBytes,
+		};
+	}
+
 	RenderTargetViewHandle GpuDevice::CreateRenderTargetViewAtIndex(const Texture* pTexture, const D3D12_RENDER_TARGET_VIEW_DESC& rtvDesc, uint32 rtvIndex)
 	{
 		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_rtvDescriptorHeap.GetCpuHandle(rtvIndex);

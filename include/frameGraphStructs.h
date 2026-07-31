@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <vector>
 #include <functional>
 #include <unordered_map>
@@ -39,6 +40,7 @@ namespace Hydrogen
 		DSV,
 		SRV,
 		UAV,
+		AccelerationStructure,
 	};
 
 	namespace FGAccess
@@ -123,6 +125,8 @@ namespace Hydrogen
 
 		Buffer* pResource = nullptr;
 
+		uint8 version = 0u; // Buffers have no subresources, so a single counter mirrors FGTextureNode::versions.
+
 		D3D12_RESOURCE_FLAGS flags{};
 		ResourceState resourceState{};
 
@@ -154,26 +158,44 @@ namespace Hydrogen
 	class FGExecuteContext
 	{
 	public:
-		D3D12_CPU_DESCRIPTOR_HANDLE GetRTV(FGResourceHandle handle) const
+		D3D12_CPU_DESCRIPTOR_HANDLE GetRTV(std::string_view name) const
 		{
-			H2_VERIFY_FATAL(handle.IsTexture() && m_rtvMap.contains(handle.index), "No RTV found for handle!");
+			const uint32 key = KeyFromName(name);
+			H2_VERIFY_FATAL(m_rtvMap.contains(key), "No RTV found for resource '{}'!", name);
 
-			return m_rtvMap.at(handle.index);
+			return m_rtvMap.at(key);
 		}
 
-		D3D12_CPU_DESCRIPTOR_HANDLE GetDSV(FGResourceHandle handle) const
+		D3D12_CPU_DESCRIPTOR_HANDLE GetDSV(std::string_view name) const
 		{
-			H2_VERIFY_FATAL(handle.IsTexture() && m_dsvMap.contains(handle.index), "No DSV found for handle!");
+			const uint32 key = KeyFromName(name);
+			H2_VERIFY_FATAL(m_dsvMap.contains(key), "No DSV found for resource '{}'!", name);
 
-			return m_dsvMap.at(handle.index);
+			return m_dsvMap.at(key);
 		}
 
-		ID3D12Resource* GetResource(FGResourceHandle handle) const
+		ID3D12Resource* GetResource(std::string_view name) const
 		{
-			const uint32 key = ResourceKey(handle);
-			H2_VERIFY_FATAL(m_resourceMap.contains(key), "No resource found for handle!");
+			const uint32 key = KeyFromName(name);
+			H2_VERIFY_FATAL(m_resourceMap.contains(key), "No resource found for resource '{}'!", name);
 
 			return m_resourceMap.at(key);
+		}
+
+		uint32 GetSRVIndex(std::string_view name) const
+		{
+			const uint32 key = KeyFromName(name);
+			H2_VERIFY_FATAL(m_srvIndexMap.contains(key), "No SRV found for resource '{}'!", name);
+
+			return m_srvIndexMap.at(key);
+		}
+
+		uint32 GetUAVIndex(std::string_view name) const
+		{
+			const uint32 key = KeyFromName(name);
+			H2_VERIFY_FATAL(m_uavIndexMap.contains(key), "No UAV found for resource '{}'!", name);
+
+			return m_uavIndexMap.at(key);
 		}
 
 	private:
@@ -185,9 +207,20 @@ namespace Hydrogen
 			return (static_cast<uint32>(handle.type) << 16) | handle.index;
 		}
 
+		uint32 KeyFromName(std::string_view name) const
+		{
+			const std::string resourceName(name);
+			H2_VERIFY_FATAL(m_nameToKey.contains(resourceName), "Resource '{}' was not accessed by any live pass!", name);
+
+			return m_nameToKey.at(resourceName);
+		}
+
 		std::unordered_map<uint32, D3D12_CPU_DESCRIPTOR_HANDLE> m_rtvMap;
 		std::unordered_map<uint32, D3D12_CPU_DESCRIPTOR_HANDLE> m_dsvMap;
+		std::unordered_map<uint32, uint32> m_srvIndexMap;
+		std::unordered_map<uint32, uint32> m_uavIndexMap;
 		std::unordered_map<uint32, ID3D12Resource*> m_resourceMap;
+		std::unordered_map<std::string, uint32> m_nameToKey;
 	};
 
 	struct FGPass

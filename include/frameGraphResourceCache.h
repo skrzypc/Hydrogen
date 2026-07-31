@@ -29,9 +29,12 @@ namespace Hydrogen
 		RenderTargetViewHandle GetRTV(const Texture* pTexture, const FGSubresourceRange& range);
 		DepthStencilViewHandle GetDSV(const Texture* pTexture, const FGSubresourceRange& range);
 
-		// TODO: bindless
-		// uint32 GetSRVIndex(Texture* pTexture, const FGSubresourceRange& range);
-		// uint32 GetUAVIndex(Texture* pTexture, const FGSubresourceRange& range);
+		ShaderResourceViewHandle GetSRV(const Texture* pTexture, const FGSubresourceRange& range);
+		UnorderedAccessViewHandle GetUAV(const Texture* pTexture, const FGSubresourceRange& range);
+
+		// Acceleration structures are addressed by GPU virtual address rather than by resource,
+		// so they need their own view path and cannot share the texture SRV code.
+		ShaderResourceViewHandle GetAccelerationStructureSRV(const Buffer* pBuffer);
 
 	private:
 		Texture* CreateTexture(const Texture::Desc& desc);
@@ -68,28 +71,15 @@ namespace Hydrogen
 		std::unordered_map<Texture::Desc, std::vector<FGFreeTextureEntry>, TextureDescHash> m_freeTextures{};
 		std::unordered_set<const Texture*> m_activeTextures{};
 
-		struct BufferDescHash
-		{
-			uint64 operator()(const Buffer::Desc& desc) const noexcept
-			{
-				uint64 seed = std::hash<uint64>{}(desc.size);
-				seed ^= std::hash<uint32>{}(desc.flags) + 0x9e3779b9u + (seed << 6) + (seed >> 2);
-				seed ^= std::hash<uint32>{}(desc.heapType) + 0x9e3779b9u + (seed << 6) + (seed >> 2);
-				return seed;
-			}
-
-			bool operator()(const Buffer::Desc& a, const Buffer::Desc& b) const noexcept
-			{
-				return a.size == b.size && a.flags == b.flags && a.heapType == b.heapType;
-			}
-		};
-
 		std::vector<std::unique_ptr<Buffer>> m_ownedBuffers{};
-		std::unordered_map<Buffer::Desc, std::vector<Buffer*>, BufferDescHash, BufferDescHash> m_freeBuffers{};
+		std::unordered_map<Buffer::Desc, std::vector<Buffer*>, BufferDescHash> m_freeBuffers{};
 		std::unordered_set<const Buffer*> m_activeBuffers{};
 
 		// Each Texture can have multiple views with different subresource ranges. Cache them to avoid redundant descriptor creation.
 		std::unordered_map<const Texture*, std::unordered_map<uint64, RenderTargetViewHandle>> m_cachedRtvs;
 		std::unordered_map<const Texture*, std::unordered_map<uint64, DepthStencilViewHandle>> m_cachedDsvs;
+		std::unordered_map<const Texture*, std::unordered_map<uint64, ShaderResourceViewHandle>> m_cachedSrvs;
+		std::unordered_map<const Texture*, std::unordered_map<uint64, UnorderedAccessViewHandle>> m_cachedUavs;
+		std::unordered_map<const Buffer*, ShaderResourceViewHandle> m_cachedAccelerationStructureSrvs;
 	};
 }

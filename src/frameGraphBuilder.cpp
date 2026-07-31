@@ -21,22 +21,31 @@ namespace Hydrogen
 		return AccessInternal(handle, FGPassNodeType::Write, ResolveWrite(access), FGSubresourceRange{});
 	}
 
-	FGResourceHandle FGBuilder::Read(std::string_view name, FGAccess::Read access)
+	void FGBuilder::Read(std::string_view name, FGAccess::Read access)
 	{
-		return Read(m_frameGraph.GetResource(name), access);
+		Read(m_frameGraph.GetResource(name), access);
 	}
 
-	FGResourceHandle FGBuilder::Write(std::string_view name, FGAccess::Write access)
+	void FGBuilder::Write(std::string_view name, FGAccess::Write access)
 	{
 		FGResourceHandle handle = Write(m_frameGraph.GetResource(name), access);
-		m_frameGraph.m_resourceRegistry[String::ToUpper(name)] = handle;
-		return handle;
+		m_frameGraph.m_resourceRegistry[std::string(name)] = handle;
 	}
 
 	const Texture::Desc& FGBuilder::GetTextureDesc(std::string_view name) const
 	{
 		FGResourceHandle handle = m_frameGraph.GetResource(name);
+		H2_VERIFY(handle.IsTexture(), "Resource '{}' is not a texture!", name);
+
 		return m_frameGraph.m_textureNodes[handle.index].desc;
+	}
+
+	const Buffer::Desc& FGBuilder::GetBufferDesc(std::string_view name) const
+	{
+		FGResourceHandle handle = m_frameGraph.GetResource(name);
+		H2_VERIFY(handle.IsBuffer(), "Resource '{}' is not a buffer!", name);
+
+		return m_frameGraph.m_bufferNodes[handle.index].desc;
 	}
 
 	FGPassNodeAccess FGBuilder::ResolveRead(FGAccess::Read readAccess)
@@ -72,7 +81,7 @@ namespace Hydrogen
 			{
 				ResourceState{ D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE, D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ, D3D12_BARRIER_LAYOUT_UNDEFINED },
 				D3D12_RESOURCE_FLAG_NONE,
-				FGUsage::SRV
+				FGUsage::AccelerationStructure
 			};
 
 		case FGAccess::Read::CopySrc:
@@ -121,7 +130,7 @@ namespace Hydrogen
 			{
 				ResourceState{ D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE, D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE, D3D12_BARRIER_LAYOUT_UNDEFINED },
 				D3D12_RESOURCE_FLAG_NONE,
-				FGUsage::UAV
+				FGUsage::AccelerationStructure
 			};
 
 		case FGAccess::Write::CopyDst:
@@ -147,16 +156,22 @@ namespace Hydrogen
 
 			if (direction == FGPassNodeType::Write)
 			{
+				H2_VERIFY(handle.version == node.version, "Stale handle usage detected");
+
 				node.flags |= access.resourceFlags;
 				node.lastWritingPassIndex = m_pass.index;
+
 				if (node.bImported)
 				{
 					m_pass.bHasSideEffect = true;
 				}
+
 				handle.version++;
+				node.version++;
 			}
 			else
 			{
+				H2_VERIFY(handle.version == node.version, "Stale handle usage detected");
 				node.refCount++;
 			}
 		}

@@ -1,5 +1,13 @@
 #include "common.hlsli"
 
+struct PushConstants
+{
+    uint tlasIndex;
+    uint outputUavIndex;
+};
+
+ConstantBuffer<PushConstants> g_push : register(b0, space0);
+
 struct [raypayload] RayPayload
 {
     float3 radiance : write(closesthit, miss) : read(caller);
@@ -43,7 +51,7 @@ void mainRayGen()
     
     RayDesc sWsRay = GenerateCameraRay(vfPixel);
     
-    RaytracingAccelerationStructure sTlas = ResourceDescriptorHeap[g_frame.tlasIndex];
+    RaytracingAccelerationStructure sTlas = ResourceDescriptorHeap[g_push.tlasIndex];
     
     RayPayload sPayload;
     TraceRay(
@@ -57,7 +65,7 @@ void mainRayGen()
         sPayload // payload
     );
     
-    RWTexture2D<float4> output = ResourceDescriptorHeap[g_frame.outputTargetUavIndex];
+    RWTexture2D<float4> output = ResourceDescriptorHeap[g_push.outputUavIndex];
     output[DispatchRaysIndex().xy] = float4(sPayload.radiance, 1.0f);
 }
 

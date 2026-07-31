@@ -144,6 +144,105 @@ namespace Hydrogen
 		return dsvHandle;
 	}
 
+	ShaderResourceViewHandle FGResourceCache::GetSRV(const Texture* pTexture, const FGSubresourceRange& range)
+	{
+		uint64 subresourceRangeHash = HashRange(range);
+
+		auto& textureSrvs = m_cachedSrvs[pTexture];
+		if (textureSrvs.contains(subresourceRangeHash))
+		{
+			return textureSrvs.at(subresourceRangeHash);
+		}
+
+		const Texture::Desc& textureDesc = pTexture->GetDesc();
+
+		const uint32 mipLevelsCount = (range.mipLevelsCount == FGSubresourceRange::All)
+			? textureDesc.mipLevels - range.mipOffset
+			: range.mipLevelsCount;
+
+		D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
+		desc.Format = textureDesc.format;
+		desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+		if (textureDesc.arraySize > 1)
+		{
+			desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+			desc.Texture2DArray.MostDetailedMip = range.mipOffset;
+			desc.Texture2DArray.MipLevels = mipLevelsCount;
+			desc.Texture2DArray.FirstArraySlice = range.arrayOffset;
+			desc.Texture2DArray.ArraySize = (range.arraySlicesCount == FGSubresourceRange::All)
+				? textureDesc.arraySize - range.arrayOffset
+				: range.arraySlicesCount;
+		}
+		else
+		{
+			desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+			desc.Texture2D.MostDetailedMip = range.mipOffset;
+			desc.Texture2D.MipLevels = mipLevelsCount;
+		}
+
+		ShaderResourceViewHandle srvHandle = m_pDevice->CreateShaderResourceView(pTexture, desc);
+		textureSrvs[subresourceRangeHash] = srvHandle;
+
+		return srvHandle;
+	}
+
+	UnorderedAccessViewHandle FGResourceCache::GetUAV(const Texture* pTexture, const FGSubresourceRange& range)
+	{
+		uint64 subresourceRangeHash = HashRange(range);
+
+		auto& textureUavs = m_cachedUavs[pTexture];
+		if (textureUavs.contains(subresourceRangeHash))
+		{
+			return textureUavs.at(subresourceRangeHash);
+		}
+
+		const Texture::Desc& textureDesc = pTexture->GetDesc();
+
+		D3D12_UNORDERED_ACCESS_VIEW_DESC desc = {};
+		desc.Format = textureDesc.format;
+
+		if (textureDesc.arraySize > 1)
+		{
+			desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+			desc.Texture2DArray.MipSlice = range.mipOffset;
+			desc.Texture2DArray.FirstArraySlice = range.arrayOffset;
+			desc.Texture2DArray.ArraySize = (range.arraySlicesCount == FGSubresourceRange::All)
+				? textureDesc.arraySize - range.arrayOffset
+				: range.arraySlicesCount;
+		}
+		else
+		{
+			desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+			desc.Texture2D.MipSlice = range.mipOffset;
+		}
+
+		UnorderedAccessViewHandle uavHandle = m_pDevice->CreateUnorderedAccessView(pTexture, desc);
+		textureUavs[subresourceRangeHash] = uavHandle;
+
+		return uavHandle;
+	}
+
+	ShaderResourceViewHandle FGResourceCache::GetAccelerationStructureSRV(const Buffer* pBuffer)
+	{
+		if (m_cachedAccelerationStructureSrvs.contains(pBuffer))
+		{
+			return m_cachedAccelerationStructureSrvs.at(pBuffer);
+		}
+
+		D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
+		desc.Format = DXGI_FORMAT_UNKNOWN;
+		desc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
+		desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		desc.RaytracingAccelerationStructure.Location = pBuffer->GetResource()->GetGPUVirtualAddress();
+
+		// D3D12 requires acceleration structure SRVs to be created with a null resource.
+		ShaderResourceViewHandle srvHandle = m_pDevice->CreateShaderResourceView(static_cast<const Buffer*>(nullptr), desc);
+		m_cachedAccelerationStructureSrvs[pBuffer] = srvHandle;
+
+		return srvHandle;
+	}
+
 	Texture* FGResourceCache::CreateTexture(const Texture::Desc& desc)
 	{
 		D3D12_CLEAR_VALUE clearValue{};

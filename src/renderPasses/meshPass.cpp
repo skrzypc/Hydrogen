@@ -59,9 +59,8 @@ namespace Hydrogen
 
 	void MeshPass::Setup(FGBuilder& builder)
 	{
-		m_targetHandle = builder.Write(renderTarget, FGAccess::Write::RenderTarget);
-		m_depthHandle = builder.Write(depthTarget, FGAccess::Write::DepthStencil);
-		builder.Read("TLAS", FGAccess::Read::AccelerationStructure);
+		builder.Write(renderTarget, FGAccess::Write::RenderTarget);
+		builder.Write(depthTarget, FGAccess::Write::DepthStencil);
 
 		const Texture::Desc& desc = builder.GetTextureDesc(renderTarget);
 		m_width = desc.width;
@@ -72,13 +71,13 @@ namespace Hydrogen
 	{
 		ID3D12GraphicsCommandList10* cmd = gfx.CmdList();
 
-		D3D12_VIEWPORT viewport{ 0.0f, 0.0f, static_cast<float>(m_width), static_cast<float>(m_height), 0.0f, 1.0f };
+		D3D12_VIEWPORT viewport{ 0.0f, 0.0f, static_cast<float32>(m_width), static_cast<float32>(m_height), 0.0f, 1.0f };
 		D3D12_RECT scissor{ 0, 0, static_cast<LONG>(m_width), static_cast<LONG>(m_height) };
 		cmd->RSSetViewports(1, &viewport);
 		cmd->RSSetScissorRects(1, &scissor);
 
-		D3D12_CPU_DESCRIPTOR_HANDLE rtv = ctx.GetRTV(m_targetHandle);
-		D3D12_CPU_DESCRIPTOR_HANDLE dsv = ctx.GetDSV(m_depthHandle);
+		D3D12_CPU_DESCRIPTOR_HANDLE rtv = ctx.GetRTV(renderTarget);
+		D3D12_CPU_DESCRIPTOR_HANDLE dsv = ctx.GetDSV(depthTarget);
 		cmd->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, 0.0f, 0, 0, nullptr);
 		cmd->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
 		cmd->SetPipelineState(m_pso.Get());

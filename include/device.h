@@ -68,6 +68,12 @@ namespace Hydrogen
 		uint32 index = 0;
 	};
 
+	struct AccelerationStructureSizes
+	{
+		uint64 resultSize = 0;
+		uint64 scratchSize = 0;
+	};
+
 	class GpuDevice
 	{
 	public:
@@ -155,6 +161,8 @@ namespace Hydrogen
 		std::unique_ptr<Buffer> CreateBuffer(std::wstring_view name, const Buffer::Desc& desc, ResourceState& initialState);
 		std::unique_ptr<Buffer> CreateBuffer(std::wstring_view name, ID3D12Resource* pResource, const Buffer::Desc& desc, ResourceState& initialState);
 		std::unique_ptr<UploadBuffer> CreateUploadBuffer(std::wstring_view name, uint64 sizeInBytes);
+
+		[[nodiscard]] AccelerationStructureSizes GetTlasPrebuildSizes(uint32 instanceCount) const;
 
 		template<typename AllocatorT>
 		AllocatorT RequestDescriptorAllocator(uint32 count, eDescriptorHeapType descHeapType)

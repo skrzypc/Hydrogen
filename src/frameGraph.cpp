@@ -25,7 +25,7 @@ namespace Hydrogen
 
 	FGResourceHandle FrameGraph::CreateTexture(std::string_view name, Texture::Desc desc)
 	{
-		H2_VERIFY(!m_resourceRegistry.contains(String::ToUpper(name)), "Resource '{}' already exists!", name);
+		H2_VERIFY(!m_resourceRegistry.contains(std::string(name)), "Resource '{}' already exists!", name);
 
 		FGTextureNode node{};
 		node.name = name;
@@ -33,6 +33,7 @@ namespace Hydrogen
 		node.pResource = nullptr; // TODO
 		node.baseResourceState = ResourceState{};
 		node.desc = desc;
+		node.flags = desc.flags;
 
 		uint32 subCount = node.desc.mipLevels * node.desc.arraySize;
 		node.subresourceStates.resize(subCount, node.baseResourceState);
@@ -41,18 +42,18 @@ namespace Hydrogen
 		m_textureNodes.push_back(std::move(node));
 
 		FGResourceHandle handle{};
-		handle.index = static_cast<uint32>(m_textureNodes.size() - 1);
+		handle.index = static_cast<uint16>(m_textureNodes.size() - 1);
 		handle.type = FGResourceType::Texture;
 		handle.version = 0;
 
-		m_resourceRegistry[String::ToUpper(name)] = handle;
+		m_resourceRegistry[std::string(name)] = handle;
 
 		return handle;
 	}
 
 	FGResourceHandle FrameGraph::CreateBuffer(std::string_view name, Buffer::Desc desc)
 	{
-		H2_VERIFY(!m_resourceRegistry.contains(String::ToUpper(name)), "Resource '{}' already exists!", name);
+		H2_VERIFY(!m_resourceRegistry.contains(std::string(name)), "Resource '{}' already exists!", name);
 
 		FGBufferNode node{};
 		node.name = std::string(name);
@@ -66,13 +67,13 @@ namespace Hydrogen
 		handle.type = FGResourceType::Buffer;
 		handle.version = 0;
 
-		m_resourceRegistry[String::ToUpper(name)] = handle;
+		m_resourceRegistry[std::string(name)] = handle;
 		return handle;
 	}
 
 	void FrameGraph::ImportTexture(std::string_view name, Texture* pTexture)
 	{
-		H2_VERIFY(!m_resourceRegistry.contains(String::ToUpper(name)), "Resource '{}' already exists!", name);
+		H2_VERIFY(!m_resourceRegistry.contains(std::string(name)), "Resource '{}' already exists!", name);
 
 		FGTextureNode node{};
 		node.name = name;
@@ -80,6 +81,7 @@ namespace Hydrogen
 		node.pResource = pTexture;
 		node.baseResourceState = pTexture->GetState();
 		node.desc = pTexture->GetDesc();
+		node.flags = node.desc.flags;
 
 		uint32 subCount = node.desc.mipLevels * node.desc.arraySize;
 		node.subresourceStates.resize(subCount, node.baseResourceState);
@@ -88,16 +90,16 @@ namespace Hydrogen
 		m_textureNodes.push_back(std::move(node));
 
 		FGResourceHandle handle{};
-		handle.index = static_cast<uint32>(m_textureNodes.size() - 1);
+		handle.index = static_cast<uint16>(m_textureNodes.size() - 1);
 		handle.type = FGResourceType::Texture;
 		handle.version = 0;
 
-		m_resourceRegistry[String::ToUpper(name)] = handle;
+		m_resourceRegistry[std::string(name)] = handle;
 	}
 
 	void FrameGraph::ImportBuffer(std::string_view name, Buffer* pBuffer)
 	{
-		H2_VERIFY(!m_resourceRegistry.contains(String::ToUpper(name)), "Resource '{}' already exists!", name);
+		H2_VERIFY(!m_resourceRegistry.contains(std::string(name)), "Resource '{}' already exists!", name);
 
 		FGBufferNode node{};
 		node.name = std::string(name);
@@ -114,14 +116,15 @@ namespace Hydrogen
 		handle.type = FGResourceType::Buffer;
 		handle.version = 0;
 
-		m_resourceRegistry[String::ToUpper(name)] = handle;
+		m_resourceRegistry[std::string(name)] = handle;
 	}
 
 	FGResourceHandle FrameGraph::GetResource(std::string_view name) const
 	{
-		auto it = m_resourceRegistry.find(String::ToUpper(name));
-		H2_VERIFY_FATAL(it != m_resourceRegistry.end(), "Resource '{}' not found in registry!", name);
-		return it->second;
+		const std::string resourceName(name);
+		H2_VERIFY_FATAL(m_resourceRegistry.contains(resourceName), "Resource '{}' not found in registry!", name);
+
+		return m_resourceRegistry.at(resourceName);
 	}
 
 	void FrameGraph::AddPass(std::string_view passName, IRenderPass& pass)
@@ -230,7 +233,10 @@ namespace Hydrogen
 
 		m_executeContext.m_rtvMap.clear();
 		m_executeContext.m_dsvMap.clear();
+		m_executeContext.m_srvIndexMap.clear();
+		m_executeContext.m_uavIndexMap.clear();
 		m_executeContext.m_resourceMap.clear();
+		m_executeContext.m_nameToKey.clear();
 
 		//m_resourceCache.Cleanup(m_currentFrame);
 	}
@@ -569,6 +575,9 @@ namespace Hydrogen
 				{
 					FGTextureNode& node = m_textureNodes[passNode.handle.index];
 
+					// Views are keyed by resource, so only one view of each kind per resource is kept.
+					// Passes that need distinct subresource ranges or formats of the same resource
+					// will need views keyed by the declared access instead.
 					switch (passNode.access.resourceUsage)
 					{
 					case FGUsage::RTV:
@@ -580,23 +589,41 @@ namespace Hydrogen
 						break;
 
 					case FGUsage::SRV:
-					case FGUsage::UAV:
-						// TODO: bindless
+						m_executeContext.m_srvIndexMap[key] = m_resourceCache.GetSRV(node.pResource, passNode.range).index;
 						break;
 
+					case FGUsage::UAV:
+						m_executeContext.m_uavIndexMap[key] = m_resourceCache.GetUAV(node.pResource, passNode.range).index;
+						break;
+
+					case FGUsage::AccelerationStructure:
 					case FGUsage::None:
 						break;
 					}
 
 					m_executeContext.m_resourceMap[key] = node.pResource->GetResource();
+					m_executeContext.m_nameToKey[node.name] = key;
 				}
 				else if (passNode.handle.IsBuffer())
 				{
 					FGBufferNode& node = m_bufferNodes[passNode.handle.index];
-					if (node.pResource)
+
+					switch (passNode.access.resourceUsage)
 					{
-						m_executeContext.m_resourceMap[key] = node.pResource->GetResource();
+					case FGUsage::AccelerationStructure:
+						m_executeContext.m_srvIndexMap[key] = m_resourceCache.GetAccelerationStructureSRV(node.pResource).index;
+						break;
+
+					case FGUsage::RTV:
+					case FGUsage::DSV:
+					case FGUsage::SRV:
+					case FGUsage::UAV:
+					case FGUsage::None:
+						break;
 					}
+
+					m_executeContext.m_resourceMap[key] = node.pResource->GetResource();
+					m_executeContext.m_nameToKey[node.name] = key;
 				}
 			}
 		}

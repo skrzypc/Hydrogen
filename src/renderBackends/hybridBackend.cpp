@@ -33,7 +33,6 @@ namespace Hydrogen
         frameGraph.AddPass("ClearTarget", m_clearPass);
 
         m_buildTlasPass.pScene = m_pGpuScene;
-        m_buildTlasPass.renderObjects = scene.objects;
         frameGraph.AddPass("BuildTLAS", m_buildTlasPass);
 
         m_meshPass.renderTarget = "SceneColor";
@@ -72,18 +71,13 @@ namespace Hydrogen
             });
 
         const uint32 instanceCount = static_cast<uint32>(scene.objects.size());
-        const BuildTlasPass::TlasSizes tlasSizes = m_buildTlasPass.QuerySizes(instanceCount);
+        const AccelerationStructureSizes tlasSizes = m_pDevice->GetTlasPrebuildSizes(instanceCount);
 
-        m_buildTlasPass.m_tlasHandle = frameGraph.CreateBuffer("TLAS",
+        frameGraph.CreateBuffer("TLAS",
             Buffer::Desc{ .size = tlasSizes.resultSize, .flags = D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE });
 
-        m_buildTlasPass.m_scratchHandle = frameGraph.CreateBuffer("TLASScratch",
+        frameGraph.CreateBuffer("TLASScratch",
             Buffer::Desc{ .size = tlasSizes.scratchSize, .flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS });
-    }
-
-    void HybridBackend::FillFrameData(FrameData& frameData)
-    {
-        frameData.tlasIndex = m_buildTlasPass.GetTlasSrvIndex();
     }
 
     void HybridBackend::BuildUI()

@@ -43,6 +43,13 @@ namespace Hydrogen
 			m_pCommandList->SetGraphicsRoot32BitConstants(static_cast<uint32>(eRootParam::PushConstants), sizeof(T) / sizeof(uint32), &data, 0);
 		}
 
+		template<typename T>
+		void SetComputePushConstants(const T& data)
+		{
+			H2_VERIFY_STATIC(sizeof(T) <= RootSignature::PushConstantCount * sizeof(uint32));
+			m_pCommandList->SetComputeRoot32BitConstants(static_cast<uint32>(eRootParam::PushConstants), sizeof(T) / sizeof(uint32), &data, 0);
+		}
+
 		inline static UploadRingBuffer* s_pUploadBuffer = nullptr;
 		inline static D3D12_GPU_VIRTUAL_ADDRESS s_frameDataAddr = 0;
 
