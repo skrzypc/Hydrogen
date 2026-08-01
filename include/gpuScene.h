@@ -27,7 +27,7 @@ namespace Hydrogen
 	class GpuScene
 	{
 	public:
-		void Initialize(GpuDevice& device, GpuUploader& uploader, uint32 maxVertices, uint32 maxIndices, uint32 sceneCapacity = 100'000, uint32 maxViews = 16);
+		void Initialize(GpuDevice& device, GpuUploader& uploader, uint32 maxVertices, uint32 maxIndices, uint32 sceneCapacity = 100'000, uint32 maxViews = 16, uint32 maxLights = 1024);
 
 		// Enqueues a mesh for upload. Actual GPU upload happens during Update(), up to m_maxMeshUploadsPerFrame per frame.
 		void RegisterMesh(MeshHandle handle, Mesh&& mesh);
@@ -41,7 +41,9 @@ namespace Hydrogen
 		uint32 GetPositionBufferIndex() const { return m_positionSrv.index; }
 		uint32 GetNormalBufferIndex() const { return m_normalSrv.index; }
 		uint32 GetUvBufferIndex() const { return m_uvSrv.index; }
-		uint32 GetTransformBufferIndex() const { return m_transformBufferSrv.index; }
+		uint32 GetTransformBufferIndex() const { return m_transformSrvs[m_currentFrameIndex].index; }
+		uint32 GetLightBufferIndex() const { return m_lightSrvs[m_currentFrameIndex].index; }
+		uint32 GetLightCount() const { return m_lightCount; }
 
 		const Buffer* GetIndexBuffer() const { return m_indexBuffer.get(); }
 		const GpuMesh* GetGpuMesh(MeshHandle handle) const;
@@ -62,6 +64,7 @@ namespace Hydrogen
 		void BuildBlas(std::span<const InFlightMeshUploadData> uploads);
 
 		void UpdateTransforms(std::span<const RenderObject> objects);
+		void UpdateLights(std::span<const RenderLight> lights);
 
 		GpuDevice* m_pDevice = nullptr;
 		GpuUploader* m_pUploader = nullptr;
@@ -86,8 +89,20 @@ namespace Hydrogen
 		std::unique_ptr<Buffer> m_uvBuffer{};
 		ShaderResourceViewHandle m_uvSrv{};
 
-		std::unique_ptr<UploadBuffer> m_transformBuffer{};
-		ShaderResourceViewHandle m_transformBufferSrv{};
+		// Written every frame, so each frame in flight needs its own copy.
+		std::array<std::unique_ptr<UploadBuffer>, Config::FramesInFlight> m_transformBuffers{};
+		std::array<ShaderResourceViewHandle, Config::FramesInFlight> m_transformSrvs{};
+
+		// Gathered in cached memory and copied to the upload buffer in one go. Kept around so the
+		// allocation is reused between frames.
+		std::vector<DirectX::XMFLOAT4X4> m_transformStaging{};
+
+		std::array<std::unique_ptr<UploadBuffer>, Config::FramesInFlight> m_lightBuffers{};
+		std::array<ShaderResourceViewHandle, Config::FramesInFlight> m_lightSrvs{};
+		std::vector<GpuLight> m_lightStaging{};
+
+		uint32 m_maxLights = 0;
+		uint32 m_lightCount = 0;
 
 		// Async mesh pipeline
 		static constexpr uint32 m_maxMeshUploadsPerFrame = 32;

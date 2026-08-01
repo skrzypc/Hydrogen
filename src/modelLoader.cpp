@@ -91,6 +91,43 @@ namespace Hydrogen
         return sm;
     }
 
+    static Light ExtractLight(const fastgltf::Light& modelLight)
+    {
+        Light light{};
+        light.color = { modelLight.color.x(), modelLight.color.y(), modelLight.color.z() };
+        light.intensity = static_cast<float32>(modelLight.intensity);
+
+        switch (modelLight.type)
+        {
+        case fastgltf::LightType::Directional:
+            light.type = eLightType::Directional;
+            break;
+        case fastgltf::LightType::Point:
+            light.type = eLightType::Point;
+            break;
+        case fastgltf::LightType::Spot:
+            light.type = eLightType::Spot;
+            break;
+        }
+
+        if (modelLight.range.has_value())
+        {
+            light.range = static_cast<float32>(modelLight.range.value());
+        }
+
+        if (modelLight.innerConeAngle.has_value())
+        {
+            light.innerConeAngle = static_cast<float32>(modelLight.innerConeAngle.value());
+        }
+
+        if (modelLight.outerConeAngle.has_value())
+        {
+            light.outerConeAngle = static_cast<float32>(modelLight.outerConeAngle.value());
+        }
+
+        return light;
+    }
+
     static Transform ComposeTransforms(const Transform& parent, const Transform& local)
     {
         using namespace DirectX;
@@ -134,6 +171,11 @@ namespace Hydrogen
 
         Transform worldTransform = ComposeTransforms(parentWorldTransform, localTransform);
         mn.localTransform = worldTransform;
+
+        if (node.lightIndex.has_value())
+        {
+            mn.lightIndex = static_cast<uint32>(node.lightIndex.value());
+        }
 
         if (node.meshIndex.has_value())
         {
@@ -201,6 +243,14 @@ namespace Hydrogen
         Model model{};
         model.name = filePath.stem().string();
 
+        // Light indices are kept in step with the glTF asset so nodes can reference them directly,
+        // and so lights shared by several nodes stay shared.
+        model.lights.reserve(asset.lights.size());
+        for (const fastgltf::Light& light : asset.lights)
+        {
+            model.lights.push_back(ExtractLight(light));
+        }
+
         std::size_t sceneIndex = 0;
         if (asset.defaultScene.has_value())
         {
@@ -216,7 +266,7 @@ namespace Hydrogen
             }
         }
 
-        H2_INFO(eLogLevel::Minimal, "Loaded model '{}': {} meshes, {} nodes", model.name, model.meshes.size(), model.nodes.size());
+        H2_INFO(eLogLevel::Minimal, "Loaded model '{}': {} meshes, {} lights, {} nodes", model.name, model.meshes.size(), model.lights.size(), model.nodes.size());
         return model;
     }
 }

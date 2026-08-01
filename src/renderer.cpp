@@ -229,6 +229,7 @@ namespace Hydrogen
 		viewData.nearPlane = renderScene.camera.nearZ;
 		viewData.farPlane = renderScene.camera.farZ;
 		viewData.viewportSize = { renderWidth, renderHeight };
+		viewData.exposure = renderScene.camera.exposure;
 		m_viewBuffer->Write(&viewData, sizeof(ViewData), 0);
 
 		FrameData frameData{};
@@ -238,6 +239,8 @@ namespace Hydrogen
 		frameData.vertexNormalBufferIndex = m_gpuScene.GetNormalBufferIndex();
 		frameData.vertexUvBufferIndex = m_gpuScene.GetUvBufferIndex();
 		frameData.transformBufferIndex = m_gpuScene.GetTransformBufferIndex();
+		frameData.lightBufferIndex = m_gpuScene.GetLightBufferIndex();
+		frameData.lightCount = m_gpuScene.GetLightCount();
 		frameData.time = static_cast<float32>(frameContext.time);
 		frameData.deltaTime = frameContext.deltaTime;
 		frameData.frameNumber = static_cast<uint32>(frameContext.frameNumber);

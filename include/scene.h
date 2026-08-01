@@ -6,6 +6,7 @@
 #include "components/meshComponent.h"
 #include "components/hierarchyComponent.h"
 #include "components/cameraComponent.h"
+#include "components/lightComponent.h"
 #include "basicTypes.h"
 
 namespace Hydrogen
@@ -27,6 +28,7 @@ namespace Hydrogen
         ComponentStore<MeshComponent> meshes;
         ComponentStore<HierarchyComponent> hierarchy;
         ComponentStore<CameraComponent> cameras;
+        ComponentStore<LightComponent> lights;
 
     private:
         uint32 m_nextId = 0;

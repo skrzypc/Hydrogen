@@ -23,9 +23,36 @@ namespace Hydrogen
 		uint viewBufferIndex;
 		uint mainViewIndex;
 
+		uint lightBufferIndex;
+		uint lightCount;
+
 		float time;
 		float deltaTime;
 		uint frameNumber;
+	};
+
+	// Must match eLightType. Duplicated because light.h is not shader safe.
+	static const uint LightTypeDirectional = 0;
+	static const uint LightTypePoint = 1;
+	static const uint LightTypeSpot = 2;
+
+	struct GpuLight
+	{
+		float3 position;
+		uint type;
+
+		float3 color;
+		// Candela (lm/sr) for point and spot, lux (lm/m^2) for directional.
+		float intensity;
+
+		float3 direction;
+		// Infinite when the light has no authored range.
+		float range;
+
+		// Cosines so shading compares against a dot product directly. Spot only.
+		float cosInnerConeAngle;
+		float cosOuterConeAngle;
+		uint2 _pad;
 	};
 
 	struct ViewData
@@ -42,7 +69,8 @@ namespace Hydrogen
 		float farPlane;
 
 		float2 viewportSize;
-		uint2 _pad;
+		float exposure;
+		uint _pad;
 	};
 
 #ifdef __cplusplus

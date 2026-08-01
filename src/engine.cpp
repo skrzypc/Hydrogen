@@ -65,6 +65,11 @@ namespace Hydrogen
 				{
 					m_scene.meshes.Add(entity, MeshComponent{ handles[*node.meshIndex] });
 				}
+
+				if (node.lightIndex.has_value())
+				{
+					m_scene.lights.Add(entity, LightComponent{ model.lights[*node.lightIndex] });
+				}
 			}
 		}
 
@@ -176,6 +181,7 @@ namespace Hydrogen
 					renderScene.camera.fovYDeg = cc->fovYDeg;
 					renderScene.camera.nearZ = cc->nearZ;
 					renderScene.camera.farZ = cc->farZ;
+					renderScene.camera.exposure = cc->exposure;
 				}
 			}
 
@@ -195,9 +201,31 @@ namespace Hydrogen
 				renderScene.objects.push_back(obj);
 			}
 
+			const auto& lightEntities = m_scene.lights.GetEntities();
+			auto lightComponents = m_scene.lights.GetAll();
+			for (uint32 i = 0; i < static_cast<uint32>(lightEntities.size()); ++i)
+			{
+				const TransformComponent* tc = m_scene.transforms.Get(lightEntities[i]);
+				if (!tc)
+				{
+					continue;
+				}
+
+				RenderLight renderLight{};
+				renderLight.light = lightComponents[i].light;
+				renderLight.position = tc->transform.position;
+				renderLight.direction = Vector3::Transform(Forward, Quaternion(tc->transform.rotation));
+				renderScene.lights.push_back(renderLight);
+			}
+
 			{
 				ImGui::Begin("Debug");
 				ImGui::Text("FPS: %.1f (%.2f ms)", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
+
+				if (CameraComponent* cc = m_scene.cameras.Get(m_activeCamera))
+				{
+					ImGui::SliderFloat("Exposure", &cc->exposure, 0.01f, 1000.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+				}
 				if (const TransformComponent* tc = m_scene.transforms.Get(m_activeCamera))
 				{
 					ImGui::Text("Pos: %.2f %.2f %.2f", tc->transform.position.x, tc->transform.position.y, tc->transform.position.z);

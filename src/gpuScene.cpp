@@ -12,13 +12,18 @@
 
 namespace Hydrogen
 {
-	void GpuScene::Initialize(GpuDevice& device, GpuUploader& uploader, uint32 maxVertices, uint32 maxIndices, uint32 sceneCapacity, uint32 maxViews)
+	static_assert(static_cast<uint32>(eLightType::Directional) == LightTypeDirectional);
+	static_assert(static_cast<uint32>(eLightType::Point) == LightTypePoint);
+	static_assert(static_cast<uint32>(eLightType::Spot) == LightTypeSpot);
+
+	void GpuScene::Initialize(GpuDevice& device, GpuUploader& uploader, uint32 maxVertices, uint32 maxIndices, uint32 sceneCapacity, uint32 maxViews, uint32 maxLights)
 	{
 		m_pDevice = &device;
 		m_pUploader = &uploader;
 		m_maxVertices = maxVertices;
 		m_maxIndices = maxIndices;
 		m_sceneCapacity = sceneCapacity;
+		m_maxLights = maxLights;
 
 		ResourceState initialState{};
 
@@ -46,14 +51,24 @@ namespace Hydrogen
 		srvDesc.Buffer.StructureByteStride = sizeof(uint32);
 		m_indexSrv = device.CreateShaderResourceView(m_indexBuffer.get(), srvDesc);
 
-		m_transformBuffer = device.CreateUploadBuffer(L"H2_SCENE_TRANSFORMS", m_sceneCapacity * sizeof(DirectX::XMFLOAT4X4));
 		srvDesc.Buffer.NumElements = m_sceneCapacity;
 		srvDesc.Buffer.StructureByteStride = sizeof(DirectX::XMFLOAT4X4);
-		m_transformBufferSrv = device.CreateShaderResourceView(m_transformBuffer.get(), srvDesc);
 
 		for (uint32 i = 0; i < Config::FramesInFlight; ++i)
 		{
+			m_transformBuffers[i] = device.CreateUploadBuffer(L"H2_SCENE_TRANSFORMS", m_sceneCapacity * sizeof(DirectX::XMFLOAT4X4));
+			m_transformSrvs[i] = device.CreateShaderResourceView(m_transformBuffers[i].get(), srvDesc);
+
 			m_instanceDescs[i] = device.CreateUploadBuffer(L"H2_SCENE_TLAS_INSTANCES", m_sceneCapacity * sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
+		}
+
+		srvDesc.Buffer.NumElements = m_maxLights;
+		srvDesc.Buffer.StructureByteStride = sizeof(GpuLight);
+
+		for (uint32 i = 0; i < Config::FramesInFlight; ++i)
+		{
+			m_lightBuffers[i] = device.CreateUploadBuffer(L"H2_SCENE_LIGHTS", m_maxLights * sizeof(GpuLight));
+			m_lightSrvs[i] = device.CreateShaderResourceView(m_lightBuffers[i].get(), srvDesc);
 		}
 	}
 
@@ -90,6 +105,7 @@ namespace Hydrogen
 		PublishReadyMeshes();
 
 		UpdateTransforms(frameContext.renderScene.objects);
+		UpdateLights(frameContext.renderScene.lights);
 	}
 
 	void GpuScene::ProcessMeshUploads()
@@ -291,6 +307,8 @@ namespace Hydrogen
 	{
 		H2_VERIFY_FATAL(objects.size() <= m_sceneCapacity, "RenderScene object count exceeds scene capacity!");
 
+		m_transformStaging.resize(objects.size());
+
 		auto* pDescs = reinterpret_cast<D3D12_RAYTRACING_INSTANCE_DESC*>(
 			m_instanceDescs[m_currentFrameIndex]->GetMappedPtr());
 
@@ -299,7 +317,7 @@ namespace Hydrogen
 		{
 			const RenderObject& obj = objects[transformIndex];
 
-			m_transformBuffer->Write(&obj.worldMatrix, sizeof(DirectX::XMFLOAT4X4), transformIndex * sizeof(DirectX::XMFLOAT4X4));
+			m_transformStaging[transformIndex] = obj.worldMatrix;
 
 			const GpuMesh* pMesh = GetGpuMesh(obj.mesh);
 			if (!pMesh || pMesh->state != GpuMeshState::BlasReady)
@@ -317,7 +335,44 @@ namespace Hydrogen
 			++instanceCount;
 		}
 
+		if (!m_transformStaging.empty())
+		{
+			m_transformBuffers[m_currentFrameIndex]->Write(
+				m_transformStaging.data(),
+				m_transformStaging.size() * sizeof(DirectX::XMFLOAT4X4));
+		}
+
 		m_lastInstanceCount = instanceCount;
+	}
+
+	void GpuScene::UpdateLights(std::span<const RenderLight> lights)
+	{
+		H2_VERIFY_FATAL(lights.size() <= m_maxLights, "RenderScene light count exceeds light capacity!");
+
+		m_lightCount = static_cast<uint32>(lights.size());
+		m_lightStaging.resize(lights.size());
+
+		for (uint32 lightIndex = 0; lightIndex < m_lightCount; ++lightIndex)
+		{
+			const RenderLight& renderLight = lights[lightIndex];
+			const Light& light = renderLight.light;
+
+			GpuLight& gpuLight = m_lightStaging[lightIndex];
+			gpuLight = {};
+			gpuLight.position = renderLight.position;
+			gpuLight.type = static_cast<uint32>(light.type);
+			gpuLight.color = light.color;
+			gpuLight.intensity = light.intensity;
+			gpuLight.direction = renderLight.direction;
+			gpuLight.range = light.range.value_or(std::numeric_limits<float32>::max());
+			gpuLight.cosInnerConeAngle = std::cos(light.innerConeAngle.value_or(0.0f));
+			gpuLight.cosOuterConeAngle = std::cos(light.outerConeAngle.value_or(DirectX::XM_PIDIV4));
+		}
+
+		if (!m_lightStaging.empty())
+		{
+			m_lightBuffers[m_currentFrameIndex]->Write(m_lightStaging.data(), m_lightStaging.size() * sizeof(GpuLight));
+		}
 	}
 
 	void GpuScene::UploadMeshGeometry(MeshHandle handle, const Mesh& src)
