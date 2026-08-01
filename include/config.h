@@ -13,8 +13,8 @@ namespace Hydrogen
 
 		static constexpr uint32 FramesInFlight = 3;
 
-		static constexpr uint32 WindowWidth = 1920;
-		static constexpr uint32 WindowHeight = 1080;
+		static constexpr uint32 WindowWidth = 2560;
+		static constexpr uint32 WindowHeight = 1440;
 
 		static constexpr eLogLevel LogLevel = eLogLevel::Verbose;
 

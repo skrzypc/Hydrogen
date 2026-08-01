@@ -17,6 +17,9 @@ namespace Hydrogen
 
 	void Window::Create(const uint32 width, const uint32 height, const std::wstring_view& windowTitle, const std::wstring_view& windowClassName)
 	{
+		// Otherwise Windows sizes the window in virtual pixels and stretches the result.
+		SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+
 		m_width = width;
 		m_height = height;
 		m_hInstance = GetModuleHandleW(nullptr);
@@ -38,17 +41,20 @@ namespace Hydrogen
 
 		m_atom = RegisterClassEx(&wndClass);
 
+		// Shared so the non client area is measured for the window actually being created.
+		static constexpr DWORD windowStyle = WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU | WS_SIZEBOX;
+
 		RECT adjustedWndSize{};
 		adjustedWndSize.left = adjustedWndSize.top = 0;
 		adjustedWndSize.right = m_width;
 		adjustedWndSize.bottom = m_height;
-		AdjustWindowRect(&adjustedWndSize, WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU, FALSE);
+		AdjustWindowRectExForDpi(&adjustedWndSize, windowStyle, FALSE, 0, GetDpiForSystem());
 
 		m_hwnd = CreateWindowEx(
 			0,
 			windowClassName.data(),
 			windowTitle.data(),
-			WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU | WS_SIZEBOX,
+			windowStyle,
 			100, 40,
 			adjustedWndSize.right - adjustedWndSize.left,
 			adjustedWndSize.bottom - adjustedWndSize.top,
@@ -81,6 +87,9 @@ namespace Hydrogen
 	{
 		m_width = newWidth;
 		m_height = newHeight;
+
+		// TODO: Nothing consumes this, so the swap chain never resizes and the image is stretched.
+		// Handling WM_DPICHANGED for monitors with different scaling needs the same path.
 		m_wasResized = true;
 	}
 
