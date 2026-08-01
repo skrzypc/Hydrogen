@@ -11,7 +11,6 @@ ConstantBuffer<PushConstants> g_push : register(b0, space0);
 struct VsOut
 {
     float4 posCS    : SV_Position;
-    float3 posWS    : POSITION;
     float3 normalWS : NORMAL;
 };
 
@@ -32,7 +31,6 @@ VsOut mainVS(uint vertexID : SV_VertexID)
 
     VsOut o;
     o.posCS    = mul(vp, worldPos);
-    o.posWS    = worldPos.xyz;
     o.normalWS = mul((float3x3)world, normal);
     return o;
 }

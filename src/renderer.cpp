@@ -13,7 +13,7 @@
 #include <imgui_impl_win32.h>
 
 #include "renderer.h"
-#include "renderBackends/hybridBackend.h"
+#include "renderBackends/deferredBackend.h"
 #include "renderBackends/rayTracingBackend.h"
 #include "logger.h"
 #include "verifier.h"
@@ -137,8 +137,8 @@ namespace Hydrogen
 	{
 		switch (type)
 		{
-		case eRenderBackendType::Hybrid:
-			m_backend = std::make_unique<HybridBackend>();
+		case eRenderBackendType::Deferred:
+			m_backend = std::make_unique<DeferredBackend>();
 			break;
 		case eRenderBackendType::RayTracing:
 			m_backend = std::make_unique<RayTracingBackend>();
@@ -170,7 +170,7 @@ namespace Hydrogen
 	{
 		static constexpr std::array<const char*, static_cast<size_t>(eRenderBackendType::Count)> backendNames =
 		{
-			"Hybrid",
+			"Deferred",
 			"RayTracing",
 		};
 

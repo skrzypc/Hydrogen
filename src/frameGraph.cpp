@@ -195,6 +195,8 @@ namespace Hydrogen
 				cmd->Barrier(groupCount, groups);
 			}
 
+			ClearPassTargets(cmd, pass);
+
 			{
 				PIXScopedEvent(cmd, PIX_COLOR_INDEX(pass.index), pass.name.c_str());
 				//H2_INFO(eLogLevel::Verbose, "Frame graph executing pass: {}", pass.name);
@@ -625,6 +627,37 @@ namespace Hydrogen
 					m_executeContext.m_resourceMap[key] = node.pResource->GetResource();
 					m_executeContext.m_nameToKey[node.name] = key;
 				}
+			}
+		}
+	}
+
+	void FrameGraph::ClearPassTargets(ID3D12GraphicsCommandList7* cmd, const FGPass& pass)
+	{
+		for (const FGPassNode& passNode : pass.nodes)
+		{
+			if (passNode.loadOp != FGLoadOp::Clear || !passNode.handle.IsTexture())
+			{
+				continue;
+			}
+
+			// Taking the value from the node keeps it in step with the one the resource was created
+			// with, which is what lets the driver use its fast clear path.
+			const FGTextureNode& node = m_textureNodes[passNode.handle.index];
+			const uint32 key = FGExecuteContext::ResourceKey(passNode.handle);
+
+			switch (passNode.access.resourceUsage)
+			{
+			case FGUsage::RTV:
+				cmd->ClearRenderTargetView(m_executeContext.m_rtvMap.at(key), node.desc.optimizedClearColor.data(), 0, nullptr);
+				break;
+
+			case FGUsage::DSV:
+				cmd->ClearDepthStencilView(m_executeContext.m_dsvMap.at(key), D3D12_CLEAR_FLAG_DEPTH, node.desc.optimizedDepthClearValue, 0, 0, nullptr);
+				break;
+
+			default:
+				H2_VERIFY(false, "Clear requested for '{}', which this pass does not bind as a render or depth target.", node.name);
+				break;
 			}
 		}
 	}

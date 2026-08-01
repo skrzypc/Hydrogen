@@ -14,7 +14,7 @@ namespace Hydrogen
 
     enum class eRenderBackendType : uint8
     {
-        Hybrid = 0,
+        Deferred = 0,
         RayTracing,
         Count
     };

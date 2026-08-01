@@ -1,4 +1,4 @@
-#include "renderBackends/hybridBackend.h"
+#include "renderBackends/deferredBackend.h"
 
 #include <string_view>
 
@@ -10,78 +10,109 @@
 
 namespace Hydrogen
 {
-    void HybridBackend::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler)
-    {
-        m_pDevice = &device;
+	void DeferredBackend::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler)
+	{
+		m_pDevice = &device;
 
-        m_clearPass.Initialize(device, shaderCompiler);
-        m_clearPass.clearColor = { 0.53f, 0.81f, 0.92f, 1.0f };
-        m_meshPass.Initialize(device, shaderCompiler);
-        m_buildTlasPass.Initialize(device, shaderCompiler);
-    }
+		m_gBufferPass.Initialize(device, shaderCompiler);
+		m_lightingPass.Initialize(device, shaderCompiler);
+		m_tonemapPass.Initialize(device, shaderCompiler);
+	}
 
-    void HybridBackend::Shutdown()
-    {
+	void DeferredBackend::Shutdown() { }
 
-    }
+	void DeferredBackend::DefineFrameGraphResources(FrameGraph& frameGraph, const FrameContext& frameContext)
+	{
+		frameGraph.CreateTexture("GBuffer_Albedo",
+			{
+				.width = frameContext.renderWidth,
+				.height = frameContext.renderHeight,
+				.mipLevels = 1,
+				.arraySize = 1,
+				.format = GBufferPass::AlbedoFormat,
+				.flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+				.dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+				.optimizedClearColor = {0.0f, 0.0f, 0.0f, 1.0f},
+			});
 
-    std::string_view HybridBackend::Render(FrameGraph& frameGraph, const FrameContext& frameContext)
-    {
-        DefineFrameGraphResources(frameGraph, frameContext);
+		frameGraph.CreateTexture("GBuffer_Normal",
+			{
+				.width = frameContext.renderWidth,
+				.height = frameContext.renderHeight,
+				.mipLevels = 1,
+				.arraySize = 1,
+				.format = GBufferPass::NormalFormat,
+				.flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+				.dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+				.optimizedClearColor = {0.0f, 0.0f},
+			});
 
-        m_clearPass.target = "SceneColor";
-        frameGraph.AddPass("ClearTarget", m_clearPass);
+		frameGraph.CreateTexture("GBuffer_RM",
+			{
+				.width = frameContext.renderWidth,
+				.height = frameContext.renderHeight,
+				.mipLevels = 1,
+				.arraySize = 1,
+				.format = GBufferPass::RoughnessMetalnessFormat,
+				.flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+				.dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+				.optimizedClearColor = {0.0f, 0.0f},
+			});
 
-        m_buildTlasPass.pScene = &frameContext.gpuScene;
-        frameGraph.AddPass("BuildTLAS", m_buildTlasPass);
+		frameGraph.CreateTexture("SceneColor",
+			{
+				.width = frameContext.renderWidth,
+				.height = frameContext.renderHeight,
+				.mipLevels = 1,
+				.arraySize = 1,
+				.format = LightingPass::SceneColorFormat,
+				.flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+				.dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+				.optimizedClearColor = {0.0f, 0.0f, 0.0f, 1.0f},
+			});
 
-        m_meshPass.renderTarget = "SceneColor";
-        m_meshPass.depthTarget = "SceneDepth";
-        m_meshPass.pScene = &frameContext.gpuScene;
-        m_meshPass.renderObjects = frameContext.renderScene.objects;
-        frameGraph.AddPass("MeshPass", m_meshPass);
+		frameGraph.CreateTexture("Output",
+			{
+				.width = frameContext.displayWidth,
+				.height = frameContext.displayHeight,
+				.mipLevels = 1,
+				.arraySize = 1,
+				.format = frameContext.displayFormat,
+				.flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+				.dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+				.optimizedClearColor = {0.0f, 0.0f, 0.0f, 1.0f},
+			});
 
-        return "SceneColor";
-    }
+		frameGraph.CreateTexture("SceneDepth",
+			{
+				.width = frameContext.renderWidth,
+				.height = frameContext.renderHeight,
+				.mipLevels = 1,
+				.arraySize = 1,
+				.format = GBufferPass::DepthFormat,
+				.flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL,
+				.dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+				.optimizedDepthClearValue = 0.0f,
+			});
+	}
 
-    void HybridBackend::DefineFrameGraphResources(FrameGraph& frameGraph, const FrameContext& frameContext)
-    {
-        frameGraph.CreateTexture("SceneColor",
-            {
-                .width = frameContext.renderWidth,
-                .height = frameContext.renderHeight,
-                .mipLevels = 1,
-                .arraySize = 1,
-                .format = frameContext.displayFormat,
-                .flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
-                .dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
-                .optimizedClearColor = m_clearPass.clearColor,
-            });
+	std::string_view DeferredBackend::Render(FrameGraph& frameGraph, const FrameContext& frameContext)
+	{
+		DefineFrameGraphResources(frameGraph, frameContext);
 
-        frameGraph.CreateTexture("SceneDepth",
-            {
-                .width = frameContext.renderWidth,
-                .height = frameContext.renderHeight,
-                .mipLevels = 1,
-                .arraySize = 1,
-                .format = DXGI_FORMAT_D32_FLOAT,
-                .flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL,
-                .dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
-                .optimizedDepthClearValue = 0.0f,
-            });
+		m_gBufferPass.pScene = &frameContext.gpuScene;
+		m_gBufferPass.renderObjects = frameContext.renderScene.objects;
+		frameGraph.AddPass("GBuffer", m_gBufferPass);
 
-        const uint32 instanceCount = static_cast<uint32>(frameContext.renderScene.objects.size());
-        const AccelerationStructureSizes tlasSizes = m_pDevice->GetTlasPrebuildSizes(instanceCount);
+		frameGraph.AddPass("Lighting", m_lightingPass);
 
-        frameGraph.CreateBuffer("TLAS",
-            Buffer::Desc{ .size = tlasSizes.resultSize, .flags = D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE });
+		frameGraph.AddPass("Tonemap", m_tonemapPass);
 
-        frameGraph.CreateBuffer("TLASScratch",
-            Buffer::Desc{ .size = tlasSizes.scratchSize, .flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS });
-    }
+		return "Output";
+	}
 
-    void HybridBackend::BuildUI()
-    {
-        
-    }
+	void DeferredBackend::BuildUI()
+	{
+
+	}
 }

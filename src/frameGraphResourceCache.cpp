@@ -161,7 +161,7 @@ namespace Hydrogen
 			: range.mipLevelsCount;
 
 		D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
-		desc.Format = textureDesc.format;
+		desc.Format = ToShaderResourceFormat(textureDesc.format);
 		desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
 		if (textureDesc.arraySize > 1)

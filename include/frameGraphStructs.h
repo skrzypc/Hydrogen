@@ -43,6 +43,12 @@ namespace Hydrogen
 		AccelerationStructure,
 	};
 
+	enum class FGLoadOp : uint8
+	{
+		DontCare,
+		Clear,
+	};
+
 	namespace FGAccess
 	{
 		enum class Read : uint8
@@ -151,8 +157,7 @@ namespace Hydrogen
 		FGPassNodeAccess access{};
 
 		FGSubresourceRange range{};
-
-		//D3D12_CPU_DESCRIPTOR_HANDLE cpuDescriptor{}; // Assigned at compile stage.
+		FGLoadOp loadOp = FGLoadOp::DontCare;
 	};
 
 	class FGExecuteContext

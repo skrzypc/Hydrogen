@@ -21,19 +21,19 @@ namespace Hydrogen
 
 	public:
 		void Read(std::string_view name, FGAccess::Read access);
-		void Write(std::string_view name, FGAccess::Write access);
+		void Write(std::string_view name, FGAccess::Write access, FGLoadOp loadOp = FGLoadOp::DontCare);
 
 		const Texture::Desc& GetTextureDesc(std::string_view name) const;
 		const Buffer::Desc& GetBufferDesc(std::string_view name) const;
 
 	private:
 		FGResourceHandle Read(FGResourceHandle handle, FGAccess::Read access);
-		FGResourceHandle Write(FGResourceHandle handle, FGAccess::Write access);
+		FGResourceHandle Write(FGResourceHandle handle, FGAccess::Write access, FGLoadOp loadOp);
 
 		FGPassNodeAccess ResolveRead(FGAccess::Read access);
 		FGPassNodeAccess ResolveWrite(FGAccess::Write access);
 
-		FGResourceHandle AccessInternal(FGResourceHandle handle, FGPassNodeType direction, FGPassNodeAccess access, FGSubresourceRange range);
+		FGResourceHandle AccessInternal(FGResourceHandle handle, FGPassNodeType direction, FGPassNodeAccess access, FGSubresourceRange range, FGLoadOp loadOp);
 
 	private:
 		FrameGraph& m_frameGraph;

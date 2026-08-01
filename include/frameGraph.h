@@ -83,6 +83,7 @@ namespace Hydrogen
 		void ComputeBarriers();
 		void BuildDescriptors();
 
+		void ClearPassTargets(ID3D12GraphicsCommandList7* cmd, const FGPass& pass);
 		void RestoreImportedResources(ID3D12GraphicsCommandList7* cmd);
 
 	private:

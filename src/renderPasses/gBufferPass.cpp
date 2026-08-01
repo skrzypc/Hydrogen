@@ -1,3 +1,5 @@
+#include <array>
+
 #include <d3d12.h>
 
 #include "device.h"
@@ -5,24 +7,24 @@
 #include "frameGraphBuilder.h"
 #include "graphicsContext.h"
 #include "gpuScene.h"
-#include "renderPasses/meshPass.h"
+#include "renderPasses/gBufferPass.h"
 
 namespace Hydrogen
 {
-	void MeshPass::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler)
+	void GBufferPass::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler)
 	{
 		Shader::Desc vsDesc
 		{
-			.sourcePath = "mesh.vs.hlsl",
-			.name = "MeshVS",
+			.sourcePath = "gBuffer.vs.hlsl",
+			.name = "GBufferVS",
 			.entryPoint = "mainVS",
 			.type = eShaderType::VS,
 		};
 
 		Shader::Desc psDesc
 		{
-			.sourcePath = "mesh.ps.hlsl",
-			.name = "MeshPS",
+			.sourcePath = "gBuffer.ps.hlsl",
+			.name = "GBufferPS",
 			.entryPoint = "mainPS",
 			.type = eShaderType::PS,
 		};
@@ -33,7 +35,12 @@ namespace Hydrogen
 		Shader ps(psDesc);
 		shaderCompiler.Compile(ps);
 
-		const DXGI_FORMAT targetFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+		const std::array<DXGI_FORMAT, 3> targetFormats
+		{
+			AlbedoFormat,
+			NormalFormat,
+			RoughnessMetalnessFormat,
+		};
 
 		D3D12_RASTERIZER_DESC2 rasterizerDesc = PipelineState::DefaultRasterizer();
 		rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
@@ -46,8 +53,8 @@ namespace Hydrogen
 		{
 			.pVertexShader = &vs,
 			.pPixelShader = &ps,
-			.renderTargetFormats = std::span<const DXGI_FORMAT>(&targetFormat, 1),
-			.depthFormat = DXGI_FORMAT_D32_FLOAT,
+			.renderTargetFormats = targetFormats,
+			.depthFormat = DepthFormat,
 			.rasterizerDesc = rasterizerDesc,
 			.blendDesc = PipelineState::DefaultBlend(),
 			.depthStencilDesc = depthStencilDesc,
@@ -57,17 +64,19 @@ namespace Hydrogen
 		m_pso.CreateGraphics(device, psoDesc);
 	}
 
-	void MeshPass::Setup(FGBuilder& builder)
+	void GBufferPass::Setup(FGBuilder& builder)
 	{
-		builder.Write(renderTarget, FGAccess::Write::RenderTarget);
-		builder.Write(depthTarget, FGAccess::Write::DepthStencil);
+		builder.Write("GBuffer_Albedo", FGAccess::Write::RenderTarget, FGLoadOp::Clear);
+		builder.Write("GBuffer_Normal", FGAccess::Write::RenderTarget, FGLoadOp::Clear);
+		builder.Write("GBuffer_RM", FGAccess::Write::RenderTarget, FGLoadOp::Clear);
+		builder.Write("SceneDepth", FGAccess::Write::DepthStencil, FGLoadOp::Clear);
 
-		const Texture::Desc& desc = builder.GetTextureDesc(renderTarget);
+		const Texture::Desc& desc = builder.GetTextureDesc("GBuffer_Albedo");
 		m_width = desc.width;
 		m_height = desc.height;
 	}
 
-	void MeshPass::Execute(FGExecuteContext& fgExecuteContext, GraphicsContext& graphicsContext)
+	void GBufferPass::Execute(FGExecuteContext& fgExecuteContext, GraphicsContext& graphicsContext)
 	{
 		ID3D12GraphicsCommandList10* cmd = graphicsContext.CmdList();
 
@@ -76,10 +85,16 @@ namespace Hydrogen
 		cmd->RSSetViewports(1, &viewport);
 		cmd->RSSetScissorRects(1, &scissor);
 
-		D3D12_CPU_DESCRIPTOR_HANDLE rtv = fgExecuteContext.GetRTV(renderTarget);
-		D3D12_CPU_DESCRIPTOR_HANDLE dsv = fgExecuteContext.GetDSV(depthTarget);
-		cmd->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, 0.0f, 0, 0, nullptr);
-		cmd->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
+		const std::array<D3D12_CPU_DESCRIPTOR_HANDLE, 3> rtvs
+		{
+			fgExecuteContext.GetRTV("GBuffer_Albedo"),
+			fgExecuteContext.GetRTV("GBuffer_Normal"),
+			fgExecuteContext.GetRTV("GBuffer_RM"),
+		};
+
+		D3D12_CPU_DESCRIPTOR_HANDLE dsv = fgExecuteContext.GetDSV("SceneDepth");
+
+		cmd->OMSetRenderTargets(static_cast<uint32>(rtvs.size()), rtvs.data(), FALSE, &dsv);
 		cmd->SetPipelineState(m_pso.Get());
 		cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 

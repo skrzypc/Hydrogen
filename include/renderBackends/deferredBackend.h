@@ -1,13 +1,13 @@
 #pragma once
 
 #include "renderBackend.h"
-#include "renderPasses/clearPass.h"
-#include "renderPasses/meshPass.h"
-#include "renderPasses/buildTlasPass.h"
+#include "renderPasses/gBufferPass.h"
+#include "renderPasses/lightingPass.h"
+#include "renderPasses/tonemapPass.h"
 
 namespace Hydrogen
 {
-    class HybridBackend : public IRenderBackend
+    class DeferredBackend : public IRenderBackend
     {
     public:
         void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler) override;
@@ -16,14 +16,14 @@ namespace Hydrogen
         std::string_view Render(FrameGraph& frameGraph, const FrameContext& frameContext) override;
         void BuildUI() override;
 
-        const char* GetName() const override { return "Hybrid"; }
+        const char* GetName() const override { return "Deferred"; }
 
     private:
         void DefineFrameGraphResources(FrameGraph& frameGraph, const FrameContext& frameContext);
 
     private:
-        ClearPass m_clearPass{};
-        MeshPass m_meshPass{};
-        BuildTlasPass m_buildTlasPass{};
+        GBufferPass m_gBufferPass{};
+        LightingPass m_lightingPass{};
+        TonemapPass m_tonemapPass{};
     };
 }

@@ -13,12 +13,12 @@ namespace Hydrogen
 
 	FGResourceHandle FGBuilder::Read(FGResourceHandle handle, FGAccess::Read access)
 	{
-		return AccessInternal(handle, FGPassNodeType::Read, ResolveRead(access), FGSubresourceRange{});
+		return AccessInternal(handle, FGPassNodeType::Read, ResolveRead(access), FGSubresourceRange{}, FGLoadOp::DontCare);
 	}
 
-	FGResourceHandle FGBuilder::Write(FGResourceHandle handle, FGAccess::Write access)
+	FGResourceHandle FGBuilder::Write(FGResourceHandle handle, FGAccess::Write access, FGLoadOp loadOp)
 	{
-		return AccessInternal(handle, FGPassNodeType::Write, ResolveWrite(access), FGSubresourceRange{});
+		return AccessInternal(handle, FGPassNodeType::Write, ResolveWrite(access), FGSubresourceRange{}, loadOp);
 	}
 
 	void FGBuilder::Read(std::string_view name, FGAccess::Read access)
@@ -26,9 +26,9 @@ namespace Hydrogen
 		Read(m_frameGraph.GetResource(name), access);
 	}
 
-	void FGBuilder::Write(std::string_view name, FGAccess::Write access)
+	void FGBuilder::Write(std::string_view name, FGAccess::Write access, FGLoadOp loadOp)
 	{
-		FGResourceHandle handle = Write(m_frameGraph.GetResource(name), access);
+		FGResourceHandle handle = Write(m_frameGraph.GetResource(name), access, loadOp);
 		m_frameGraph.m_resourceRegistry[std::string(name)] = handle;
 	}
 
@@ -146,7 +146,7 @@ namespace Hydrogen
 		}
 	}
 
-	FGResourceHandle FGBuilder::AccessInternal(FGResourceHandle handle, FGPassNodeType direction, FGPassNodeAccess access, FGSubresourceRange range)
+	FGResourceHandle FGBuilder::AccessInternal(FGResourceHandle handle, FGPassNodeType direction, FGPassNodeAccess access, FGSubresourceRange range, FGLoadOp loadOp)
 	{
 		H2_VERIFY(handle.IsValid(), "Accessing invalid handle!");
 
@@ -208,6 +208,7 @@ namespace Hydrogen
 				.type = direction,
 				.access = access,
 				.range = range,
+				.loadOp = loadOp,
 			}
 		);
 
