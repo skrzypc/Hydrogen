@@ -20,6 +20,6 @@ namespace Hydrogen
 			builder.Write(dst, FGAccess::Write::CopyDst);
 		}
 
-		void Execute(FGExecuteContext& ctx, GraphicsContext& gfx) override;
+		void Execute(FGExecuteContext& fgExecuteContext, GraphicsContext& graphicsContext) override;
 	};
 }

@@ -103,8 +103,10 @@ namespace Hydrogen
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();
 
-			const float32 dt = static_cast<float32>(m_frameTimer.GetSeconds());
+			const float32 deltaTime = static_cast<float32>(m_frameTimer.GetSeconds());
 			m_frameTimer.Mark();
+
+			const float64 time = m_appTimer.GetSeconds();
 
 			RenderScene renderScene{};
 
@@ -138,7 +140,7 @@ namespace Hydrogen
 				if (move.LengthSquared() > 0.0f)
 				{
 					move.Normalize();
-					move *= m_cameraSpeed * dt;
+					move *= m_cameraSpeed * deltaTime;
 				}
 
 				if (TransformComponent* tc = m_scene.transforms.Get(m_activeCamera))
@@ -214,7 +216,7 @@ namespace Hydrogen
 			ImGui::Render();
 			ImDrawData* drawData = ImGui::GetDrawData();
 
-			m_renderer.RenderFrame(renderScene, drawData);
+			m_renderer.RenderFrame(renderScene, drawData, time, deltaTime);
 		}
 
 		return returnCode;

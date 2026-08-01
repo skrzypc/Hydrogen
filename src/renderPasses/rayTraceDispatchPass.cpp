@@ -62,19 +62,19 @@ namespace Hydrogen
 		m_height = desc.height;
 	}
 
-	void RayTraceDispatchPass::Execute(FGExecuteContext& ctx, GraphicsContext& gfx)
+	void RayTraceDispatchPass::Execute(FGExecuteContext& fgExecuteContext, GraphicsContext& graphicsContext)
 	{
-		ID3D12GraphicsCommandList10* cmd = gfx.CmdList();
+		ID3D12GraphicsCommandList10* cmd = graphicsContext.CmdList();
 		cmd->SetComputeRootSignature(m_pDevice->GetRootSignature().Get());
 		cmd->SetComputeRootConstantBufferView(static_cast<uint32>(eRootParam::FrameConstantBuffer), GraphicsContext::s_frameDataAddr);
 		cmd->SetPipelineState1(m_raytracingPso.Get());
 
 		const PushConstants push
 		{
-			.tlasIndex = ctx.GetSRVIndex("TLAS"),
-			.outputUavIndex = ctx.GetUAVIndex(outputTarget),
+			.tlasIndex = fgExecuteContext.GetSRVIndex("TLAS"),
+			.outputUavIndex = fgExecuteContext.GetUAVIndex(outputTarget),
 		};
-		gfx.SetComputePushConstants(push);
+		graphicsContext.SetComputePushConstants(push);
 
 		const D3D12_DISPATCH_RAYS_DESC dispatchDesc = m_shaderTable.GetDispatchRaysDesc(0, m_width, m_height);
 		cmd->DispatchRays(&dispatchDesc);

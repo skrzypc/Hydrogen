@@ -34,6 +34,7 @@ namespace Hydrogen
 		float32 m_pitch = 0.0f;
 		float32 m_cameraSpeed = 15.0f;
 		Timer m_frameTimer{};
+		Timer m_appTimer{};
 
 	};
 }

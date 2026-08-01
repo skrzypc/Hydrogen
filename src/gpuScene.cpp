@@ -81,23 +81,15 @@ namespace Hydrogen
 		}
 	}
 
-	SceneBindings GpuScene::Update(const RenderScene& renderScene, uint32 frameIndex)
+	void GpuScene::Update(const FrameContext& frameContext)
 	{
-		m_currentFrameIndex = frameIndex;
+		m_currentFrameIndex = frameContext.frameIndex;
 
 		ProcessMeshUploads();
 		ProcessBlasBuilds();
 		PublishReadyMeshes();
 
-		UpdateTransforms(renderScene.objects);
-
-		SceneBindings bindings{};
-		bindings.positionBufferIndex = m_positionSrv.index;
-		bindings.normalBufferIndex = m_normalSrv.index;
-		bindings.uvBufferIndex = m_uvSrv.index;
-		bindings.indexBufferIndex = m_indexSrv.index;
-		bindings.transformBufferIndex = m_transformBufferSrv.index;
-		return bindings;
+		UpdateTransforms(frameContext.renderScene.objects);
 	}
 
 	void GpuScene::ProcessMeshUploads()

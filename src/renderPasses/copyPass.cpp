@@ -3,8 +3,8 @@
 
 namespace Hydrogen
 {
-	void CopyPass::Execute(FGExecuteContext& ctx, GraphicsContext& gfx)
+	void CopyPass::Execute(FGExecuteContext& fgExecuteContext, GraphicsContext& graphicsContext)
 	{
-		gfx.CmdList()->CopyResource(ctx.GetResource(dst), ctx.GetResource(src));
+		graphicsContext.CmdList()->CopyResource(fgExecuteContext.GetResource(dst), fgExecuteContext.GetResource(src));
 	}
 }

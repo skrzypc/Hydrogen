@@ -16,22 +16,13 @@
 #include "device.h"
 #include "shaderInterop.h"
 #include "renderScene.h"
+#include "frameContext.h"
 
 namespace Hydrogen
 {
 	class GpuDevice;
 	class GpuUploader;
 	struct Mesh;
-
-	struct SceneBindings
-	{
-		uint32 positionBufferIndex = 0;
-		uint32 normalBufferIndex = 0;
-		uint32 uvBufferIndex = 0;
-		uint32 indexBufferIndex = 0;
-		uint32 transformBufferIndex = 0;
-		uint32 tlasIndex = 0;
-	};
 
 	class GpuScene
 	{
@@ -42,7 +33,15 @@ namespace Hydrogen
 		void RegisterMesh(MeshHandle handle, Mesh&& mesh);
 		void RegisterMeshes(std::vector<MeshHandle>& meshHandles, std::vector<Mesh>& meshes);
 
-		SceneBindings Update(const RenderScene& renderScene, uint32 frameIndex);
+		// TODO: Should this take the FrameContext at all? It only needs frameIndex and
+		// renderScene.objects, and the context it gets holds a reference back to this scene.
+		// While it does, nothing produced here (GPU instance count, ...) can live in the context.
+		void Update(const FrameContext& frameContext);
+
+		uint32 GetPositionBufferIndex() const { return m_positionSrv.index; }
+		uint32 GetNormalBufferIndex() const { return m_normalSrv.index; }
+		uint32 GetUvBufferIndex() const { return m_uvSrv.index; }
+		uint32 GetTransformBufferIndex() const { return m_transformBufferSrv.index; }
 
 		const Buffer* GetIndexBuffer() const { return m_indexBuffer.get(); }
 		const GpuMesh* GetGpuMesh(MeshHandle handle) const;

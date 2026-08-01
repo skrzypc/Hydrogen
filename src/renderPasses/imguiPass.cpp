@@ -48,12 +48,12 @@ namespace Hydrogen
 		builder.Write(target, FGAccess::Write::RenderTarget);
 	}
 
-	void ImguiPass::Execute(FGExecuteContext& ctx, GraphicsContext& gfx)
+	void ImguiPass::Execute(FGExecuteContext& fgExecuteContext, GraphicsContext& graphicsContext)
 	{
-		D3D12_CPU_DESCRIPTOR_HANDLE rtv = ctx.GetRTV(target);
-		gfx.CmdList()->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
+		D3D12_CPU_DESCRIPTOR_HANDLE rtv = fgExecuteContext.GetRTV(target);
+		graphicsContext.CmdList()->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
 
-		ImGui_ImplDX12_RenderDrawData(pDrawData, gfx.CmdList());
+		ImGui_ImplDX12_RenderDrawData(pDrawData, graphicsContext.CmdList());
 	}
 
 	void ImguiPass::Shutdown()

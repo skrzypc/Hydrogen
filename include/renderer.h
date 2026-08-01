@@ -12,6 +12,7 @@
 #include "gpuUploader.h"
 #include "gpuScene.h"
 #include "gpuMesh.h"
+#include "frameContext.h"
 #include <memory>
 
 #include "renderBackends/renderBackend.h"
@@ -36,17 +37,17 @@ namespace Hydrogen
 		Renderer& operator=(Renderer&&) noexcept = default;
 
 		void Initialize(HWND hWnd);
-		void RenderFrame(const RenderScene& renderScene, ImDrawData* drawData);
+		void RenderFrame(const RenderScene& renderScene, ImDrawData* drawData, float64 time, float32 deltaTime);
 
 		void SetUploadQueue(AssetUploadQueue* pQueue) { m_pUploadQueue = pQueue; }
 		void SwitchBackend(eRenderBackendType type);
 		void BuildBackendUI();
 
 	private:
-		void BeginFrame();
+		[[nodiscard]] FrameContext BeginFrame(const RenderScene& renderScene, float64 time, float32 deltaTime);
 		void EndFrame(uint32 frameIndex, uint64 fenceValue);
 
-		void UpdateFrameData(const RenderScene& renderScene);
+		void UpdateFrameData(const FrameContext& frameContext);
 		void ProcessUploadQueue();
 		void CreateBackend(eRenderBackendType type);
 
@@ -68,11 +69,9 @@ namespace Hydrogen
 		uint32 m_maxViews = 16;
 
 		std::array<uint64, Config::FramesInFlight> m_frameFenceValues{};
-		uint32 m_currentFrameIndex = 0;
-		float32 m_time = 0.0f;
 
 		std::unique_ptr<IRenderBackend> m_backend = nullptr;
-		eRenderBackendType m_backendType = eRenderBackendType::Hybrid;
+		eRenderBackendType m_backendType = eRenderBackendType::RayTracing;
 
 		CopyPass m_copyPass{};
 		ImguiPass m_imguiPass{};

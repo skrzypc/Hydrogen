@@ -3,15 +3,13 @@
 #include <string_view>
 
 #include "basicTypes.h"
-#include "renderScene.h"
 #include "shaderInterop.h"
-#include "texture.h"
+#include "frameContext.h"
 
 namespace Hydrogen
 {
     class GpuDevice;
     class ShaderCompiler;
-    class GpuScene;
     class FrameGraph;
 
     enum class eRenderBackendType : uint8
@@ -26,10 +24,10 @@ namespace Hydrogen
     public:
         virtual ~IRenderBackend() = default;
 
-        virtual void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler, GpuScene& gpuScene) = 0;
+        virtual void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler) = 0;
         virtual void Shutdown() = 0;
 
-        virtual std::string_view Render(FrameGraph& frameGraph, const RenderScene& scene, const Texture::Desc& outputDesc) = 0;
+        virtual std::string_view Render(FrameGraph& frameGraph, const FrameContext& frameContext) = 0;
 
         // TODO: consider per-backend FrameData struct if backends diverge significantly
         virtual void FillFrameData(FrameData& frameData) {}

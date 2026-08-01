@@ -19,7 +19,7 @@ namespace Hydrogen
 
 		void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler) override;
 		void Setup(FGBuilder& builder) override;
-		void Execute(FGExecuteContext& ctx, GraphicsContext& gfx) override;
+		void Execute(FGExecuteContext& fgExecuteContext, GraphicsContext& graphicsContext) override;
 
 		void Shutdown();
 

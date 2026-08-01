@@ -67,17 +67,17 @@ namespace Hydrogen
 		m_height = desc.height;
 	}
 
-	void MeshPass::Execute(FGExecuteContext& ctx, GraphicsContext& gfx)
+	void MeshPass::Execute(FGExecuteContext& fgExecuteContext, GraphicsContext& graphicsContext)
 	{
-		ID3D12GraphicsCommandList10* cmd = gfx.CmdList();
+		ID3D12GraphicsCommandList10* cmd = graphicsContext.CmdList();
 
 		D3D12_VIEWPORT viewport{ 0.0f, 0.0f, static_cast<float32>(m_width), static_cast<float32>(m_height), 0.0f, 1.0f };
 		D3D12_RECT scissor{ 0, 0, static_cast<LONG>(m_width), static_cast<LONG>(m_height) };
 		cmd->RSSetViewports(1, &viewport);
 		cmd->RSSetScissorRects(1, &scissor);
 
-		D3D12_CPU_DESCRIPTOR_HANDLE rtv = ctx.GetRTV(renderTarget);
-		D3D12_CPU_DESCRIPTOR_HANDLE dsv = ctx.GetDSV(depthTarget);
+		D3D12_CPU_DESCRIPTOR_HANDLE rtv = fgExecuteContext.GetRTV(renderTarget);
+		D3D12_CPU_DESCRIPTOR_HANDLE dsv = fgExecuteContext.GetDSV(depthTarget);
 		cmd->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, 0.0f, 0, 0, nullptr);
 		cmd->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
 		cmd->SetPipelineState(m_pso.Get());
@@ -100,7 +100,7 @@ namespace Hydrogen
 			PushConstants push{};
 			push.transformIndex = i;
 			push.baseVertex = gpuMesh->baseVertex; // TODO: Do we need this?
-			gfx.SetPushConstants(push);
+			graphicsContext.SetPushConstants(push);
 
 			cmd->DrawIndexedInstanced(gpuMesh->indexCount, 1, gpuMesh->baseIndex, 0, 0);
 		}

@@ -10,10 +10,10 @@ namespace Hydrogen
     class BuildTlasPass : public IRenderPass
     {
     public:
-        GpuScene* pScene = nullptr;
+        const GpuScene* pScene = nullptr;
 
         void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler) override;
         void Setup(FGBuilder& builder) override;
-        void Execute(FGExecuteContext& ctx, GraphicsContext& gfx) override;
+        void Execute(FGExecuteContext& fgExecuteContext, GraphicsContext& graphicsContext) override;
     };
 }

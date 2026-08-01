@@ -10,10 +10,9 @@
 
 namespace Hydrogen
 {
-    void RayTracingBackend::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler, GpuScene& gpuScene)
+    void RayTracingBackend::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler)
     {
         m_pDevice = &device;
-        m_pGpuScene = &gpuScene;
 
         m_buildTlasPass.Initialize(device, shaderCompiler);
         m_rayTraceDispatchPass.Initialize(device, shaderCompiler);
@@ -24,11 +23,11 @@ namespace Hydrogen
 
     }
 
-    std::string_view RayTracingBackend::Render(FrameGraph& frameGraph, const RenderScene& scene, const Texture::Desc& outputDesc)
+    std::string_view RayTracingBackend::Render(FrameGraph& frameGraph, const FrameContext& frameContext)
     {
-        DefineFrameGraphResources(frameGraph, scene, outputDesc);
+        DefineFrameGraphResources(frameGraph, frameContext);
 
-        m_buildTlasPass.pScene = m_pGpuScene;
+        m_buildTlasPass.pScene = &frameContext.gpuScene;
         frameGraph.AddPass("BuildTLAS", m_buildTlasPass);
 
         m_rayTraceDispatchPass.outputTarget = "SceneColor";
@@ -37,21 +36,21 @@ namespace Hydrogen
         return "SceneColor";
     }
 
-    void RayTracingBackend::DefineFrameGraphResources(FrameGraph& frameGraph, const RenderScene& scene, const Texture::Desc& outputDesc)
+    void RayTracingBackend::DefineFrameGraphResources(FrameGraph& frameGraph, const FrameContext& frameContext)
     {
         frameGraph.CreateTexture("SceneColor",
             {
-                .width = outputDesc.width,
-                .height = outputDesc.height,
+                .width = frameContext.renderWidth,
+                .height = frameContext.renderHeight,
                 .mipLevels = 1,
                 .arraySize = 1,
-                .format = outputDesc.format,
+                .format = frameContext.displayFormat,
                 .flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
                 .dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
                 .optimizedClearColor = { 0.0f, 0.0f, 0.0f, 1.0f },
             });
 
-        const uint32 instanceCount = static_cast<uint32>(scene.objects.size());
+        const uint32 instanceCount = static_cast<uint32>(frameContext.renderScene.objects.size());
         const AccelerationStructureSizes tlasSizes = m_pDevice->GetTlasPrebuildSizes(instanceCount);
 
         frameGraph.CreateBuffer("TLAS",

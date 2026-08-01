@@ -26,6 +26,7 @@
 #include "assetUploadQueue.h"
 #include "renderScene.h"
 #include "hydrogenMath.h"
+#include "frameContext.h"
 
 namespace Hydrogen
 {
@@ -60,18 +61,43 @@ namespace Hydrogen
 		viewSrvDesc.Buffer.StructureByteStride = sizeof(ViewData);
 		m_viewBufferSrv = m_gpuDevice.CreateShaderResourceView(m_viewBuffer.get(), viewSrvDesc);
 
-		CreateBackend(eRenderBackendType::RayTracing);
+		CreateBackend(m_backendType);
 
 		ImGui::CreateContext();
 		ImGui_ImplWin32_Init(hWnd);
 		m_imguiPass.Initialize(m_gpuDevice, m_shaderCompiler);
 	}
 
-	void Renderer::BeginFrame()
+	FrameContext Renderer::BeginFrame(const RenderScene& renderScene, float64 time, float32 deltaTime)
 	{
-		m_currentFrameIndex = m_swapChain.GetCurrentFrameIndex();
-		m_uploadBuffer.NextFrame(m_currentFrameIndex);
-		m_gpuDevice.Wait<eQueueType::Direct>(m_frameFenceValues[m_currentFrameIndex]);
+		const uint32 frameIndex = m_swapChain.GetCurrentFrameIndex();
+
+		m_gpuDevice.Wait<eQueueType::Direct>(m_frameFenceValues[frameIndex]);
+
+		m_uploadBuffer.NextFrame(frameIndex);
+
+		ProcessUploadQueue();
+
+		const Texture::Desc& backBufferDesc = m_swapChain.GetCurrentBackBuffer()->GetDesc();
+
+		return FrameContext
+		{
+			.gpuScene = m_gpuScene,
+			.renderScene = renderScene,
+
+			.renderWidth = backBufferDesc.width,
+			.renderHeight = backBufferDesc.height,
+
+			.displayWidth = backBufferDesc.width,
+			.displayHeight = backBufferDesc.height,
+			.displayFormat = backBufferDesc.format,
+
+			.frameNumber = m_swapChain.GetCurrentFrameNumber(),
+			.frameIndex = frameIndex,
+
+			.time = time,
+			.deltaTime = deltaTime,
+		};
 	}
 
 	void Renderer::EndFrame(uint32 frameIndex, uint64 fenceValue)
@@ -122,7 +148,7 @@ namespace Hydrogen
 			break;
 		}
 
-		m_backend->Initialize(m_gpuDevice, m_shaderCompiler, m_gpuScene);
+		m_backend->Initialize(m_gpuDevice, m_shaderCompiler);
 		m_backendType = type;
 	}
 
@@ -169,19 +195,22 @@ namespace Hydrogen
 		const float A = -nearZ / (farZ - nearZ);
 		const float B = nearZ * farZ / (farZ - nearZ);
 		return DirectX::XMMATRIX(
-			w,  0,  0,  0,
-			0,  h,  0,  0,
-			0,  0,  A,  1,
-			0,  0,  B,  0
+			w, 0, 0, 0,
+			0, h, 0, 0,
+			0, 0, A, 1,
+			0, 0, B, 0
 		);
 	}
 
-	void Renderer::UpdateFrameData(const RenderScene& renderScene)
+	void Renderer::UpdateFrameData(const FrameContext& frameContext)
 	{
 		using namespace DirectX;
 
-		const Texture::Desc& bbDesc = m_swapChain.GetCurrentBackBuffer()->GetDesc();
-		const float32 aspect = static_cast<float32>(bbDesc.width) / static_cast<float32>(bbDesc.height);
+		const RenderScene& renderScene = frameContext.renderScene;
+
+		const float32 renderWidth = static_cast<float32>(frameContext.renderWidth);
+		const float32 renderHeight = static_cast<float32>(frameContext.renderHeight);
+		const float32 aspect = renderWidth / renderHeight;
 
 		const Matrix view = (Matrix::CreateFromQuaternion(renderScene.camera.rotation) *
 			Matrix::CreateTranslation(renderScene.camera.position)).Invert();
@@ -199,20 +228,19 @@ namespace Hydrogen
 		viewData.worldDirection = Vector3::Transform(Forward, renderScene.camera.rotation);
 		viewData.nearPlane = renderScene.camera.nearZ;
 		viewData.farPlane = renderScene.camera.farZ;
-		viewData.viewportSize = { static_cast<float32>(bbDesc.width), static_cast<float32>(bbDesc.height) };
+		viewData.viewportSize = { renderWidth, renderHeight };
 		m_viewBuffer->Write(&viewData, sizeof(ViewData), 0);
-
-		const SceneBindings bindings = m_gpuScene.Update(renderScene, m_currentFrameIndex);
 
 		FrameData frameData{};
 		frameData.viewBufferIndex = m_viewBufferSrv.index;
 		frameData.mainViewIndex = 0;
-		frameData.vertexPositionBufferIndex = bindings.positionBufferIndex;
-		frameData.vertexNormalBufferIndex = bindings.normalBufferIndex;
-		frameData.vertexUvBufferIndex = bindings.uvBufferIndex;
-		frameData.transformBufferIndex = bindings.transformBufferIndex;
-		frameData.time = m_time;
-		frameData.frameNumber = static_cast<uint32>(m_swapChain.GetCurrentFrameNumber());
+		frameData.vertexPositionBufferIndex = m_gpuScene.GetPositionBufferIndex();
+		frameData.vertexNormalBufferIndex = m_gpuScene.GetNormalBufferIndex();
+		frameData.vertexUvBufferIndex = m_gpuScene.GetUvBufferIndex();
+		frameData.transformBufferIndex = m_gpuScene.GetTransformBufferIndex();
+		frameData.time = static_cast<float32>(frameContext.time);
+		frameData.deltaTime = frameContext.deltaTime;
+		frameData.frameNumber = static_cast<uint32>(frameContext.frameNumber);
 		m_backend->FillFrameData(frameData);
 
 		auto [pCpu, gpuAddr] = m_uploadBuffer.Allocate(sizeof(FrameData));
@@ -220,22 +248,19 @@ namespace Hydrogen
 		GraphicsContext::s_frameDataAddr = gpuAddr;
 	}
 
-	void Renderer::RenderFrame(const RenderScene& renderScene, ImDrawData* drawData)
+	void Renderer::RenderFrame(const RenderScene& renderScene, ImDrawData* drawData, float64 time, float32 deltaTime)
 	{
-		uint64 currentFrameNumber = m_swapChain.GetCurrentFrameNumber();
+		FrameContext frameContext = BeginFrame(renderScene, time, deltaTime);
 
-		BeginFrame();
+		m_gpuScene.Update(frameContext);
 
-		ProcessUploadQueue();
+		UpdateFrameData(frameContext);
 
-		m_frameGraph.BeginFrame(currentFrameNumber);
+		m_frameGraph.BeginFrame(frameContext.frameNumber);
 
 		m_frameGraph.ImportTexture("Backbuffer", m_swapChain.GetCurrentBackBuffer());
-		const Texture::Desc& backBufferDesc = m_swapChain.GetCurrentBackBuffer()->GetDesc();
 
-		std::string_view backendOutput = m_backend->Render(m_frameGraph, renderScene, backBufferDesc);
-
-		UpdateFrameData(renderScene);
+		std::string_view backendOutput = m_backend->Render(m_frameGraph, frameContext);
 
 		m_imguiPass.pDrawData = drawData;
 		m_imguiPass.target = backendOutput;
@@ -246,12 +271,12 @@ namespace Hydrogen
 		m_frameGraph.AddPass("CopyToBackbuffer", m_copyPass);
 
 		m_frameGraph.Compile();
+
 		GraphicsContext gfx = m_frameGraph.Execute();
+		uint64 fenceValue = m_gpuDevice.ExecuteGraphicsContext(std::move(gfx));
 
 		m_frameGraph.Reset();
 
-		uint64 fenceValue = m_gpuDevice.ExecuteGraphicsContext(std::move(gfx));
-
-		EndFrame(m_currentFrameIndex, fenceValue);
+		EndFrame(frameContext.frameIndex, fenceValue);
 	}
 }

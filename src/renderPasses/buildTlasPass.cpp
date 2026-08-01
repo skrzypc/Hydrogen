@@ -18,10 +18,10 @@ namespace Hydrogen
         builder.Write("TLASScratch", FGAccess::Write::UnorderedAccess);
     }
 
-    void BuildTlasPass::Execute(FGExecuteContext& ctx, GraphicsContext& gfx)
+    void BuildTlasPass::Execute(FGExecuteContext& fgExecuteContext, GraphicsContext& graphicsContext)
     {
-        ID3D12Resource* pTlasResource = ctx.GetResource("TLAS");
-        ID3D12Resource* pScratchResource = ctx.GetResource("TLASScratch");
+        ID3D12Resource* pTlasResource = fgExecuteContext.GetResource("TLAS");
+        ID3D12Resource* pScratchResource = fgExecuteContext.GetResource("TLASScratch");
 
         const uint32 instanceCount = pScene->GetInstanceCount();
 
@@ -37,6 +37,6 @@ namespace Hydrogen
         buildDesc.DestAccelerationStructureData = pTlasResource->GetGPUVirtualAddress();
         buildDesc.ScratchAccelerationStructureData = pScratchResource->GetGPUVirtualAddress();
 
-        gfx.CmdList()->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
+        graphicsContext.CmdList()->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
     }
 }
