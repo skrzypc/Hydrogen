@@ -71,7 +71,7 @@ namespace Hydrogen
 		std::array<uint64, Config::FramesInFlight> m_frameFenceValues{};
 
 		std::unique_ptr<IRenderBackend> m_backend = nullptr;
-		eRenderBackendType m_backendType = eRenderBackendType::RayTracing;
+		eRenderBackendType m_backendType = eRenderBackendType::Deferred;
 
 		CopyPass m_copyPass{};
 		ImguiPass m_imguiPass{};

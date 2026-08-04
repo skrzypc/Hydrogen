@@ -21,8 +21,8 @@ namespace Hydrogen
 
         DirectX::XMFLOAT3 color = { 1.0f, 1.0f, 1.0f };
 
-        // Candela (lm/sr) for point and spot, lux (lm/m^2) for directional. Kept in the authored
-        // units so the type stays meaningful; exposure handles the absolute scale at shading time.
+        // Point and spot lights: Candela (lm/sr).
+        // Directional lights: lux (lm/m^2). 
         float32 intensity = 0.0f;
 
         std::optional<float32> range{};

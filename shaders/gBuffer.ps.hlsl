@@ -29,15 +29,19 @@ static const float3 kPalette[4] =
     float3(0.65f, 0.45f, 0.80f)
 };
 
+// Placeholder variation until real materials land, so the BRDF has something to show.
+static const float kRoughness[4] = { 0.1f, 0.35f, 0.6f, 0.9f };
+static const float kMetalness[4] = { 0.0f, 1.0f, 0.0f, 0.0f };
+
 PsOut mainPS(PsIn input)
 {
+    uint materialIndex = g_push.transformIndex % 4;
+
     PsOut output;
 
-    output.albedo = float4(kPalette[g_push.transformIndex % 4], 1.0f);
+    output.albedo = float4(kPalette[materialIndex], 1.0f);
     output.normal = EncodeOctahedral(normalize(input.normalWS));
-
-    // No materials yet, so everything is a rough dielectric.
-    output.roughnessMetalness = float2(0.8f, 0.0f);
+    output.roughnessMetalness = float2(kRoughness[materialIndex], kMetalness[materialIndex]);
 
     return output;
 }

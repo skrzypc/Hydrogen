@@ -111,8 +111,5 @@ namespace Hydrogen
 		return "Output";
 	}
 
-	void DeferredBackend::BuildUI()
-	{
-
-	}
+	void DeferredBackend::BuildUI() { }
 }

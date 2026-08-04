@@ -68,9 +68,23 @@ namespace Hydrogen
 
 				if (node.lightIndex.has_value())
 				{
-					m_scene.lights.Add(entity, LightComponent{ model.lights[*node.lightIndex] });
+					//m_scene.lights.Add(entity, LightComponent{ model.lights[*node.lightIndex] });
 				}
 			}
+
+			Entity entity = m_scene.CreateEntity();
+			Transform transform{};
+			transform.position = { 0.0f, 2.0f, 0.0f };
+			// Aim the spot straight down at the floor (Forward is +Z, so pitch +90 degrees).
+			//XMStoreFloat4(&transform.rotation, Quaternion::CreateFromYawPitchRoll(0.0f, DirectX::XM_PIDIV2, 0.0f));
+			m_scene.transforms.Add(entity, TransformComponent{ transform });
+			Light light{};
+			light.type = eLightType::Spot;
+			light.intensity = 100.0f;
+			light.range = 25.0f;
+			light.outerConeAngle = DirectX::XMConvertToRadians(35.0f);
+			light.innerConeAngle = DirectX::XMConvertToRadians(25.0f);
+			m_scene.lights.Add(entity, LightComponent{ light });
 		}
 
 		// Camera
@@ -203,20 +217,78 @@ namespace Hydrogen
 
 			const auto& lightEntities = m_scene.lights.GetEntities();
 			auto lightComponents = m_scene.lights.GetAll();
+
+			ImGui::Begin("Lights");
 			for (uint32 i = 0; i < static_cast<uint32>(lightEntities.size()); ++i)
 			{
-				const TransformComponent* tc = m_scene.transforms.Get(lightEntities[i]);
+				TransformComponent* tc = m_scene.transforms.Get(lightEntities[i]);
 				if (!tc)
 				{
 					continue;
 				}
 
+				Light& light = lightComponents[i].light;
+
+				ImGui::PushID(static_cast<int32>(i));
+				if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen))
+				{
+					int32 typeIndex = static_cast<int32>(light.type);
+					if (ImGui::Combo("Type", &typeIndex, "Directional\0Point\0Spot\0"))
+					{
+						light.type = static_cast<eLightType>(typeIndex);
+					}
+
+					ImGui::ColorEdit3("Color", &light.color.x);
+					ImGui::SliderFloat("Intensity", &light.intensity, 0.0f, 2000.0f, "%.1f");
+
+					ImGui::DragFloat3("Position", &tc->transform.position.x, 0.05f);
+
+					// Orientation drives the light direction; expose it as yaw/pitch (roll is unused for lights).
+					const Vector3 euler = Quaternion(tc->transform.rotation).ToEuler();
+					float32 yawDeg = ToDegrees(euler.y);
+					float32 pitchDeg = ToDegrees(euler.x);
+					bool orientationChanged = false;
+					orientationChanged |= ImGui::DragFloat("Yaw", &yawDeg, 0.5f);
+					orientationChanged |= ImGui::DragFloat("Pitch", &pitchDeg, 0.5f);
+					if (orientationChanged)
+					{
+						XMStoreFloat4(&tc->transform.rotation,
+							Quaternion::CreateFromYawPitchRoll(ToRadians(yawDeg), ToRadians(pitchDeg), 0.0f));
+					}
+
+					if (light.type != eLightType::Directional)
+					{
+						float32 range = light.range.value_or(0.0f);
+						if (ImGui::SliderFloat("Range", &range, 0.0f, 100.0f, "%.2f"))
+						{
+							light.range = range;
+						}
+					}
+
+					if (light.type == eLightType::Spot)
+					{
+						float32 innerDeg = ToDegrees(light.innerConeAngle.value_or(0.0f));
+						float32 outerDeg = ToDegrees(light.outerConeAngle.value_or(ToRadians(45.0f)));
+						// Inner must stay <= outer or the shader's cone falloff inverts.
+						if (ImGui::SliderFloat("Inner cone", &innerDeg, 0.0f, 89.0f, "%.1f deg"))
+						{
+							light.innerConeAngle = ToRadians(std::min(innerDeg, outerDeg));
+						}
+						if (ImGui::SliderFloat("Outer cone", &outerDeg, 0.0f, 89.0f, "%.1f deg"))
+						{
+							light.outerConeAngle = ToRadians(std::max(outerDeg, innerDeg));
+						}
+					}
+				}
+				ImGui::PopID();
+
 				RenderLight renderLight{};
-				renderLight.light = lightComponents[i].light;
+				renderLight.light = light;
 				renderLight.position = tc->transform.position;
 				renderLight.direction = Vector3::Transform(Forward, Quaternion(tc->transform.rotation));
 				renderScene.lights.push_back(renderLight);
 			}
+			ImGui::End();
 
 			{
 				ImGui::Begin("Debug");
@@ -236,6 +308,7 @@ namespace Hydrogen
 				{
 					ImGui::Text("FOV: %.1f", cc->fovYDeg);
 				}
+
 				ImGui::End();
 			}
 

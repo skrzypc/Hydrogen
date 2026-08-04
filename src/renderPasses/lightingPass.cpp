@@ -14,8 +14,8 @@ namespace Hydrogen
 
 		Shader::Desc csDesc
 		{
-			.sourcePath = "lighting.cs.hlsl",
-			.name = "LightingCS",
+			.sourcePath = "lightingPbr.cs.hlsl",
+			.name = "LightingPbrCS",
 			.entryPoint = "mainCS",
 			.type = eShaderType::CS,
 		};
