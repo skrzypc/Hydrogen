@@ -423,6 +423,7 @@ FodyWeavers.xsd
 *.md
 !README.md
 *.exe
+.*
 imgui.ini
 thirdParty/vcpkg
 thirdParty/vcpkg/*

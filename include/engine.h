@@ -7,6 +7,7 @@
 #include "assetRegistry.h"
 #include "entity.h"
 #include "timer.h"
+#include "ui/debugUi.h"
 
 namespace Hydrogen
 {
@@ -28,10 +29,9 @@ namespace Hydrogen
 		Renderer m_renderer{};
 		Scene m_scene{};
 		AssetRegistry m_assetRegistry{};
+		DebugUi m_debugUi{};
 
 		Entity m_activeCamera{};
-		float32 m_yaw = 0.0f;
-		float32 m_pitch = 0.0f;
 		float32 m_cameraSpeed = 15.0f;
 		Timer m_frameTimer{};
 		Timer m_appTimer{};

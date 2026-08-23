@@ -39,9 +39,13 @@ PsOut mainPS(PsIn input)
 
     PsOut output;
 
-    output.albedo = float4(kPalette[materialIndex], 1.0f);
+    //output.albedo = float4(kPalette[materialIndex], 1.0f);
+    //output.normal = EncodeOctahedral(normalize(input.normalWS));
+    //output.roughnessMetalness = float2(kRoughness[materialIndex], kMetalness[materialIndex]);
+    
+    output.albedo = float4(1.0, 1.0, 1.0, 1.0f);
     output.normal = EncodeOctahedral(normalize(input.normalWS));
-    output.roughnessMetalness = float2(kRoughness[materialIndex], kMetalness[materialIndex]);
+    output.roughnessMetalness = float2(0.1f, 0.1f);
 
     return output;
 }

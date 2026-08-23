@@ -26,6 +26,6 @@ namespace Hydrogen
 		static constexpr D3D12_RESOURCE_BINDING_TIER ExpectedResourceBindingTier = D3D12_RESOURCE_BINDING_TIER_3;
 
 		static constexpr uint8 ShaderModelVersionMajor = 6;
-		static constexpr uint8 ShaderModelVersionMinor = 9;
+		static constexpr uint8 ShaderModelVersionMinor = 8;
 	};
 }
