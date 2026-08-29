@@ -36,6 +36,18 @@ namespace Hydrogen
 		m_renderer.Initialize(m_window.GetHandle());
 		m_renderer.SetUploadQueue(&m_assetRegistry.GetUploadQueue());
 
+		// Floor
+		{
+			Mesh floorMesh = Primitives::BuildBox({ 0.5f, 0.005f, 0.5f }, "Floor");
+			MeshHandle floorHandle = m_assetRegistry.RegisterMesh({ .name = "Floor" }, std::move(floorMesh));
+
+			Entity floor = m_scene.CreateEntity();
+			Transform floorTransform{};
+			floorTransform.position = { 0.0f, -0.1f, 0.0f };
+			m_scene.transforms.Add(floor, TransformComponent{ floorTransform });
+			m_scene.meshes.Add(floor, MeshComponent{ floorHandle });
+		}
+
 		// Load model and populate scene
 		{
 			//Model model = ModelLoader::Load("data/models/stanfordBunny/scene.gltf");
@@ -77,18 +89,6 @@ namespace Hydrogen
 			cameraTransform.position = { 0.0f, 0.2f, -1.0f };
 			m_scene.transforms.Add(m_activeCamera, TransformComponent{ cameraTransform });
 			m_scene.cameras.Add(m_activeCamera, CameraComponent{});
-		}
-
-		// Floor
-		{
-			Mesh floorMesh = Primitives::BuildBox({ 0.5f, 0.005f, 0.5f }, "Floor");
-			MeshHandle floorHandle = m_assetRegistry.RegisterMesh({ .name = "Floor" }, std::move(floorMesh));
-
-			Entity floor = m_scene.CreateEntity();
-			Transform floorTransform{};
-			floorTransform.position = { 0.0f, -0.1f, 0.0f };
-			m_scene.transforms.Add(floor, TransformComponent{ floorTransform });
-			m_scene.meshes.Add(floor, MeshComponent{ floorHandle });
 		}
 
 		int32 returnCode = 0;

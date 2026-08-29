@@ -33,9 +33,9 @@ namespace Hydrogen
 		{
 			.pLibrary = &library,
 			.hitGroups = hitGroups,
-			.payloadSizeBytes = sizeof(float32) * 3,
+			.payloadSizeBytes = sizeof(float32) * 4,
 			.attributeSizeBytes = sizeof(float32) * 2,
-			.maxRecursionDepth = 1,
+			.maxRecursionDepth = 2,
 		};
 		m_raytracingPso.Create(device, psoDesc);
 

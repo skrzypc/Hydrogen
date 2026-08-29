@@ -11,6 +11,7 @@ ConstantBuffer<PushConstants> g_push : register(b0, space0);
 struct [raypayload] RayPayload
 {
     float3 radiance : write(closesthit, miss) : read(caller);
+    bool bounce : write(caller) : read(closesthit);
 };
 
 float3 DebugColorFromId(uint id)
@@ -45,7 +46,7 @@ RayDesc GenerateCameraRay(const float2 vfPixel)
 
 [shader("raygeneration")]
 void mainRayGen()
-{  
+{
     const float2 vfResolution = float2(DispatchRaysDimensions().xy);
     const float2 vfPixel = ((float2(DispatchRaysIndex().xy) + 0.5f) / vfResolution * 2.0f) - 1.0f;
     
@@ -54,6 +55,7 @@ void mainRayGen()
     RaytracingAccelerationStructure sTlas = ResourceDescriptorHeap[g_push.tlasIndex];
     
     RayPayload sPayload;
+    sPayload.bounce = true;
     TraceRay(
         sTlas, // tlas
         RAY_FLAG_FORCE_OPAQUE, // flags
@@ -70,13 +72,43 @@ void mainRayGen()
 }
 
 [shader("miss")]
-void mainMiss(inout RayPayload payload)
+void mainMiss(inout RayPayload sPayload)
 {
-    payload.radiance = float3(0.0f, 0.0f, 0.0f);
+    sPayload.radiance = float3(0.0f, 0.0f, 0.0f);
 }
 
 [shader("closesthit")]
-void mainClosestHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attrs)
+void mainClosestHit(inout RayPayload sPayload, in BuiltInTriangleIntersectionAttributes attrs)
 {
-    payload.radiance = DebugColorFromId(InstanceID());
+    if (InstanceIndex() == 0 && sPayload.bounce)
+    {
+        RayPayload sReflectionPayload;
+        sReflectionPayload.bounce = false;
+        
+        RayDesc reflectionRay;
+        reflectionRay.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
+        reflectionRay.Direction = reflect(WorldRayDirection(), float3(0.0f, 1.0f, 0.0f));
+        reflectionRay.TMin = 0.01f;
+        reflectionRay.TMax = 1000000.0f;
+        
+        RaytracingAccelerationStructure sTlas = ResourceDescriptorHeap[g_push.tlasIndex];
+        
+        TraceRay(
+            sTlas, // tlas
+            RAY_FLAG_FORCE_OPAQUE, // flags
+            0xFF, // instance mask
+            0, // hit group offset (contributionToHitGroupIndex)
+            1, // geometry multiplier (stride, usually 1 hit group per geometry)
+            0, // miss shader index
+            reflectionRay, // the RayDesc from GenerateCameraRay
+            sReflectionPayload // payload
+        );
+        
+        //sPayload.radiance = float3(1, 0, 1);
+        sPayload.radiance = sReflectionPayload.radiance;
+    }
+    else
+    {
+        sPayload.radiance = DebugColorFromId(InstanceIndex());
+    }
 }
