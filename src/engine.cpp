@@ -52,6 +52,7 @@ namespace Hydrogen
 		{
 			//Model model = ModelLoader::Load("data/models/stanfordBunny/scene.gltf");
 			Model model = ModelLoader::Load("data/models/SponzaNew/MainSponza.gltf");
+			//Model model = ModelLoader::Load("data/models/main_sponza/NewSponza_Main_glTF_003.gltf");
 
 			std::vector<MeshHandle> handles;
 			for (Mesh& mesh : model.meshes)

@@ -421,7 +421,6 @@ FodyWeavers.xsd
 
 .*/
 *.md
-!README.md
 *.exe
 .*
 imgui.ini
@@ -430,3 +429,7 @@ thirdParty/vcpkg/*
 thirdParty/vcpkg_installed/*
 build/*
 data/models/*
+# Public documentation
+!docs/
+!docs/README.md
+docs/tasks/
