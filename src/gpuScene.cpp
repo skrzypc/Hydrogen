@@ -59,8 +59,32 @@ namespace Hydrogen
 			m_transformBuffers[i] = device.CreateUploadBuffer(L"H2_SCENE_TRANSFORMS", m_sceneCapacity * sizeof(DirectX::XMFLOAT4X4));
 			m_transformSrvs[i] = device.CreateShaderResourceView(m_transformBuffers[i].get(), srvDesc);
 
+			srvDesc.Buffer.StructureByteStride = sizeof(GpuMeshData);
+			m_meshDataBuffers[i] = device.CreateUploadBuffer(L"H2_SCENE_MESH_DATA", m_sceneCapacity * sizeof(GpuMeshData));
+			m_meshDataSrvs[i] = device.CreateShaderResourceView(m_meshDataBuffers[i].get(), srvDesc);
+
+			srvDesc.Buffer.StructureByteStride = sizeof(GpuInstanceData);
+			m_instanceDataBuffers[i] = device.CreateUploadBuffer(L"H2_SCENE_INSTANCE_DATA", m_sceneCapacity * sizeof(GpuInstanceData));
+			m_instanceDataSrvs[i] = device.CreateShaderResourceView(m_instanceDataBuffers[i].get(), srvDesc);
+
+			srvDesc.Buffer.NumElements = 1;
+			srvDesc.Buffer.StructureByteStride = sizeof(GpuMaterialData);
+			m_materialDataBuffers[i] = device.CreateUploadBuffer(L"H2_SCENE_MATERIAL_DATA", sizeof(GpuMaterialData));
+			m_materialDataSrvs[i] = device.CreateShaderResourceView(m_materialDataBuffers[i].get(), srvDesc);
+
 			m_instanceDescs[i] = device.CreateUploadBuffer(L"H2_SCENE_TLAS_INSTANCES", m_sceneCapacity * sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
+
+			srvDesc.Buffer.NumElements = m_sceneCapacity;
+			srvDesc.Buffer.StructureByteStride = sizeof(DirectX::XMFLOAT4X4);
 		}
+
+		m_defaultMaterialData =
+		{
+			.baseColor = { 0.8f, 0.8f, 0.8f },
+			.roughness = 1.0f,
+			.emissive = { 0.0f, 0.0f, 0.0f },
+			.metallic = 0.0f,
+		};
 
 		srvDesc.Buffer.NumElements = m_maxLights;
 		srvDesc.Buffer.StructureByteStride = sizeof(GpuLight);
@@ -104,7 +128,9 @@ namespace Hydrogen
 		ProcessBlasBuilds();
 		PublishReadyMeshes();
 
+		UpdateMeshData();
 		UpdateTransforms(frameContext.renderScene.objects);
+		UpdateMaterials();
 		UpdateLights(frameContext.renderScene.lights);
 	}
 
@@ -303,11 +329,37 @@ namespace Hydrogen
 		m_inFlightBlasBuilds = std::move(remaining);
 	}
 
+	void GpuScene::UpdateMeshData()
+	{
+		H2_VERIFY_FATAL(m_gpuMeshCache.size() <= m_sceneCapacity, "GpuScene mesh count exceeds scene capacity!");
+
+		m_meshDataStaging.resize(m_gpuMeshCache.size());
+		for (uint32 meshIndex = 0; meshIndex < static_cast<uint32>(m_gpuMeshCache.size()); ++meshIndex)
+		{
+			const GpuMesh& mesh = m_gpuMeshCache[meshIndex];
+			m_meshDataStaging[meshIndex] =
+			{
+				.baseVertex = mesh.baseVertex,
+				.vertexCount = mesh.vertexCount,
+				.baseIndex = mesh.baseIndex,
+				.indexCount = mesh.indexCount,
+			};
+		}
+
+		if (!m_meshDataStaging.empty())
+		{
+			m_meshDataBuffers[m_currentFrameIndex]->Write(
+				m_meshDataStaging.data(),
+				m_meshDataStaging.size() * sizeof(GpuMeshData));
+		}
+	}
+
 	void GpuScene::UpdateTransforms(std::span<const RenderObject> objects)
 	{
 		H2_VERIFY_FATAL(objects.size() <= m_sceneCapacity, "RenderScene object count exceeds scene capacity!");
 
 		m_transformStaging.resize(objects.size());
+		m_instanceDataStaging.resize(objects.size());
 
 		auto* pDescs = reinterpret_cast<D3D12_RAYTRACING_INSTANCE_DESC*>(
 			m_instanceDescs[m_currentFrameIndex]->GetMappedPtr());
@@ -318,6 +370,12 @@ namespace Hydrogen
 			const RenderObject& obj = objects[transformIndex];
 
 			m_transformStaging[transformIndex] = obj.worldMatrix;
+			m_instanceDataStaging[transformIndex] =
+			{
+				.meshDataIndex = obj.mesh.id,
+				.transformIndex = transformIndex,
+				.materialDataIndex = obj.materialDataIndex,
+			};
 
 			const GpuMesh* pMesh = GetGpuMesh(obj.mesh);
 			if (!pMesh || pMesh->state != GpuMeshState::BlasReady)
@@ -340,9 +398,17 @@ namespace Hydrogen
 			m_transformBuffers[m_currentFrameIndex]->Write(
 				m_transformStaging.data(),
 				m_transformStaging.size() * sizeof(DirectX::XMFLOAT4X4));
+			m_instanceDataBuffers[m_currentFrameIndex]->Write(
+				m_instanceDataStaging.data(),
+				m_instanceDataStaging.size() * sizeof(GpuInstanceData));
 		}
 
 		m_lastInstanceCount = instanceCount;
+	}
+
+	void GpuScene::UpdateMaterials()
+	{
+		m_materialDataBuffers[m_currentFrameIndex]->Write(&m_defaultMaterialData, sizeof(GpuMaterialData));
 	}
 
 	void GpuScene::UpdateLights(std::span<const RenderLight> lights)

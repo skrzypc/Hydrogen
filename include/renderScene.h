@@ -14,6 +14,7 @@ namespace Hydrogen
     struct RenderObject
     {
         MeshHandle mesh{};
+        uint32 materialDataIndex = 0;
         DirectX::XMFLOAT4X4 worldMatrix{};
     };
 

@@ -41,7 +41,11 @@ namespace Hydrogen
 		uint32 GetPositionBufferIndex() const { return m_positionSrv.index; }
 		uint32 GetNormalBufferIndex() const { return m_normalSrv.index; }
 		uint32 GetUvBufferIndex() const { return m_uvSrv.index; }
+		uint32 GetIndexBufferIndex() const { return m_indexSrv.index; }
+		uint32 GetMeshDataBufferIndex() const { return m_meshDataSrvs[m_currentFrameIndex].index; }
+		uint32 GetInstanceDataBufferIndex() const { return m_instanceDataSrvs[m_currentFrameIndex].index; }
 		uint32 GetTransformBufferIndex() const { return m_transformSrvs[m_currentFrameIndex].index; }
+		uint32 GetMaterialDataBufferIndex() const { return m_materialDataSrvs[m_currentFrameIndex].index; }
 		uint32 GetLightBufferIndex() const { return m_lightSrvs[m_currentFrameIndex].index; }
 		uint32 GetLightCount() const { return m_lightCount; }
 
@@ -63,7 +67,9 @@ namespace Hydrogen
 		void UploadMeshGeometry(MeshHandle handle, const Mesh& mesh);
 		void BuildBlas(std::span<const InFlightMeshUploadData> uploads);
 
+		void UpdateMeshData();
 		void UpdateTransforms(std::span<const RenderObject> objects);
+		void UpdateMaterials();
 		void UpdateLights(std::span<const RenderLight> lights);
 
 		GpuDevice* m_pDevice = nullptr;
@@ -96,6 +102,18 @@ namespace Hydrogen
 		// Gathered in cached memory and copied to the upload buffer in one go. Kept around so the
 		// allocation is reused between frames.
 		std::vector<DirectX::XMFLOAT4X4> m_transformStaging{};
+
+		std::array<std::unique_ptr<UploadBuffer>, Config::FramesInFlight> m_meshDataBuffers{};
+		std::array<ShaderResourceViewHandle, Config::FramesInFlight> m_meshDataSrvs{};
+		std::vector<GpuMeshData> m_meshDataStaging{};
+
+		std::array<std::unique_ptr<UploadBuffer>, Config::FramesInFlight> m_instanceDataBuffers{};
+		std::array<ShaderResourceViewHandle, Config::FramesInFlight> m_instanceDataSrvs{};
+		std::vector<GpuInstanceData> m_instanceDataStaging{};
+
+		std::array<std::unique_ptr<UploadBuffer>, Config::FramesInFlight> m_materialDataBuffers{};
+		std::array<ShaderResourceViewHandle, Config::FramesInFlight> m_materialDataSrvs{};
+		GpuMaterialData m_defaultMaterialData{};
 
 		std::array<std::unique_ptr<UploadBuffer>, Config::FramesInFlight> m_lightBuffers{};
 		std::array<ShaderResourceViewHandle, Config::FramesInFlight> m_lightSrvs{};

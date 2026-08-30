@@ -1,4 +1,5 @@
 #include "common.hlsli"
+#include "rng.hlsli"
 
 struct PushConstants
 {
@@ -44,6 +45,19 @@ RayDesc GenerateCameraRay(const float2 vfPixel)
     return wsRay;
 }
 
+// Based of https://jcgt.org/published/0006/01/01/
+void OrthonormalBasis(const float3 normal, out float3 tangent, out float3 bitangent)
+{
+    const float s = (normal.z >= 0.0f) ? 1.0f : -1.0f;
+    const float a = -1.0f / (s + normal.z);
+    const float b = normal.x * normal.y * a;
+    
+    tangent = float3(1.0f + s * normal.x * normal.x * a, s * b, -s * normal.x);
+    bitangent = float3(b, s + normal.y * normal.y * a, -normal.y);
+
+    return;
+}
+
 [shader("raygeneration")]
 void mainRayGen()
 {
@@ -85,9 +99,28 @@ void mainClosestHit(inout RayPayload sPayload, in BuiltInTriangleIntersectionAtt
         RayPayload sReflectionPayload;
         sReflectionPayload.bounce = false;
         
+        RngState rngState = InitRng(uint2(DispatchRaysIndex().xy), DispatchRaysDimensions().xy, g_frame.frameNumber);
+        
+        // cosine weighted hemisphere sampling
+        float u1 = 0.5f; // NextRandomFloat(rngState);
+        float u2 = 0.5f; // NextRandomFloat(rngState);
+        
+        float r = sqrt(u1);
+        float phi = 2.0f * 3.14159265359f * u2;
+        
+        float x, y, z;
+        sincos(phi, z, x);
+        x *= r;
+        z *= r;
+        y = sqrt(max(0.0f, 1.0f - u1));
+        
+        float3 normal = float3(0.0f, 1.0f, 0.0f);
+        float3 tangent, bitangent;
+        OrthonormalBasis(normal, tangent, bitangent);
+        
         RayDesc reflectionRay;
         reflectionRay.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
-        reflectionRay.Direction = reflect(WorldRayDirection(), float3(0.0f, 1.0f, 0.0f));
+        reflectionRay.Direction = normalize(x * tangent + y * normal + z * bitangent); //reflect(WorldRayDirection(), float3(0.0f, 1.0f, 0.0f));
         reflectionRay.TMin = 0.01f;
         reflectionRay.TMax = 1000000.0f;
         

@@ -1,3 +1,4 @@
+
 #pragma once
 
 #ifdef __cplusplus
@@ -18,7 +19,12 @@ namespace Hydrogen
 		uint vertexPositionBufferIndex;
 		uint vertexNormalBufferIndex;
 		uint vertexUvBufferIndex;
+		uint indexBufferIndex;
+
+		uint meshDataBufferIndex;
+		uint instanceDataBufferIndex;
 		uint transformBufferIndex;
+		uint materialDataBufferIndex;
 
 		uint viewBufferIndex;
 		uint mainViewIndex;
@@ -29,6 +35,31 @@ namespace Hydrogen
 		float time;
 		float deltaTime;
 		uint frameNumber;
+	};
+
+	struct GpuMeshData
+	{
+		uint baseVertex;
+		uint vertexCount;
+		uint baseIndex;
+		uint indexCount;
+	};
+
+	struct GpuInstanceData
+	{
+		uint meshDataIndex;
+		uint transformIndex;
+		uint materialDataIndex;
+		uint _pad;
+	};
+
+	struct GpuMaterialData
+	{
+		float3 baseColor;
+		float roughness;
+
+		float3 emissive;
+		float metallic;
 	};
 
 	// Must match eLightType. Duplicated because light.h is not shader safe.
