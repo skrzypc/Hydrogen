@@ -75,5 +75,7 @@ namespace Hydrogen
 
 		CopyPass m_copyPass{};
 		ImguiPass m_imguiPass{};
+
+		CameraData m_previousCameraData{};
 	};
 }

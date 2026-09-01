@@ -50,16 +50,35 @@ namespace Hydrogen
 			.hitGroupExports = hitGroupExports,
 		};
 		m_shaderTable.Create(device, m_raytracingPso, tableDesc);
+
+		Texture::Desc accumulationTargetDesc
+		{
+			.width = Config::WindowWidth,
+			.height = Config::WindowHeight,
+			.mipLevels = 1,
+			.arraySize = 1,
+			.format = DXGI_FORMAT_R32G32B32A32_FLOAT,
+			.flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+			.dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+		};
+
+		m_pAccumulationTarget = m_pDevice->CreateTexture(
+			L"AccumulationTarget",
+			accumulationTargetDesc
+		);
 	}
 
 	void RayTraceDispatchPass::Setup(FGBuilder& builder)
 	{
 		builder.Read("TLAS", FGAccess::Read::AccelerationStructure);
 		builder.Write(outputTarget, FGAccess::Write::UnorderedAccess);
+		builder.Write("AccumulationTarget", FGAccess::Write::UnorderedAccess);
 
 		const Texture::Desc& desc = builder.GetTextureDesc(outputTarget);
 		m_width = desc.width;
 		m_height = desc.height;
+
+		m_accumulatedFramesCount = resetAccumulation ? 1 : m_accumulatedFramesCount + 1;
 	}
 
 	void RayTraceDispatchPass::Execute(FGExecuteContext& fgExecuteContext, GraphicsContext& graphicsContext)
@@ -73,6 +92,8 @@ namespace Hydrogen
 		{
 			.tlasIndex = fgExecuteContext.GetSRVIndex("TLAS"),
 			.outputUavIndex = fgExecuteContext.GetUAVIndex(outputTarget),
+			.accumulationTargetUavIndex = fgExecuteContext.GetUAVIndex("AccumulationTarget"),
+			.accumulatedFramesCount = m_accumulatedFramesCount
 		};
 		graphicsContext.SetComputePushConstants(push);
 

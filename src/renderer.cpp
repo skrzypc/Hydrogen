@@ -259,6 +259,14 @@ namespace Hydrogen
 	{
 		FrameContext frameContext = BeginFrame(renderScene, time, deltaTime);
 
+		frameContext.sceneChanged = (frameContext.renderScene.camera.fovYDeg != m_previousCameraData.fovYDeg ||
+			frameContext.renderScene.camera.nearZ != m_previousCameraData.nearZ ||
+			frameContext.renderScene.camera.farZ != m_previousCameraData.farZ ||
+			frameContext.renderScene.camera.position != m_previousCameraData.position ||
+			frameContext.renderScene.camera.rotation != m_previousCameraData.rotation);
+
+		m_previousCameraData = frameContext.renderScene.camera;
+
 		m_gpuScene.Update(frameContext);
 
 		UpdateFrameData(frameContext);

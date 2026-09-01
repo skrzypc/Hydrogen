@@ -31,6 +31,7 @@ namespace Hydrogen
         frameGraph.AddPass("BuildTLAS", m_buildTlasPass);
 
         m_rayTraceDispatchPass.outputTarget = "SceneColor";
+		m_rayTraceDispatchPass.resetAccumulation = frameContext.sceneChanged;
         frameGraph.AddPass("RayTraceDispatch", m_rayTraceDispatchPass);
 
         return "SceneColor";
@@ -49,6 +50,8 @@ namespace Hydrogen
                 .dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
                 .optimizedClearColor = { 0.0f, 0.0f, 0.0f, 1.0f },
             });
+
+        frameGraph.ImportTexture("AccumulationTarget", m_rayTraceDispatchPass.GetAccumulationTarget());
 
         const uint32 instanceCount = static_cast<uint32>(frameContext.renderScene.objects.size());
         const AccelerationStructureSizes tlasSizes = m_pDevice->GetTlasPrebuildSizes(instanceCount);

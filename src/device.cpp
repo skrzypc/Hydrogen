@@ -90,7 +90,7 @@ namespace Hydrogen
 		Initialize();
 	}
 
-	std::unique_ptr<Texture> GpuDevice::CreateTexture(std::wstring_view name, const Texture::Desc& desc, ResourceState& initialState, const D3D12_CLEAR_VALUE* pClearValue)
+	std::unique_ptr<Texture> GpuDevice::CreateTexture(std::wstring_view name, const Texture::Desc& desc, ResourceState initialState, const D3D12_CLEAR_VALUE* pClearValue)
 	{
 		auto pTexture = std::make_unique<Texture>();
 
@@ -128,7 +128,7 @@ namespace Hydrogen
 		return pTexture;
 	}
 
-	std::unique_ptr<Texture> GpuDevice::CreateTexture(std::wstring_view name, ID3D12Resource* pResource, const Texture::Desc& desc, ResourceState& initialState, const D3D12_CLEAR_VALUE* pClearValue)
+	std::unique_ptr<Texture> GpuDevice::CreateTexture(std::wstring_view name, ID3D12Resource* pResource, const Texture::Desc& desc, ResourceState initialState, const D3D12_CLEAR_VALUE* pClearValue)
 	{
 		auto pTexture = std::make_unique<Texture>();
 		pTexture->AttachResource(pResource);
@@ -140,7 +140,7 @@ namespace Hydrogen
 		return pTexture;
 	}
 
-	std::unique_ptr<Buffer> GpuDevice::CreateBuffer(std::wstring_view name, const Buffer::Desc& desc, ResourceState& initialState)
+	std::unique_ptr<Buffer> GpuDevice::CreateBuffer(std::wstring_view name, const Buffer::Desc& desc, ResourceState initialState)
 	{
 		auto pBuffer = std::make_unique<Buffer>();
 
@@ -187,7 +187,7 @@ namespace Hydrogen
 		return pBuffer;
 	}
 
-	std::unique_ptr<Buffer> GpuDevice::CreateBuffer(std::wstring_view name, ID3D12Resource* pResource, const Buffer::Desc& desc, ResourceState& initialState)
+	std::unique_ptr<Buffer> GpuDevice::CreateBuffer(std::wstring_view name, ID3D12Resource* pResource, const Buffer::Desc& desc, ResourceState initialState)
 	{
 		auto pBuffer = std::make_unique<Buffer>();
 		pBuffer->AttachResource(pResource);

@@ -155,11 +155,11 @@ namespace Hydrogen
 
 		const RootSignature& GetRootSignature() const { return m_rootSignature; }
 
-		std::unique_ptr<Texture> CreateTexture(std::wstring_view name, const Texture::Desc& desc, ResourceState& initialState, const D3D12_CLEAR_VALUE* pClearValue = nullptr);
-		std::unique_ptr<Texture> CreateTexture(std::wstring_view name, ID3D12Resource* pResource, const Texture::Desc& desc, ResourceState& initialState, const D3D12_CLEAR_VALUE* pClearValue = nullptr);
+		std::unique_ptr<Texture> CreateTexture(std::wstring_view name, const Texture::Desc& desc, ResourceState initialState = {}, const D3D12_CLEAR_VALUE* pClearValue = nullptr);
+		std::unique_ptr<Texture> CreateTexture(std::wstring_view name, ID3D12Resource* pResource, const Texture::Desc& desc, ResourceState initialState = {}, const D3D12_CLEAR_VALUE* pClearValue = nullptr);
 
-		std::unique_ptr<Buffer> CreateBuffer(std::wstring_view name, const Buffer::Desc& desc, ResourceState& initialState);
-		std::unique_ptr<Buffer> CreateBuffer(std::wstring_view name, ID3D12Resource* pResource, const Buffer::Desc& desc, ResourceState& initialState);
+		std::unique_ptr<Buffer> CreateBuffer(std::wstring_view name, const Buffer::Desc& desc, ResourceState initialState = {});
+		std::unique_ptr<Buffer> CreateBuffer(std::wstring_view name, ID3D12Resource* pResource, const Buffer::Desc& desc, ResourceState initialState = {});
 		std::unique_ptr<UploadBuffer> CreateUploadBuffer(std::wstring_view name, uint64 sizeInBytes);
 
 		[[nodiscard]] AccelerationStructureSizes GetTlasPrebuildSizes(uint32 instanceCount) const;
