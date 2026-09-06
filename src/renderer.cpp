@@ -48,7 +48,7 @@ namespace Hydrogen
 		m_uploadBuffer.Initialize(m_gpuDevice, 1024 * 1024); // 1 MiB per frame
 		GraphicsContext::s_pUploadBuffer = &m_uploadBuffer;
 		m_gpuUploader.Initialize(m_gpuDevice, 256 * 1024 * 1024);
-		m_gpuScene.Initialize(m_gpuDevice, m_gpuUploader, 10'000'000, 30'000'000);
+		m_gpuScene.Initialize(m_gpuDevice, m_gpuUploader, 50'000'000, 150'000'000);
 
 		m_viewBuffer = m_gpuDevice.CreateUploadBuffer(L"H2_VIEW_BUFFER", m_maxViews * sizeof(ViewData));
 		D3D12_SHADER_RESOURCE_VIEW_DESC viewSrvDesc{};

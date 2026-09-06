@@ -33,7 +33,7 @@ namespace Hydrogen
 		{
 			.pLibrary = &library,
 			.hitGroups = hitGroups,
-			.payloadSizeBytes = sizeof(float32) * 4,
+			.payloadSizeBytes = sizeof(float32) * 10,
 			.attributeSizeBytes = sizeof(float32) * 2,
 			.maxRecursionDepth = 2,
 		};

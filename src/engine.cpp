@@ -37,48 +37,58 @@ namespace Hydrogen
 		m_renderer.SetUploadQueue(&m_assetRegistry.GetUploadQueue());
 
 		// Floor
-		{
-			Mesh floorMesh = Primitives::BuildBox({ 0.5f, 0.005f, 0.5f }, "Floor");
-			MeshHandle floorHandle = m_assetRegistry.RegisterMesh({ .name = "Floor" }, std::move(floorMesh));
+		//{
+		//	Mesh floorMesh = Primitives::BuildBox({ 0.5f, 0.005f, 0.5f }, "Floor");
+		//	MeshHandle floorHandle = m_assetRegistry.RegisterMesh({ .name = "Floor" }, std::move(floorMesh));
 
-			Entity floor = m_scene.CreateEntity();
-			Transform floorTransform{};
-			floorTransform.position = { 0.0f, -0.1f, 0.0f };
-			m_scene.transforms.Add(floor, TransformComponent{ floorTransform });
-			m_scene.meshes.Add(floor, MeshComponent{ floorHandle });
-		}
+		//	Entity floor = m_scene.CreateEntity();
+		//	Transform floorTransform{};
+		//	floorTransform.position = { 0.0f, -0.1f, 0.0f };
+		//	m_scene.transforms.Add(floor, TransformComponent{ floorTransform });
+		//	m_scene.meshes.Add(floor, MeshComponent{ floorHandle });
+		//}
 
 		// Load model and populate scene
 		{
-			//Model model = ModelLoader::Load("data/models/stanfordBunny/scene.gltf");
-			Model model = ModelLoader::Load("data/models/SponzaNew/MainSponza.gltf");
-			//Model model = ModelLoader::Load("data/models/main_sponza/NewSponza_Main_glTF_003.gltf");
-
-			std::vector<MeshHandle> handles;
-			for (Mesh& mesh : model.meshes)
+			std::vector<Model> models{};
+			//models.emplace_back(ModelLoader::Load("data/models/stanfordBunny/scene.gltf"));
+			//models.emplace_back(ModelLoader::Load("data/models/AmdSponza/MainSponza.gltf"));
 			{
-				MeshMetadata metaData
-				{
-					.name = mesh.name
-				};
-
-				handles.push_back(m_assetRegistry.RegisterMesh(std::move(metaData), std::move(mesh)));
+				//models.emplace_back(ModelLoader::Load("data/models/IntelSponza/main_sponza/NewSponza_Main_glTF_003.gltf"));
+				//models.emplace_back(ModelLoader::Load("data/models/IntelSponza/pkg_a_curtains/NewSponza_Curtains_glTF.gltf"));
+				//models.emplace_back(ModelLoader::Load("data/models/IntelSponza/pkg_b_ivy/NewSponza_IvyGrowth_glTF.gltf"));
+				//models.emplace_back(ModelLoader::Load("data/models/IntelSponza/pkg_c_trees/NewSponza_CypressTree_glTF.gltf"));
 			}
+			models.emplace_back(ModelLoader::Load("data/models/cornell_box/scene.gltf"));
 
-			for (uint32 i = 0; i < static_cast<uint32>(model.nodes.size()); ++i)
+			for (Model& model : models)
 			{
-				const ModelNode& node = model.nodes[i];
-
-				Entity entity = m_scene.CreateEntity();
-				m_scene.transforms.Add(entity, TransformComponent{ node.localTransform });
-				if (node.meshIndex.has_value())
+				std::vector<MeshHandle> handles;
+				for (Mesh& mesh : model.meshes)
 				{
-					m_scene.meshes.Add(entity, MeshComponent{ handles[*node.meshIndex] });
+					MeshMetadata metaData
+					{
+						.name = mesh.name
+					};
+
+					handles.push_back(m_assetRegistry.RegisterMesh(std::move(metaData), std::move(mesh)));
 				}
 
-				if (node.lightIndex.has_value())
+				for (uint32 i = 0; i < static_cast<uint32>(model.nodes.size()); ++i)
 				{
-					m_scene.lights.Add(entity, LightComponent{ model.lights[*node.lightIndex] });
+					const ModelNode& node = model.nodes[i];
+
+					Entity entity = m_scene.CreateEntity();
+					m_scene.transforms.Add(entity, TransformComponent{ node.localTransform });
+					if (node.meshIndex.has_value())
+					{
+						m_scene.meshes.Add(entity, MeshComponent{ handles[*node.meshIndex] });
+					}
+
+					if (node.lightIndex.has_value())
+					{
+						m_scene.lights.Add(entity, LightComponent{ model.lights[*node.lightIndex] });
+					}
 				}
 			}
 		}

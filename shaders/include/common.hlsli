@@ -3,7 +3,7 @@
 
 #include "../../include/shaderInterop.h"
 
-const float INFINITY = asfloat(0x7F800000);
+static const float INFINITY = asfloat(0x7F800000);
 
 ConstantBuffer<FrameData> g_frame : register(b2, space0);
 
