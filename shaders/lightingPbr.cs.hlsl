@@ -1,4 +1,5 @@
 #include "common.hlsli"
+#include "lighting.hlsli"
 #include "octahedral.hlsli"
 #include "brdf.hlsli"
 
@@ -14,13 +15,6 @@ struct PushConstants
 ConstantBuffer<PushConstants> g_push : register(b0, space0);
 
 static const float3 kSkyRadiance = float3(0.02f, 0.04f, 0.08f);
-static const float kRangeFalloffStartFraction = 0.8f;
-
-struct LightSample
-{
-    float3 radiance;
-    float3 direction;
-};
 
 float3 ReconstructWorldPosition(float2 uv, float depth, float4x4 invViewProjection)
 {
@@ -30,54 +24,6 @@ float3 ReconstructWorldPosition(float2 uv, float depth, float4x4 invViewProjecti
     float4 worldPosition = mul(invViewProjection, clipPosition);
 
     return worldPosition.xyz / worldPosition.w;
-}
-
-LightSample SampleLight(GpuLight light, float3 positionWS)
-{
-    LightSample result;
-    result.radiance = float3(0.0f, 0.0f, 0.0f);
-    result.direction = float3(0.0f, 0.0f, 0.0f);
-
-    float attenuation = 1.0f;
-    float softRangeFalloffFactor = 1.0f;
-
-    if (light.type == LightTypeDirectional)
-    {
-        result.direction = -light.direction;
-    }
-    else
-    {
-        float3 delta = light.position - positionWS;
-        float distanceSquared = max(dot(delta, delta), 1e-6f);
-        float distance = sqrt(distanceSquared);
-
-        if (distance > light.range)
-        {
-            return result;
-        }
-
-        float softRangeFalloffStart = light.range * kRangeFalloffStartFraction;
-        float softRangeFalloffEnd = light.range;
-        float softRangeFalloffWidth = max(softRangeFalloffEnd - softRangeFalloffStart, 1e-4f);
-        float softRangeFalloff = saturate(1.0f - ((distance - softRangeFalloffStart) / softRangeFalloffWidth));
-
-        softRangeFalloffFactor = softRangeFalloff * softRangeFalloff;
-        
-        result.direction = delta / distance;
-
-        attenuation = 1.0f / distanceSquared;
-
-        if (light.type == LightTypeSpot)
-        {
-            float cosAngle = dot(-result.direction, light.direction);
-            float coneFalloff = max(light.cosInnerConeAngle - light.cosOuterConeAngle, 1e-4f);
-            attenuation *= saturate((cosAngle - light.cosOuterConeAngle) / coneFalloff);
-        }
-    }
-
-    result.radiance = light.color * light.intensity * attenuation * softRangeFalloffFactor;
-
-    return result;
 }
 
 [numthreads(8, 8, 1)]
@@ -123,7 +69,7 @@ void mainCS(uint3 dispatchThreadId : SV_DispatchThreadID)
         radiance = float3(0.0f, 0.0f, 0.0f);
         for (uint i = 0; i < g_frame.lightCount; ++i)
         {
-            LightSample lightSample = SampleLight(lights[i], positionWS);
+            LightContribution lightSample = SampleLight(lights[i], positionWS);
 
             float NoL = saturate(dot(N, lightSample.direction));
             if (NoL <= 0.0f)

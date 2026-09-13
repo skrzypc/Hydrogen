@@ -30,6 +30,7 @@ namespace Hydrogen
 		void Execute(FGExecuteContext& fgExecuteContext, GraphicsContext& graphicsContext) override;
 
 		Texture* GetAccumulationTarget() const { return m_pAccumulationTarget.get(); }
+		uint32 GetAccumulatedFramesCount() const { return m_accumulatedFramesCount; }
 
 	private:
 		GpuDevice* m_pDevice = nullptr;

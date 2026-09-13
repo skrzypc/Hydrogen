@@ -35,12 +35,12 @@ namespace Hydrogen
 			.hitGroups = hitGroups,
 			.payloadSizeBytes = sizeof(float32) * 10,
 			.attributeSizeBytes = sizeof(float32) * 2,
-			.maxRecursionDepth = 2,
+			.maxRecursionDepth = 1,
 		};
 		m_raytracingPso.Create(device, psoDesc);
 
 		const std::array<std::string, 1> rayGenExports{ "mainRayGen" };
-		const std::array<std::string, 1> missExports{ "mainMiss" };
+		const std::array<std::string, 2> missExports{ "mainMiss", "shadowMiss" };
 		const std::array<std::string, 1> hitGroupExports{ "defaultHitGroup" };
 
 		ShaderTable::Desc tableDesc

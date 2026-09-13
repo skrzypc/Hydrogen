@@ -1,4 +1,6 @@
+
 #include "common.hlsli"
+#include "lighting.hlsli"
 #include "rng.hlsli"
 
 struct PushConstants
@@ -11,16 +13,21 @@ struct PushConstants
 
 ConstantBuffer<PushConstants> g_push : register(b0, space0);
 
-static const uint MIN_BOUNCES = 3;
-static const uint MAX_BOUNCES = 256;
+static const uint MIN_BOUNCES = 2;
+static const uint MAX_BOUNCES = 5;
 
 struct [raypayload] RayPayload
 {
     float3 shadingNormal : write(closesthit) : read(caller);
-    float3 geometryNormal : write(closesthit) : read(caller);
-    float2 uv : write(closesthit) : read(caller);
-    float hitDistance : write(closesthit, miss) : read(caller);
-    uint materialId : write(closesthit) : read(caller);
+float3 geometryNormal : write(closesthit) : read(caller);
+float2 uv : write(closesthit) : read(caller);
+float hitDistance : write(closesthit, miss) : read(caller);
+uint materialId : write(closesthit) : read(caller);
+};
+
+struct [raypayload] ShadowRayPayload
+{
+    bool occluded : write(caller, miss) : read(caller);
 };
 
 struct SurfaceHit
@@ -72,7 +79,7 @@ SurfaceHit GetSurfaceHit(BuiltInTriangleIntersectionAttributes triangleAttribute
     
     SurfaceHit hit;
     hit.position = b0 * v0 + b1 * v1 + b2 * v2;
-    hit.shadingNormal = normalize(mul(transpose((float3x3)WorldToObject3x4()), b0 * normalsBuffer[i0] + b1 * normalsBuffer[i1] + b2 * normalsBuffer[i2]));
+    hit.shadingNormal = normalize(mul(transpose((float3x3) WorldToObject3x4()), b0 * normalsBuffer[i0] + b1 * normalsBuffer[i1] + b2 * normalsBuffer[i2]));
     hit.geometryNormal = normalize(cross(v1 - v0, v2 - v0));
     hit.uv = b0 * uvsBuffer[i0] + b1 * uvsBuffer[i1] + b2 * uvsBuffer[i2];
     
@@ -115,11 +122,6 @@ void OrthonormalBasis(const float3 normal, out float3 tangent, out float3 bitang
     return;
 }
 
-float CalculateLuminance(const float3 input)
-{
-    return (0.2126f * input.r + 0.7152f * input.g + 0.0722f * input.b);
-}
-
 [shader("raygeneration")]
 void mainRayGen()
 {
@@ -141,6 +143,9 @@ void mainRayGen()
     float3 throughput = 1.0f.xxx;
     
     RaytracingAccelerationStructure tlas = ResourceDescriptorHeap[g_push.tlasIndex];
+    StructuredBuffer<GpuLight> lights = ResourceDescriptorHeap[g_frame.lightBufferIndex];
+
+    const float3 materialAlbedo = float3(0.8f, 0.8f, 0.8f);
     for (uint i = 0; i <= MAX_BOUNCES; ++i)
     {
         TraceRay(
@@ -155,17 +160,83 @@ void mainRayGen()
         );
         
         bool hit = rayPayload.hitDistance > 0.0f;
-        if (hit)
+        
+        // Miss, finish the loop.
+        if (!hit)
         {
-            float3 hitWorldPosition = currentRay.Origin + currentRay.Direction * rayPayload.hitDistance;
+            currentRadiance += throughput * float3(0.5f, 0.5f, 0.5f);
+            break;
+        }
 
-            // Flip normal if necessary.
-            rayPayload.geometryNormal *= dot(rayPayload.geometryNormal, -currentRay.Direction) < 0.0f ? -1.0f : 1.0f;
-            rayPayload.shadingNormal *= dot(rayPayload.geometryNormal, rayPayload.shadingNormal) < 0.0f ? -1.0f : 1.0f;
+        // Evaluate hit position and hit normals
+        float3 hitWorldPosition = currentRay.Origin + currentRay.Direction * rayPayload.hitDistance;
+
+        // Flip normal if necessary.
+        rayPayload.geometryNormal *= dot(rayPayload.geometryNormal, -currentRay.Direction) < 0.0f ? -1.0f : 1.0f;
+        rayPayload.shadingNormal *= dot(rayPayload.geometryNormal, rayPayload.shadingNormal) < 0.0f ? -1.0f : 1.0f;
             
-            float3 tangent, bitangent;
-            OrthonormalBasis(rayPayload.shadingNormal, tangent, bitangent);
-            
+        float3 tangent, bitangent;
+        OrthonormalBasis(rayPayload.shadingNormal, tangent, bitangent);
+        
+        GpuLight sampledLight;
+        float lightSampleWeight;
+        if (SampleLightRIS(rngState, hitWorldPosition, rayPayload.shadingNormal, sampledLight, lightSampleWeight))
+        //if (SampleLightUniformly(rngState, sampledLight, lightSampleWeight))
+        {
+            float3 lightDirection;
+            float lightDistance;
+            GetLightDirectionAndDistance(sampledLight, hitWorldPosition, lightDirection, lightDistance);
+
+            // Check occlusion.
+            RayDesc shadowRay;
+
+            // Implement solution described in chapter 6.
+            shadowRay.Origin = hitWorldPosition + rayPayload.geometryNormal * 0.001f;
+            shadowRay.Direction = lightDirection;
+            shadowRay.TMin = 0.0f;
+            shadowRay.TMax = lightDistance > 0.0f ? lightDistance * 0.999f : 100000.0f;
+        
+            ShadowRayPayload shadowRayPayload;
+            shadowRayPayload.occluded = true;
+            TraceRay(
+                tlas,
+                RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,
+                0xFF, // instance mask
+                0, // hit group offset (contributionToHitGroupIndex)
+                1, // geometry multiplier (stride, usually 1 hit group per geometry)
+                1, // miss shader index
+                shadowRay,
+                shadowRayPayload
+            );
+
+            // Light unoccluded, calculate total contribution for given point on surface.
+            if (!shadowRayPayload.occluded)
+            {
+                float3 lightRadiance = GetLightContributionPT(sampledLight, lightDirection, lightDistance);
+                float3 materialBrdf = materialAlbedo / 3.14159265359f; // Diffuse for now.
+                float NoL = saturate(dot(rayPayload.shadingNormal, lightDirection));
+
+                currentRadiance += throughput * materialBrdf * lightRadiance * NoL * lightSampleWeight;
+            }
+        }
+        
+        if (i > MIN_BOUNCES)
+        {
+            float russianRuletteFactor = min(0.95f, CalculateLuminance(throughput));
+                
+            if (russianRuletteFactor < NextRandomFloat(rngState))
+            {
+                break;
+            }
+                
+            throughput /= russianRuletteFactor;
+        }
+
+        // Generate bound ray.
+        float3 bounceRayDir;
+        float3 brdf;
+        float brdfPdf;
+        {
             // cosine weighted hemisphere sampling
             float u1 = NextRandomFloat(rngState);
             float u2 = NextRandomFloat(rngState);
@@ -179,35 +250,18 @@ void mainRayGen()
             z *= r;
             y = sqrt(max(0.0f, 1.0f - u1));
             
-            float3 bounceRayDir = normalize(x * tangent + y * rayPayload.shadingNormal + z * bitangent);
+            bounceRayDir = normalize(x * tangent + y * rayPayload.shadingNormal + z * bitangent);
+            brdf = float3(0.9f, 0.9f, 0.9f);
+            brdfPdf = 1.0f;
+        }
 
-            // brdf part
-            throughput *= float3(0.9f, 0.9f, 0.9f);
-            //throughput *= float3(1.0f, 1.0f, 1.0f);
-            //
-            
-            if (i > MIN_BOUNCES)
-            {
-                float russianRuletteFactor = min(0.95f, CalculateLuminance(throughput));
-                
-                if (russianRuletteFactor < NextRandomFloat(rngState))
-                {
-                    break;
-                }
-                
-                throughput /= russianRuletteFactor;
-            }
-            
-            currentRay.Direction = bounceRayDir;
-            currentRay.Origin = hitWorldPosition + rayPayload.geometryNormal * 0.001f; // TODO: Implement RT Gems 2, Chapter 6
-            currentRay.TMin = 0.0f;
-            currentRay.TMax = 100000.0f;
-        }
-        else
-        {
-            currentRadiance += throughput * float3(1.0f, 1.0f, 1.0f);
-            break;
-        }
+        throughput *= brdf / brdfPdf;
+        
+        // Implement solution described in chapter 6.
+        currentRay.Origin = hitWorldPosition + rayPayload.geometryNormal * 0.001f;
+        currentRay.Direction = bounceRayDir;
+        currentRay.TMin = 0.0f;
+        currentRay.TMax = 100000.0f;
     }
     
     RWTexture2D<float4> outputTarget = ResourceDescriptorHeap[g_push.outputUavIndex];
@@ -225,6 +279,12 @@ void mainRayGen()
 void mainMiss(inout RayPayload rayPayload)
 {
     rayPayload.hitDistance = -1.0f;
+}
+
+[shader("miss")]
+void shadowMiss(inout ShadowRayPayload shadowRayPayload)
+{
+    shadowRayPayload.occluded = false;
 }
 
 [shader("closesthit")]

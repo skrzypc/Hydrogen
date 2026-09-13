@@ -4,6 +4,8 @@
 
 #include <d3d12.h>
 
+#include <imgui.h>
+
 #include "frameGraph.h"
 #include "gpuScene.h"
 #include "shaderInterop.h"
@@ -65,6 +67,8 @@ namespace Hydrogen
 
     void RayTracingBackend::BuildUI()
     {
-
+        ImGui::Begin("RayTracing");
+        ImGui::Text("Accumulated frames: %u", m_rayTraceDispatchPass.GetAccumulatedFramesCount());
+        ImGui::End();
     }
 }

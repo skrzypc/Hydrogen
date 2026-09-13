@@ -12,6 +12,7 @@
 #include "components/transformComponent.h"
 #include "components/meshComponent.h"
 #include "components/cameraComponent.h"
+#include "components/lightComponent.h"
 #include "hydrogenMath.h"
 #include "ui/uiContext.h"
 
@@ -36,30 +37,58 @@ namespace Hydrogen
 		m_renderer.Initialize(m_window.GetHandle());
 		m_renderer.SetUploadQueue(&m_assetRegistry.GetUploadQueue());
 
-		// Floor
-		//{
-		//	Mesh floorMesh = Primitives::BuildBox({ 0.5f, 0.005f, 0.5f }, "Floor");
-		//	MeshHandle floorHandle = m_assetRegistry.RegisterMesh({ .name = "Floor" }, std::move(floorMesh));
+		//// Debug room: open-top box, no roof, for isolating path tracer bugs away from Sponza's complexity.
+		//constexpr float32 RoomHalfSize = 2.0f;
+		//constexpr float32 RoomHeight = 3.0f;
+		//constexpr float32 RoomWallHalfThickness = 0.05f;
+		//constexpr float32 RoomFloorHalfThickness = 0.05f;
 
-		//	Entity floor = m_scene.CreateEntity();
-		//	Transform floorTransform{};
-		//	floorTransform.position = { 0.0f, -0.1f, 0.0f };
-		//	m_scene.transforms.Add(floor, TransformComponent{ floorTransform });
-		//	m_scene.meshes.Add(floor, MeshComponent{ floorHandle });
+		//const auto addBoxEntity = [this](DirectX::XMFLOAT3 halfExtents, DirectX::XMFLOAT3 position, std::string name)
+		//{
+		//	Mesh boxMesh = Primitives::BuildBox(halfExtents, name);
+		//	MeshMetadata metaData{ .name = name };
+		//	MeshHandle boxHandle = m_assetRegistry.RegisterMesh(std::move(metaData), std::move(boxMesh));
+
+		//	Entity entity = m_scene.CreateEntity();
+		//	Transform transform{};
+		//	transform.position = position;
+		//	m_scene.transforms.Add(entity, TransformComponent{ transform });
+		//	m_scene.meshes.Add(entity, MeshComponent{ boxHandle });
+		//};
+
+		//addBoxEntity({ RoomHalfSize, RoomFloorHalfThickness, RoomHalfSize }, { 0.0f, -RoomFloorHalfThickness, 0.0f }, "Floor");
+		//addBoxEntity({ RoomWallHalfThickness, RoomHeight * 0.5f, RoomHalfSize }, {  RoomHalfSize, RoomHeight * 0.5f, 0.0f }, "WallPosX");
+		//addBoxEntity({ RoomWallHalfThickness, RoomHeight * 0.5f, RoomHalfSize }, { -RoomHalfSize, RoomHeight * 0.5f, 0.0f }, "WallNegX");
+		//addBoxEntity({ RoomHalfSize, RoomHeight * 0.5f, RoomWallHalfThickness }, { 0.0f, RoomHeight * 0.5f,  RoomHalfSize }, "WallPosZ");
+		//addBoxEntity({ RoomHalfSize, RoomHeight * 0.5f, RoomWallHalfThickness }, { 0.0f, RoomHeight * 0.5f, -RoomHalfSize }, "WallNegZ");
+
+		//// Point lights
+		//{
+		//	const auto addPointLight = [this](DirectX::XMFLOAT3 position, DirectX::XMFLOAT3 color, float32 intensity)
+		//	{
+		//		Entity entity = m_scene.CreateEntity();
+		//		Transform transform{};
+		//		transform.position = position;
+		//		m_scene.transforms.Add(entity, TransformComponent{ transform });
+		//		m_scene.lights.Add(entity, LightComponent{ Light{ .type = eLightType::Point, .color = color, .intensity = intensity } });
+		//	};
+
+		//	addPointLight({  1.2f, RoomHeight - 0.5f,  1.2f }, { 1.0f, 0.0f, 0.0f }, 20.0f);
+		//	addPointLight({ -1.2f, RoomHeight - 0.5f, -1.2f }, { 0.0f, 1.0f, 0.0f }, 20.0f);
 		//}
 
 		// Load model and populate scene
 		{
 			std::vector<Model> models{};
 			//models.emplace_back(ModelLoader::Load("data/models/stanfordBunny/scene.gltf"));
-			//models.emplace_back(ModelLoader::Load("data/models/AmdSponza/MainSponza.gltf"));
+			models.emplace_back(ModelLoader::Load("data/models/AmdSponza/MainSponza.gltf"));
 			{
 				//models.emplace_back(ModelLoader::Load("data/models/IntelSponza/main_sponza/NewSponza_Main_glTF_003.gltf"));
 				//models.emplace_back(ModelLoader::Load("data/models/IntelSponza/pkg_a_curtains/NewSponza_Curtains_glTF.gltf"));
 				//models.emplace_back(ModelLoader::Load("data/models/IntelSponza/pkg_b_ivy/NewSponza_IvyGrowth_glTF.gltf"));
 				//models.emplace_back(ModelLoader::Load("data/models/IntelSponza/pkg_c_trees/NewSponza_CypressTree_glTF.gltf"));
 			}
-			models.emplace_back(ModelLoader::Load("data/models/cornell_box/scene.gltf"));
+			//models.emplace_back(ModelLoader::Load("data/models/cornell_box/scene.gltf"));
 
 			for (Model& model : models)
 			{
@@ -87,7 +116,10 @@ namespace Hydrogen
 
 					if (node.lightIndex.has_value())
 					{
-						m_scene.lights.Add(entity, LightComponent{ model.lights[*node.lightIndex] });
+						//if (m_scene.lights.GetAll().size() == 0)
+						{
+							m_scene.lights.Add(entity, LightComponent{ model.lights[*node.lightIndex] });
+						}
 					}
 				}
 			}
