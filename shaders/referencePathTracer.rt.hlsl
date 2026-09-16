@@ -13,16 +13,18 @@ struct PushConstants
 
 ConstantBuffer<PushConstants> g_push : register(b0, space0);
 
-static const uint MIN_BOUNCES = 2;
-static const uint MAX_BOUNCES = 5;
+static const float3 kSkyRadiance = float3(0.02f, 0.04f, 0.08f);
+
+static const uint MIN_BOUNCES = 1;
+static const uint MAX_BOUNCES = 3;
 
 struct [raypayload] RayPayload
 {
     float3 shadingNormal : write(closesthit) : read(caller);
-float3 geometryNormal : write(closesthit) : read(caller);
-float2 uv : write(closesthit) : read(caller);
-float hitDistance : write(closesthit, miss) : read(caller);
-uint materialId : write(closesthit) : read(caller);
+    float3 geometryNormal : write(closesthit) : read(caller);
+    float2 uv : write(closesthit) : read(caller);
+    float hitDistance : write(closesthit, miss) : read(caller);
+    uint materialId : write(closesthit) : read(caller);
 };
 
 struct [raypayload] ShadowRayPayload
@@ -39,15 +41,6 @@ struct SurfaceHit
 
     uint materialIndex;
 };
-
-float3 DebugColorFromId(uint id)
-{
-    uint hash = id * 2654435761u;
-    return float3(
-        float((hash >> 0) & 0xFF) / 255.0f,
-        float((hash >> 8) & 0xFF) / 255.0f,
-        float((hash >> 16) & 0xFF) / 255.0f);
-}
 
 SurfaceHit GetSurfaceHit(BuiltInTriangleIntersectionAttributes triangleAttributes)
 {
@@ -115,11 +108,19 @@ void OrthonormalBasis(const float3 normal, out float3 tangent, out float3 bitang
     const float s = (normal.z >= 0.0f) ? 1.0f : -1.0f;
     const float a = -1.0f / (s + normal.z);
     const float b = normal.x * normal.y * a;
-    
+
     tangent = float3(1.0f + s * normal.x * normal.x * a, s * b, -s * normal.x);
     bitangent = float3(b, s + normal.y * normal.y * a, -normal.y);
 
     return;
+}
+
+// TODO: Implement RT Gems 2, Chapter 6's robust self-intersection avoidance instead of a fixed epsilon.
+static const float kRayOriginBiasDistance = 0.001f;
+
+float3 OffsetRayOrigin(const float3 worldPosition, const float3 geometryNormal)
+{
+    return worldPosition + geometryNormal * kRayOriginBiasDistance;
 }
 
 [shader("raygeneration")]
@@ -143,7 +144,6 @@ void mainRayGen()
     float3 throughput = 1.0f.xxx;
     
     RaytracingAccelerationStructure tlas = ResourceDescriptorHeap[g_push.tlasIndex];
-    StructuredBuffer<GpuLight> lights = ResourceDescriptorHeap[g_frame.lightBufferIndex];
 
     const float3 materialAlbedo = float3(0.8f, 0.8f, 0.8f);
     for (uint i = 0; i <= MAX_BOUNCES; ++i)
@@ -164,7 +164,7 @@ void mainRayGen()
         // Miss, finish the loop.
         if (!hit)
         {
-            currentRadiance += throughput * float3(0.5f, 0.5f, 0.5f);
+            currentRadiance += throughput * kSkyRadiance;
             break;
         }
 
@@ -190,8 +190,7 @@ void mainRayGen()
             // Check occlusion.
             RayDesc shadowRay;
 
-            // Implement solution described in chapter 6.
-            shadowRay.Origin = hitWorldPosition + rayPayload.geometryNormal * 0.001f;
+            shadowRay.Origin = OffsetRayOrigin(hitWorldPosition, rayPayload.geometryNormal);
             shadowRay.Direction = lightDirection;
             shadowRay.TMin = 0.0f;
             shadowRay.TMax = lightDistance > 0.0f ? lightDistance * 0.999f : 100000.0f;
@@ -213,7 +212,7 @@ void mainRayGen()
             if (!shadowRayPayload.occluded)
             {
                 float3 lightRadiance = GetLightContributionPT(sampledLight, lightDirection, lightDistance);
-                float3 materialBrdf = materialAlbedo / 3.14159265359f; // Diffuse for now.
+                float3 materialBrdf = materialAlbedo / kPi; // Diffuse for now.
                 float NoL = saturate(dot(rayPayload.shadingNormal, lightDirection));
 
                 currentRadiance += throughput * materialBrdf * lightRadiance * NoL * lightSampleWeight;
@@ -237,12 +236,12 @@ void mainRayGen()
         float3 brdf;
         float brdfPdf;
         {
-            // cosine weighted hemisphere sampling
+            // Cosine weighted hemisphere sampling.
             float u1 = NextRandomFloat(rngState);
             float u2 = NextRandomFloat(rngState);
         
             float r = sqrt(u1);
-            float phi = 2.0f * 3.14159265359f * u2;
+            float phi = 2.0f * kPi * u2;
         
             float x, y, z;
             sincos(phi, z, x);
@@ -251,14 +250,13 @@ void mainRayGen()
             y = sqrt(max(0.0f, 1.0f - u1));
             
             bounceRayDir = normalize(x * tangent + y * rayPayload.shadingNormal + z * bitangent);
-            brdf = float3(0.9f, 0.9f, 0.9f);
+            brdf = materialAlbedo;
             brdfPdf = 1.0f;
         }
 
         throughput *= brdf / brdfPdf;
-        
-        // Implement solution described in chapter 6.
-        currentRay.Origin = hitWorldPosition + rayPayload.geometryNormal * 0.001f;
+
+        currentRay.Origin = OffsetRayOrigin(hitWorldPosition, rayPayload.geometryNormal);
         currentRay.Direction = bounceRayDir;
         currentRay.TMin = 0.0f;
         currentRay.TMax = 100000.0f;

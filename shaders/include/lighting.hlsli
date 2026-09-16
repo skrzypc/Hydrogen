@@ -3,13 +3,6 @@
 
 #include "rng.hlsli"
 
-struct LightContribution
-{
-    float3 radiance;
-    float3 direction;
-    float distance;
-};
-
 static const float kRangeFalloffStartFraction = 0.8f;
 static const uint kRisCandidatesLightsCount = 8;
 
@@ -34,55 +27,37 @@ float CalculateLuminance(const float3 input)
     return (0.2126f * input.r + 0.7152f * input.g + 0.0722f * input.b);
 }
 
-LightContribution GetLightContribution(GpuLight light, float3 positionWS)
+float3 GetLightContribution(const GpuLight light, const float3 lightDirection, const float lightDistance)
 {
-    LightContribution result;
-    result.radiance = float3(0.0f, 0.0f, 0.0f);
-    result.direction = float3(0.0f, 0.0f, 0.0f);
-    result.distance = 0.0f;
-
     float attenuation = 1.0f;
     float softRangeFalloffFactor = 1.0f;
 
-    if (light.type == LightTypeDirectional)
+    if (light.type != LightTypeDirectional)
     {
-        result.direction = -light.direction;
-        result.distance = -1.0f;
-    }
-    else
-    {
-        float3 delta = light.position - positionWS;
-        float distanceSquared = max(dot(delta, delta), 1e-6f);
-        float distance = sqrt(distanceSquared);
-
-        if (distance > light.range)
+        if (lightDistance > light.range)
         {
-            return result;
+            return float3(0.0f, 0.0f, 0.0f);
         }
 
         float softRangeFalloffStart = light.range * kRangeFalloffStartFraction;
         float softRangeFalloffEnd = light.range;
         float softRangeFalloffWidth = max(softRangeFalloffEnd - softRangeFalloffStart, 1e-4f);
-        float softRangeFalloff = saturate(1.0f - ((distance - softRangeFalloffStart) / softRangeFalloffWidth));
+        float softRangeFalloff = saturate(1.0f - ((lightDistance - softRangeFalloffStart) / softRangeFalloffWidth));
 
         softRangeFalloffFactor = softRangeFalloff * softRangeFalloff;
-        
-        result.direction = delta / distance;
-        result.distance = distance;
-        
+
+        float distanceSquared = max(lightDistance * lightDistance, 1e-6f);
         attenuation = 1.0f / distanceSquared;
 
         if (light.type == LightTypeSpot)
         {
-            float cosAngle = dot(-result.direction, light.direction);
+            float cosAngle = dot(-lightDirection, light.direction);
             float coneFalloff = max(light.cosInnerConeAngle - light.cosOuterConeAngle, 1e-4f);
             attenuation *= saturate((cosAngle - light.cosOuterConeAngle) / coneFalloff);
         }
     }
 
-    result.radiance = light.color * light.intensity * attenuation * softRangeFalloffFactor;
-
-    return result;
+    return light.color * light.intensity * attenuation * softRangeFalloffFactor;
 }
 
 // Don't use range parameter to avoid bias.

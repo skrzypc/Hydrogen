@@ -1,5 +1,5 @@
 #include "common.hlsli"
-#include "octahedral.hlsli"
+#include "shaderUtils.hlsli"
 
 struct PushConstants
 {
@@ -10,14 +10,14 @@ ConstantBuffer<PushConstants> g_push : register(b0, space0);
 
 struct PsIn
 {
-    float4 posCS    : SV_Position;
-    float3 normalWS : NORMAL;
+    float4 positionClipSpace : SV_Position;
+    float3 normalWorldSpace : NORMAL;
 };
 
 struct PsOut
 {
-    float4 albedo             : SV_Target0;
-    float2 normal             : SV_Target1;
+    float4 albedo : SV_Target0;
+    float2 normal : SV_Target1;
     float2 roughnessMetalness : SV_Target2;
 };
 
@@ -39,12 +39,8 @@ PsOut mainPS(PsIn input)
 
     PsOut output;
 
-    //output.albedo = float4(kPalette[materialIndex], 1.0f);
-    //output.normal = EncodeOctahedral(normalize(input.normalWS));
-    //output.roughnessMetalness = float2(kRoughness[materialIndex], kMetalness[materialIndex]);
-    
     output.albedo = float4(1.0, 1.0, 1.0, 1.0f);
-    output.normal = EncodeOctahedral(normalize(input.normalWS));
+    output.normal = EncodeOctahedral(normalize(input.normalWorldSpace));
     output.roughnessMetalness = float2(0.1f, 0.1f);
 
     return output;

@@ -16,8 +16,8 @@ namespace Hydrogen
 
 		Shader::Desc libraryDesc
 		{
-			.sourcePath = "rayTracing.rt.hlsl",
-			.name = "RayTracing",
+			.sourcePath = "referencePathTracer.rt.hlsl",
+			.name = "ReferencePathTracer",
 			.type = eShaderType::RT,
 		};
 

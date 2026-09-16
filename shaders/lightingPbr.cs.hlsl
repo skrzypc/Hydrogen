@@ -1,6 +1,6 @@
 #include "common.hlsli"
 #include "lighting.hlsli"
-#include "octahedral.hlsli"
+#include "shaderUtils.hlsli"
 #include "brdf.hlsli"
 
 struct PushConstants
@@ -69,15 +69,18 @@ void mainCS(uint3 dispatchThreadId : SV_DispatchThreadID)
         radiance = float3(0.0f, 0.0f, 0.0f);
         for (uint i = 0; i < g_frame.lightCount; ++i)
         {
-            LightContribution lightSample = SampleLight(lights[i], positionWS);
+            float3 lightDirection;
+            float lightDistance;
+            GetLightDirectionAndDistance(lights[i], positionWS, lightDirection, lightDistance);
 
-            float NoL = saturate(dot(N, lightSample.direction));
+            float NoL = saturate(dot(N, lightDirection));
             if (NoL <= 0.0f)
             {
                 continue;
             }
 
-            radiance += lightSample.radiance * EvaluateBrdf(surface, N, V, lightSample.direction) * NoL;
+            float3 lightRadiance = GetLightContribution(lights[i], lightDirection, lightDistance);
+            radiance += lightRadiance * EvaluateBrdf(surface, N, V, lightDirection) * NoL;
         }
     }
 

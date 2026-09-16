@@ -1,6 +1,5 @@
 #include "common.hlsli"
-#include "colorSpace.hlsli"
-#include "tonemap.hlsli"
+#include "shaderUtils.hlsli"
 
 struct PushConstants
 {

@@ -1,7 +1,7 @@
 #ifndef BRDF_HLSLI
 #define BRDF_HLSLI
 
-static const float kPi = 3.14159265f;
+#include "common.hlsli"
 
 struct Surface
 {
