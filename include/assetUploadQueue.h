@@ -57,4 +57,4 @@ namespace Hydrogen
         std::vector<MeshUploadRequest> m_pending{};
         std::vector<MaterialUploadRequest> m_pendingMaterials{};
     };
-}
+} // namespace Hydrogen

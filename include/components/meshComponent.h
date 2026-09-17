@@ -8,4 +8,4 @@ namespace Hydrogen
     {
         MeshHandle mesh{};
     };
-}
+} // namespace Hydrogen

@@ -14,21 +14,20 @@ using uint64 = uint64_t;
 
 struct uint128
 {
-	uint64 low = 0ull;
-	uint64 high = 0ull;
+    uint64 low = 0ull;
+    uint64 high = 0ull;
 
-	bool operator==(const uint128&) const = default;
+    bool operator==(const uint128&) const = default;
 };
 
-template<>
-struct std::hash<uint128>
+template <> struct std::hash<uint128>
 {
-	uint64 operator()(const uint128& v) const noexcept
-	{
-		uint64 seed = std::hash<uint64>{}(v.low);
-		seed ^= std::hash<uint64>{}(v.high) + 0x9e3779b9u + (seed << 6) + (seed >> 2);
-		return seed;
-	}
+    uint64 operator()(const uint128& v) const noexcept
+    {
+        uint64 seed = std::hash<uint64>{}(v.low);
+        seed ^= std::hash<uint64>{}(v.high) + 0x9e3779b9u + (seed << 6) + (seed >> 2);
+        return seed;
+    }
 };
 
 using int8 = int8_t;

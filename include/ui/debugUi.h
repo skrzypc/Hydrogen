@@ -34,4 +34,4 @@ namespace Hydrogen
         std::vector<std::unique_ptr<IPanel>> m_panels{};
         Entity m_selection{};
     };
-}
+} // namespace Hydrogen

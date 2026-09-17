@@ -16,4 +16,4 @@ namespace Hydrogen
         void Setup(FGBuilder& builder) override;
         void Execute(FGExecuteContext& fgExecuteContext, GraphicsContext& graphicsContext) override;
     };
-}
+} // namespace Hydrogen

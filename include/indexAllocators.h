@@ -12,7 +12,7 @@ namespace Hydrogen
     {
     public:
         LinearIndexAllocator() = default;
-		~LinearIndexAllocator() = default;
+        ~LinearIndexAllocator() = default;
         LinearIndexAllocator(const LinearIndexAllocator&) = delete;
         LinearIndexAllocator& operator=(const LinearIndexAllocator&) = delete;
         LinearIndexAllocator(LinearIndexAllocator&&) noexcept = default;
@@ -49,9 +49,18 @@ namespace Hydrogen
             return m_size < m_capacity;
         }
 
-        uint32 GetStart() const { return m_start; }
-        uint32 GetCapacity() const { return m_capacity; }
-        uint32 GetSize() const { return m_size; }
+        uint32 GetStart() const
+        {
+            return m_start;
+        }
+        uint32 GetCapacity() const
+        {
+            return m_capacity;
+        }
+        uint32 GetSize() const
+        {
+            return m_size;
+        }
 
     private:
         uint32 m_start = 0;
@@ -86,4 +95,4 @@ namespace Hydrogen
     private:
         std::vector<uint32> m_freeSlots;
     };
-}
+} // namespace Hydrogen

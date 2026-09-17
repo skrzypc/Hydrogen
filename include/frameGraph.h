@@ -19,85 +19,79 @@
 
 namespace Hydrogen
 {
-	class IRenderPass;
-	class GraphicsContext;
+    class IRenderPass;
+    class GraphicsContext;
 
-	class FrameGraph
-	{
-		friend class FGBuilder;
-	public:
-		FrameGraph() = default;
-		~FrameGraph() = default;
-		FrameGraph(const FrameGraph&) = delete;
-		FrameGraph& operator=(const FrameGraph&) = delete;
-		FrameGraph(FrameGraph&&) noexcept = default;
-		FrameGraph& operator=(FrameGraph&&) noexcept = default;
+    class FrameGraph
+    {
+        friend class FGBuilder;
 
-		void Initialize(GpuDevice& device);
+    public:
+        FrameGraph() = default;
+        ~FrameGraph() = default;
+        FrameGraph(const FrameGraph&) = delete;
+        FrameGraph& operator=(const FrameGraph&) = delete;
+        FrameGraph(FrameGraph&&) noexcept = default;
+        FrameGraph& operator=(FrameGraph&&) noexcept = default;
 
-		void BeginFrame(uint64 newFrameNumber);
+        void Initialize(GpuDevice& device);
 
-		FGResourceHandle CreateTexture(std::string_view name, Texture::Desc desc);
-		FGResourceHandle CreateBuffer(std::string_view name, Buffer::Desc desc);
+        void BeginFrame(uint64 newFrameNumber);
 
-		void ImportTexture(std::string_view name, Texture* pTexture);
-		void ImportBuffer(std::string_view name, Buffer* pBuffer);
+        FGResourceHandle CreateTexture(std::string_view name, Texture::Desc desc);
+        FGResourceHandle CreateBuffer(std::string_view name, Buffer::Desc desc);
 
-		FGResourceHandle GetResource(std::string_view name) const;
+        void ImportTexture(std::string_view name, Texture* pTexture);
+        void ImportBuffer(std::string_view name, Buffer* pBuffer);
 
-		void AddPass(std::string_view passName, IRenderPass& pass);
+        FGResourceHandle GetResource(std::string_view name) const;
 
-		template<typename PassDataT, typename SetupFn, typename ExecuteFn>
-		void AddPass(
-			std::string_view passName,
-			SetupFn&& setupFn,
-			ExecuteFn&& executeFn
-		)
-		{
-			FGPass& pass = m_passes.emplace_back();
-			pass.name = passName;
-			pass.index = static_cast<uint32>(m_passes.size() - 1u);
+        void AddPass(std::string_view passName, IRenderPass& pass);
 
-			FGBuilder builder(*this, pass);
-			auto pPassData = std::make_unique<PassDataT>();
+        template <typename PassDataT, typename SetupFn, typename ExecuteFn>
+        void AddPass(std::string_view passName, SetupFn&& setupFn, ExecuteFn&& executeFn)
+        {
+            FGPass& pass = m_passes.emplace_back();
+            pass.name = passName;
+            pass.index = static_cast<uint32>(m_passes.size() - 1u);
 
-			setupFn(builder, *pPassData.get());
+            FGBuilder builder(*this, pass);
+            auto pPassData = std::make_unique<PassDataT>();
 
-			pass.executeFn = [pData = std::move(pPassData), fn = std::forward<decltype(executeFn)>(executeFn)]
-			(FGExecuteContext& ctx, GraphicsContext& gfx) mutable
-				{
-					fn(*pData, ctx, gfx);
-				};
-		}
+            setupFn(builder, *pPassData.get());
 
-		void Compile();
-		[[nodiscard]] GraphicsContext Execute();
+            pass.executeFn = [pData = std::move(pPassData), fn = std::forward<decltype(executeFn)>(executeFn)](
+                                 FGExecuteContext& ctx, GraphicsContext& gfx) mutable { fn(*pData, ctx, gfx); };
+        }
 
-		void Reset();
+        void Compile();
+        [[nodiscard]] GraphicsContext Execute();
 
-	private:
-		void BuildAdjacencyList();
-		void TopologicalSort();
-		void CullPasses();
-		void AllocateResources();
-		void ComputeBarriers();
-		void BuildDescriptors();
+        void Reset();
 
-		void ClearPassTargets(ID3D12GraphicsCommandList7* cmd, const FGPass& pass);
-		void RestoreImportedResources(ID3D12GraphicsCommandList7* cmd);
+    private:
+        void BuildAdjacencyList();
+        void TopologicalSort();
+        void CullPasses();
+        void AllocateResources();
+        void ComputeBarriers();
+        void BuildDescriptors();
 
-	private:
-		GpuDevice* m_pDevice = nullptr;
-		uint64 m_currentFrameNumber = std::numeric_limits<uint64>::max();
+        void ClearPassTargets(ID3D12GraphicsCommandList7* cmd, const FGPass& pass);
+        void RestoreImportedResources(ID3D12GraphicsCommandList7* cmd);
 
-		FGExecuteContext m_executeContext{};
-		FGResourceCache m_resourceCache{};
+    private:
+        GpuDevice* m_pDevice = nullptr;
+        uint64 m_currentFrameNumber = std::numeric_limits<uint64>::max();
 
-		std::vector<FGPass> m_passes{};
+        FGExecuteContext m_executeContext{};
+        FGResourceCache m_resourceCache{};
 
-		std::vector<FGTextureNode> m_textureNodes{};
-		std::vector<FGBufferNode> m_bufferNodes{};
+        std::vector<FGPass> m_passes{};
 
-		std::unordered_map<std::string, FGResourceHandle> m_resourceRegistry{};
-	};
-}
+        std::vector<FGTextureNode> m_textureNodes{};
+        std::vector<FGBufferNode> m_bufferNodes{};
+
+        std::unordered_map<std::string, FGResourceHandle> m_resourceRegistry{};
+    };
+} // namespace Hydrogen

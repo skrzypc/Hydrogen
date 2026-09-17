@@ -1,7 +1,7 @@
-#include "common.hlsli"
-#include "lighting.hlsli"
-#include "shaderUtils.hlsli"
-#include "brdf.hlsli"
+#include "include/common.hlsli"
+#include "include/lighting.hlsli"
+#include "include/shaderUtils.hlsli"
+#include "include/brdf.hlsli"
 
 struct PushConstants
 {

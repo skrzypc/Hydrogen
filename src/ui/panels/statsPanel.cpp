@@ -14,4 +14,4 @@ namespace Hydrogen
 
         ImGui::End();
     }
-}
+} // namespace Hydrogen

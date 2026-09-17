@@ -13,29 +13,38 @@
 
 namespace Hydrogen
 {
-	class SwapChain
-	{
-	public:
-		SwapChain() = default;
-		~SwapChain() = default;
-		SwapChain(const SwapChain&) = delete;
-		SwapChain& operator=(const SwapChain&) = delete;
-		SwapChain(SwapChain&&) noexcept = default;
-		SwapChain& operator=(SwapChain&&) noexcept = default;
+    class SwapChain
+    {
+    public:
+        SwapChain() = default;
+        ~SwapChain() = default;
+        SwapChain(const SwapChain&) = delete;
+        SwapChain& operator=(const SwapChain&) = delete;
+        SwapChain(SwapChain&&) noexcept = default;
+        SwapChain& operator=(SwapChain&&) noexcept = default;
 
-		void Create(GpuDevice& device, HWND hWnd);
-		void Present();
-		
-		Texture* GetCurrentBackBuffer() const { return m_backBuffers[m_frameIndex].get(); }
+        void Create(GpuDevice& device, HWND hWnd);
+        void Present();
 
-		const uint64 GetCurrentFrameNumber() const { return m_frameNumber; }
-		const uint32 GetCurrentFrameIndex() const { return static_cast<uint32>(m_frameIndex); }
+        Texture* GetCurrentBackBuffer() const
+        {
+            return m_backBuffers[m_frameIndex].get();
+        }
 
-	private:
-		uint8 m_frameIndex = 0u;
-		uint64 m_frameNumber = 0u;
+        const uint64 GetCurrentFrameNumber() const
+        {
+            return m_frameNumber;
+        }
+        const uint32 GetCurrentFrameIndex() const
+        {
+            return static_cast<uint32>(m_frameIndex);
+        }
 
-		Microsoft::WRL::ComPtr<IDXGISwapChain4> m_pSwapChain = nullptr;
-		std::array<std::unique_ptr<Texture>, Config::FramesInFlight> m_backBuffers{};
-	};
-}
+    private:
+        uint8 m_frameIndex = 0u;
+        uint64 m_frameNumber = 0u;
+
+        Microsoft::WRL::ComPtr<IDXGISwapChain4> m_pSwapChain = nullptr;
+        std::array<std::unique_ptr<Texture>, Config::FramesInFlight> m_backBuffers{};
+    };
+} // namespace Hydrogen

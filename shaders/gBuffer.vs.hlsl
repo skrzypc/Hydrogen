@@ -1,4 +1,4 @@
-#include "common.hlsli"
+#include "include/common.hlsli"
 
 struct PushConstants
 {
@@ -33,6 +33,6 @@ VsOut mainVS(uint vertexID : SV_VertexID)
     VsOut output;
     output.positionClipSpace = mul(viewProjectionMx, worldPosition);
     output.normalWorldSpace = mul((float3x3)worldMx, normal);
-    
+
     return output;
 }

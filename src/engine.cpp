@@ -19,245 +19,262 @@
 
 namespace Hydrogen
 {
-	int32 Engine::Run(LPSTR commandLineArgs)
-	{
-		Logger::Initialize();
+    int32 Engine::Run(LPSTR commandLineArgs)
+    {
+        Logger::Initialize();
 
-		if (Hydrogen::Config::WaitForDebugger)
-		{
-			while (!::IsDebuggerPresent())
-			{
-				::Sleep(1000);
+        if (Hydrogen::Config::WaitForDebugger)
+        {
+            while (!::IsDebuggerPresent())
+            {
+                ::Sleep(1000);
 
-				H2_INFO(eLogLevel::Verbose, "Waiting for debugger.");
-			}
-		}
+                H2_INFO(eLogLevel::Verbose, "Waiting for debugger.");
+            }
+        }
 
-		m_window.Create(Config::WindowWidth, Config::WindowHeight, L"Hydrogen Engine");
+        m_window.Create(Config::WindowWidth, Config::WindowHeight, L"Hydrogen Engine");
 
-		m_renderer.Initialize(m_window.GetHandle());
-		m_renderer.SetUploadQueue(&m_assetRegistry.GetUploadQueue());
+        m_renderer.Initialize(m_window.GetHandle());
+        m_renderer.SetUploadQueue(&m_assetRegistry.GetUploadQueue());
 
-		// Load model and populate scene
-		{
-			std::vector<Model> models{};
-			// AMD SPONZA
-			{
-				//models.emplace_back(ModelLoader::Load("data/models/AmdSponza/MainSponza.gltf"));
-			}
-			// INTEL SPONZA
-			{
-				//models.emplace_back(ModelLoader::Load("data/models/IntelSponza/main_sponza/NewSponza_Main_glTF_003.gltf"));
-				//models.emplace_back(ModelLoader::Load("data/models/IntelSponza/pkg_a_curtains/NewSponza_Curtains_glTF.gltf"));
-				//models.emplace_back(ModelLoader::Load("data/models/IntelSponza/pkg_b_ivy/NewSponza_IvyGrowth_glTF.gltf"));
-				//models.emplace_back(ModelLoader::Load("data/models/IntelSponza/pkg_c_trees/NewSponza_CypressTree_glTF.gltf"));
-			}
-			// CORNELL BOX
-			{
-				models.emplace_back(ModelLoader::Load("data/models/cornell_box/scene.gltf"));
-			}
+        // Load model and populate scene
+        {
+            std::vector<Model> models{};
+            // AMD SPONZA
+            {
+                // models.emplace_back(ModelLoader::Load("data/models/AmdSponza/MainSponza.gltf"));
+            }
+            // INTEL SPONZA
+            {
+                // models.emplace_back(ModelLoader::Load("data/models/IntelSponza/main_sponza/NewSponza_Main_glTF_003.gltf"));
+                // models.emplace_back(ModelLoader::Load("data/models/IntelSponza/pkg_a_curtains/NewSponza_Curtains_glTF.gltf"));
+                // models.emplace_back(ModelLoader::Load("data/models/IntelSponza/pkg_b_ivy/NewSponza_IvyGrowth_glTF.gltf"));
+                // models.emplace_back(ModelLoader::Load("data/models/IntelSponza/pkg_c_trees/NewSponza_CypressTree_glTF.gltf"));
+            }
+            // CORNELL BOX
+            {
+                models.emplace_back(ModelLoader::Load("data/models/cornell_box/scene.gltf"));
+            }
 
-			for (Model& model : models)
-			{
-				std::vector<MeshHandle> handles;
-				for (Mesh& mesh : model.meshes)
-				{
-					MeshMetadata metaData
-					{
-						.name = mesh.name
-					};
+            for (Model& model : models)
+            {
+                std::vector<MeshHandle> handles;
+                for (Mesh& mesh : model.meshes)
+                {
+                    MeshMetadata metaData{.name = mesh.name};
 
-					handles.push_back(m_assetRegistry.RegisterMesh(std::move(metaData), std::move(mesh)));
-				}
+                    handles.push_back(m_assetRegistry.RegisterMesh(std::move(metaData), std::move(mesh)));
+                }
 
-				std::vector<MaterialHandle> materialHandles;
-				for (Material& material : model.materials)
-				{
-					materialHandles.push_back(m_assetRegistry.RegisterMaterial(std::move(material)));
-				}
+                std::vector<MaterialHandle> materialHandles;
+                for (Material& material : model.materials)
+                {
+                    materialHandles.push_back(m_assetRegistry.RegisterMaterial(std::move(material)));
+                }
 
-				for (uint32 i = 0; i < static_cast<uint32>(model.nodes.size()); ++i)
-				{
-					const ModelNode& node = model.nodes[i];
+                for (uint32 i = 0; i < static_cast<uint32>(model.nodes.size()); ++i)
+                {
+                    const ModelNode& node = model.nodes[i];
 
-					Entity entity = m_scene.CreateEntity();
-					m_scene.transforms.Add(entity, TransformComponent{ node.localTransform });
-					if (node.meshIndex.has_value())
-					{
-						m_scene.meshes.Add(entity, MeshComponent{ handles[*node.meshIndex] });
-					}
+                    Entity entity = m_scene.CreateEntity();
+                    m_scene.transforms.Add(entity, TransformComponent{node.localTransform});
+                    if (node.meshIndex.has_value())
+                    {
+                        m_scene.meshes.Add(entity, MeshComponent{handles[*node.meshIndex]});
+                    }
 
-					if (node.materialIndex.has_value())
-					{
-						m_scene.materials.Add(entity, MaterialComponent{ materialHandles[*node.materialIndex] });
-					}
+                    if (node.materialIndex.has_value())
+                    {
+                        m_scene.materials.Add(entity, MaterialComponent{materialHandles[*node.materialIndex]});
+                    }
 
-					if (node.lightIndex.has_value())
-					{
-						m_scene.lights.Add(entity, LightComponent{ model.lights[*node.lightIndex] });
-					}
-				}
-			}
-		}
+                    if (node.lightIndex.has_value())
+                    {
+                        m_scene.lights.Add(entity, LightComponent{model.lights[*node.lightIndex]});
+                    }
+                }
+            }
+        }
 
-		// Camera
-		{
-			m_activeCamera = m_scene.CreateEntity();
-			Transform cameraTransform{};
-			cameraTransform.position = { 0.0f, 0.2f, -1.0f };
-			m_scene.transforms.Add(m_activeCamera, TransformComponent{ cameraTransform });
-			m_scene.cameras.Add(m_activeCamera, CameraComponent{});
-		}
+        // Camera
+        {
+            m_activeCamera = m_scene.CreateEntity();
+            Transform cameraTransform{};
+            cameraTransform.position = {0.0f, 0.2f, -1.0f};
+            m_scene.transforms.Add(m_activeCamera, TransformComponent{cameraTransform});
+            m_scene.cameras.Add(m_activeCamera, CameraComponent{});
+        }
 
-		int32 returnCode = 0;
-		while (true)
-		{
-			if (const auto ecode = m_window.ProcessMessages())
-			{
-				returnCode = *ecode;
-				break;
-			}
+        int32 returnCode = 0;
+        while (true)
+        {
+            if (const auto ecode = m_window.ProcessMessages())
+            {
+                returnCode = *ecode;
+                break;
+            }
 
+            m_debugUi.BeginFrame();
 
-			m_debugUi.BeginFrame();
+            const float32 deltaTime = static_cast<float32>(m_frameTimer.GetSeconds());
+            m_frameTimer.Mark();
 
-			const float32 deltaTime = static_cast<float32>(m_frameTimer.GetSeconds());
-			m_frameTimer.Mark();
+            const float64 time = m_appTimer.GetSeconds();
 
-			const float64 time = m_appTimer.GetSeconds();
+            RenderScene renderScene{};
 
-			RenderScene renderScene{};
+            // Update camera
+            {
+                constexpr float32 sensitivity = 0.1f;
 
-			// Update camera
-			{
-				constexpr float32 sensitivity = 0.1f;
+                const bool wantsMouseCapture = m_debugUi.WantsMouseCapture();
+                const bool wantsKeyboardCapture = m_debugUi.WantsKeyboardCapture();
 
-				const bool wantsMouseCapture = m_debugUi.WantsMouseCapture();
-				const bool wantsKeyboardCapture = m_debugUi.WantsKeyboardCapture();
+                TransformComponent* pTransformComponent = m_scene.transforms.Get(m_activeCamera);
 
-				TransformComponent* pTransformComponent = m_scene.transforms.Get(m_activeCamera);
+                if (pTransformComponent && !wantsMouseCapture && m_window.IsRightMouseDown())
+                {
+                    const Vector3 currentEuler = Quaternion(pTransformComponent->transform.rotation).ToEuler();
+                    const float32 pitch =
+                        std::clamp(ToDegrees(currentEuler.x) + m_window.GetMouseDeltaY() * sensitivity, -89.0f, 89.0f);
+                    const float32 yaw = ToDegrees(currentEuler.y) + m_window.GetMouseDeltaX() * sensitivity;
 
-				if (pTransformComponent && !wantsMouseCapture && m_window.IsRightMouseDown())
-				{
-					const Vector3 currentEuler = Quaternion(pTransformComponent->transform.rotation).ToEuler();
-					const float32 pitch = std::clamp(ToDegrees(currentEuler.x) + m_window.GetMouseDeltaY() * sensitivity, -89.0f, 89.0f);
-					const float32 yaw = ToDegrees(currentEuler.y) + m_window.GetMouseDeltaX() * sensitivity;
+                    XMStoreFloat4(&pTransformComponent->transform.rotation,
+                                  Quaternion::CreateFromYawPitchRoll(ToRadians(yaw), ToRadians(pitch), 0.0f));
+                }
 
-					XMStoreFloat4(&pTransformComponent->transform.rotation,
-						Quaternion::CreateFromYawPitchRoll(ToRadians(yaw), ToRadians(pitch), 0.0f));
-				}
+                const Quaternion orientation =
+                    pTransformComponent ? Quaternion(pTransformComponent->transform.rotation) : Quaternion::Identity;
+                const Vector3 forward = Vector3::Transform(Forward, orientation);
+                const Vector3 right = Vector3::Transform(Right, orientation);
 
-				const Quaternion orientation = pTransformComponent ? Quaternion(pTransformComponent->transform.rotation) : Quaternion::Identity;
-				const Vector3 forward = Vector3::Transform(Forward, orientation);
-				const Vector3 right = Vector3::Transform(Right, orientation);
+                Vector3 move = Vector3::Zero;
+                if (!wantsKeyboardCapture)
+                {
+                    if (m_window.IsKeyDown('W'))
+                    {
+                        move += forward;
+                    }
+                    if (m_window.IsKeyDown('S'))
+                    {
+                        move -= forward;
+                    }
+                    if (m_window.IsKeyDown('D'))
+                    {
+                        move += right;
+                    }
+                    if (m_window.IsKeyDown('A'))
+                    {
+                        move -= right;
+                    }
+                    if (m_window.IsKeyDown('E'))
+                    {
+                        move += Up;
+                    }
+                    if (m_window.IsKeyDown('Q'))
+                    {
+                        move -= Up;
+                    }
+                }
 
-				Vector3 move = Vector3::Zero;
-				if (!wantsKeyboardCapture)
-				{
-					if (m_window.IsKeyDown('W')) { move += forward; }
-					if (m_window.IsKeyDown('S')) { move -= forward; }
-					if (m_window.IsKeyDown('D')) { move += right; }
-					if (m_window.IsKeyDown('A')) { move -= right; }
-					if (m_window.IsKeyDown('E')) { move += Up; }
-					if (m_window.IsKeyDown('Q')) { move -= Up; }
-				}
+                if (move.LengthSquared() > 0.0f)
+                {
+                    move.Normalize();
+                    move *= m_cameraSpeed * deltaTime;
+                }
 
-				if (move.LengthSquared() > 0.0f)
-				{
-					move.Normalize();
-					move *= m_cameraSpeed * deltaTime;
-				}
+                if (pTransformComponent)
+                {
+                    pTransformComponent->transform.position.x += move.x;
+                    pTransformComponent->transform.position.y += move.y;
+                    pTransformComponent->transform.position.z += move.z;
 
-				if (pTransformComponent)
-				{
-					pTransformComponent->transform.position.x += move.x;
-					pTransformComponent->transform.position.y += move.y;
-					pTransformComponent->transform.position.z += move.z;
+                    renderScene.camera.position = pTransformComponent->transform.position;
+                    renderScene.camera.rotation = pTransformComponent->transform.rotation;
+                }
 
-					renderScene.camera.position = pTransformComponent->transform.position;
-					renderScene.camera.rotation = pTransformComponent->transform.rotation;
-				}
+                if (CameraComponent* pCameraComponent = m_scene.cameras.Get(m_activeCamera))
+                {
+                    if (!wantsMouseCapture)
+                    {
+                        if (const float32 scroll = m_window.GetScrollDelta(); scroll != 0.0f)
+                        {
+                            if (m_window.IsRightMouseDown())
+                            {
+                                m_cameraSpeed = std::clamp(m_cameraSpeed + scroll * 0.5f, 0.5f, 20.0f);
+                            }
+                            else
+                            {
+                                pCameraComponent->fovYDeg =
+                                    std::clamp(pCameraComponent->fovYDeg - scroll * 2.0f, 10.0f, 120.0f);
+                            }
+                        }
 
-				if (CameraComponent* pCameraComponent = m_scene.cameras.Get(m_activeCamera))
-				{
-					if (!wantsMouseCapture)
-					{
-						if (const float32 scroll = m_window.GetScrollDelta(); scroll != 0.0f)
-						{
-							if (m_window.IsRightMouseDown())
-							{
-								m_cameraSpeed = std::clamp(m_cameraSpeed + scroll * 0.5f, 0.5f, 20.0f);
-							}
-							else
-							{
-								pCameraComponent->fovYDeg = std::clamp(pCameraComponent->fovYDeg - scroll * 2.0f, 10.0f, 120.0f);
-							}
-						}
+                        if (m_window.IsMiddleMouseJustPressed())
+                        {
+                            pCameraComponent->fovYDeg = CameraComponent{}.fovYDeg;
+                        }
+                    }
 
-						if (m_window.IsMiddleMouseJustPressed())
-						{
-							pCameraComponent->fovYDeg = CameraComponent{}.fovYDeg;
-						}
-					}
+                    renderScene.camera.fovYDeg = pCameraComponent->fovYDeg;
+                    renderScene.camera.nearZ = pCameraComponent->nearZ;
+                    renderScene.camera.farZ = pCameraComponent->farZ;
+                    renderScene.camera.exposure = pCameraComponent->exposure;
+                }
+            }
 
-					renderScene.camera.fovYDeg = pCameraComponent->fovYDeg;
-					renderScene.camera.nearZ = pCameraComponent->nearZ;
-					renderScene.camera.farZ = pCameraComponent->farZ;
-					renderScene.camera.exposure = pCameraComponent->exposure;
-				}
-			}
+            UiContext uiContext{};
+            uiContext.pScene = &m_scene;
+            uiContext.pAssetRegistry = &m_assetRegistry;
+            uiContext.fnBuildRendererUi = [this]() { m_renderer.BuildBackendUI(); };
+            uiContext.deltaTime = deltaTime;
+            uiContext.time = time;
 
-			UiContext uiContext{};
-			uiContext.pScene = &m_scene;
-			uiContext.pAssetRegistry = &m_assetRegistry;
-			uiContext.fnBuildRendererUi = [this]() { m_renderer.BuildBackendUI(); };
-			uiContext.deltaTime = deltaTime;
-			uiContext.time = time;
+            m_debugUi.Draw(uiContext);
 
-			m_debugUi.Draw(uiContext);
+            const auto& meshEntities = m_scene.meshes.GetEntities();
+            auto meshComponents = m_scene.meshes.GetAll();
+            for (uint32 i = 0; i < static_cast<uint32>(meshEntities.size()); ++i)
+            {
+                const TransformComponent* tc = m_scene.transforms.Get(meshEntities[i]);
+                if (!tc)
+                {
+                    continue;
+                }
 
-			const auto& meshEntities = m_scene.meshes.GetEntities();
-			auto meshComponents = m_scene.meshes.GetAll();
-			for (uint32 i = 0; i < static_cast<uint32>(meshEntities.size()); ++i)
-			{
-				const TransformComponent* tc = m_scene.transforms.Get(meshEntities[i]);
-				if (!tc)
-				{
-					continue;
-				}
+                RenderObject obj{};
+                obj.mesh = meshComponents[i].mesh;
+                if (const MaterialComponent* pMaterialComponent = m_scene.materials.Get(meshEntities[i]))
+                {
+                    obj.materialDataIndex = pMaterialComponent->material.id;
+                }
+                DirectX::XMStoreFloat4x4(&obj.worldMatrix, tc->transform.GetWorldMatrix());
+                renderScene.objects.push_back(obj);
+            }
 
-				RenderObject obj{};
-				obj.mesh = meshComponents[i].mesh;
-				if (const MaterialComponent* pMaterialComponent = m_scene.materials.Get(meshEntities[i]))
-				{
-					obj.materialDataIndex = pMaterialComponent->material.id;
-				}
-				DirectX::XMStoreFloat4x4(&obj.worldMatrix, tc->transform.GetWorldMatrix());
-				renderScene.objects.push_back(obj);
-			}
+            const auto& lightEntities = m_scene.lights.GetEntities();
+            auto lightComponents = m_scene.lights.GetAll();
+            for (uint32 i = 0; i < static_cast<uint32>(lightEntities.size()); ++i)
+            {
+                const TransformComponent* tc = m_scene.transforms.Get(lightEntities[i]);
+                if (!tc)
+                {
+                    continue;
+                }
 
-			const auto& lightEntities = m_scene.lights.GetEntities();
-			auto lightComponents = m_scene.lights.GetAll();
-			for (uint32 i = 0; i < static_cast<uint32>(lightEntities.size()); ++i)
-			{
-				const TransformComponent* tc = m_scene.transforms.Get(lightEntities[i]);
-				if (!tc)
-				{
-					continue;
-				}
+                RenderLight renderLight{};
+                renderLight.light = lightComponents[i].light;
+                renderLight.position = tc->transform.position;
+                renderLight.direction = Vector3::Transform(Forward, Quaternion(tc->transform.rotation));
+                renderScene.lights.push_back(renderLight);
+            }
 
-				RenderLight renderLight{};
-				renderLight.light = lightComponents[i].light;
-				renderLight.position = tc->transform.position;
-				renderLight.direction = Vector3::Transform(Forward, Quaternion(tc->transform.rotation));
-				renderScene.lights.push_back(renderLight);
-			}
+            ImDrawData* drawData = m_debugUi.EndFrame();
 
-			ImDrawData* drawData = m_debugUi.EndFrame();
+            m_renderer.RenderFrame(renderScene, drawData, time, deltaTime);
+        }
 
-			m_renderer.RenderFrame(renderScene, drawData, time, deltaTime);
-		}
-
-		return returnCode;
-	}
-}
+        return returnCode;
+    }
+} // namespace Hydrogen

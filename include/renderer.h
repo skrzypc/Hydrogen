@@ -23,59 +23,62 @@ struct ImDrawData;
 
 namespace Hydrogen
 {
-	class AssetUploadQueue;
-	struct RenderScene;
+    class AssetUploadQueue;
+    struct RenderScene;
 
-	class Renderer
-	{
-	public:
-		Renderer() = default;
-		~Renderer();
-		Renderer(const Renderer&) = delete;
-		Renderer& operator=(const Renderer&) = delete;
-		Renderer(Renderer&&) noexcept = default;
-		Renderer& operator=(Renderer&&) noexcept = default;
+    class Renderer
+    {
+    public:
+        Renderer() = default;
+        ~Renderer();
+        Renderer(const Renderer&) = delete;
+        Renderer& operator=(const Renderer&) = delete;
+        Renderer(Renderer&&) noexcept = default;
+        Renderer& operator=(Renderer&&) noexcept = default;
 
-		void Initialize(HWND hWnd);
-		void RenderFrame(const RenderScene& renderScene, ImDrawData* drawData, float64 time, float32 deltaTime);
+        void Initialize(HWND hWnd);
+        void RenderFrame(const RenderScene& renderScene, ImDrawData* drawData, float64 time, float32 deltaTime);
 
-		void SetUploadQueue(AssetUploadQueue* pQueue) { m_pUploadQueue = pQueue; }
-		void SwitchBackend(eRenderBackendType type);
-		void BuildBackendUI();
+        void SetUploadQueue(AssetUploadQueue* pQueue)
+        {
+            m_pUploadQueue = pQueue;
+        }
+        void SwitchBackend(eRenderBackendType type);
+        void BuildBackendUI();
 
-	private:
-		[[nodiscard]] FrameContext BeginFrame(const RenderScene& renderScene, float64 time, float32 deltaTime);
-		void EndFrame(uint32 frameIndex, uint64 fenceValue);
+    private:
+        [[nodiscard]] FrameContext BeginFrame(const RenderScene& renderScene, float64 time, float32 deltaTime);
+        void EndFrame(uint32 frameIndex, uint64 fenceValue);
 
-		void UpdateFrameData(const FrameContext& frameContext);
-		void ProcessUploadQueue();
-		void CreateBackend(eRenderBackendType type);
+        void UpdateFrameData(const FrameContext& frameContext);
+        void ProcessUploadQueue();
+        void CreateBackend(eRenderBackendType type);
 
-		GpuDevice m_gpuDevice;
-		SwapChain m_swapChain;
+        GpuDevice m_gpuDevice;
+        SwapChain m_swapChain;
 
-		FrameGraph m_frameGraph;
+        FrameGraph m_frameGraph;
 
-		ShaderCompiler m_shaderCompiler;
+        ShaderCompiler m_shaderCompiler;
 
-		UploadRingBuffer m_uploadBuffer{};
-		GpuUploader m_gpuUploader{};
-		AssetUploadQueue* m_pUploadQueue = nullptr;
+        UploadRingBuffer m_uploadBuffer{};
+        GpuUploader m_gpuUploader{};
+        AssetUploadQueue* m_pUploadQueue = nullptr;
 
-		GpuScene m_gpuScene{};
+        GpuScene m_gpuScene{};
 
-		std::unique_ptr<UploadBuffer> m_viewBuffer = nullptr;
-		ShaderResourceViewHandle m_viewBufferSrv{};
-		uint32 m_maxViews = 16;
+        std::unique_ptr<UploadBuffer> m_viewBuffer = nullptr;
+        ShaderResourceViewHandle m_viewBufferSrv{};
+        uint32 m_maxViews = 16;
 
-		std::array<uint64, Config::FramesInFlight> m_frameFenceValues{};
+        std::array<uint64, Config::FramesInFlight> m_frameFenceValues{};
 
-		std::unique_ptr<IRenderBackend> m_backend = nullptr;
-		eRenderBackendType m_backendType = eRenderBackendType::RayTracing;
+        std::unique_ptr<IRenderBackend> m_backend = nullptr;
+        eRenderBackendType m_backendType = eRenderBackendType::RayTracing;
 
-		CopyPass m_copyPass{};
-		ImguiPass m_imguiPass{};
+        CopyPass m_copyPass{};
+        ImguiPass m_imguiPass{};
 
-		CameraData m_previousCameraData{};
-	};
-}
+        CameraData m_previousCameraData{};
+    };
+} // namespace Hydrogen

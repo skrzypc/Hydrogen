@@ -53,10 +53,8 @@ float3 TonemapAces(float3 color)
 float3 DebugColorFromId(uint id)
 {
     uint hash = id * 2654435761u;
-    return float3(
-        float((hash >> 0) & 0xFF) / 255.0f,
-        float((hash >> 8) & 0xFF) / 255.0f,
-        float((hash >> 16) & 0xFF) / 255.0f);
+    return float3(float((hash >> 0) & 0xFF) / 255.0f, float((hash >> 8) & 0xFF) / 255.0f,
+                  float((hash >> 16) & 0xFF) / 255.0f);
 }
 
 #endif // SHADERUTILS_HLSLI

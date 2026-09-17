@@ -8,4 +8,4 @@ namespace Hydrogen
     {
         Entity parent{};
     };
-}
+} // namespace Hydrogen

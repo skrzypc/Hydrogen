@@ -12,7 +12,7 @@ uint JenkinsHash(uint x)
     x += x << 3;
     x ^= x >> 11;
     x += x << 15;
-    
+
     return x;
 }
 
@@ -21,7 +21,7 @@ uint Xorshift(inout uint x)
     x ^= x << 13;
     x ^= x >> 17;
     x ^= x << 5;
-    
+
     return x;
 }
 
@@ -33,7 +33,7 @@ float uintToFloat(uint x)
 RngState InitRng(uint2 pixelCoord, uint2 resolution, uint frameNumber)
 {
     uint rngState = dot(pixelCoord, uint2(1, resolution.x)) ^ JenkinsHash(frameNumber);
-    
+
     return JenkinsHash(rngState);
 }
 

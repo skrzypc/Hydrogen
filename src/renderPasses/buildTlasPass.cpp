@@ -8,9 +8,7 @@
 
 namespace Hydrogen
 {
-    void BuildTlasPass::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler)
-    {
-    }
+    void BuildTlasPass::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler) {}
 
     void BuildTlasPass::Setup(FGBuilder& builder)
     {
@@ -39,4 +37,4 @@ namespace Hydrogen
 
         graphicsContext.CmdList()->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
     }
-}
+} // namespace Hydrogen

@@ -7,25 +7,27 @@
 
 namespace Hydrogen
 {
-	struct Config
-	{
-		static constexpr bool WaitForDebugger = false;
+    struct Config
+    {
+        static constexpr bool WaitForDebugger = false;
 
-		static constexpr uint32 FramesInFlight = 3;
+        static constexpr uint32 FramesInFlight = 3;
 
-		//static constexpr uint32 WindowWidth = 2560; static constexpr uint32 WindowHeight = 1440;
-		static constexpr uint32 WindowWidth = 3556;	static constexpr uint32 WindowHeight = 2000;
+        // static constexpr uint32 WindowWidth = 2560; static constexpr uint32 WindowHeight = 1440;
+        static constexpr uint32 WindowWidth = 3556;
+        static constexpr uint32 WindowHeight = 2000;
 
-		static constexpr eLogLevel LogLevel = eLogLevel::Verbose;
+        static constexpr eLogLevel LogLevel = eLogLevel::Verbose;
 
-		static constexpr bool EnableGPUBasedValidation = false;
-		static constexpr eAdapterVendor RequestedAdapter = eAdapterVendor::AMD;
+        static constexpr bool EnableGPUBasedValidation = false;
+        static constexpr eAdapterVendor RequestedAdapter = eAdapterVendor::AMD;
 
-		static constexpr D3D12_RAYTRACING_TIER ExpectedRaytracingTier = D3D12_RAYTRACING_TIER_1_1; // 1_2 not supported by AMD yet.
-		static constexpr D3D12_MESH_SHADER_TIER ExpectedMeshShaderTier = D3D12_MESH_SHADER_TIER_1;
-		static constexpr D3D12_RESOURCE_BINDING_TIER ExpectedResourceBindingTier = D3D12_RESOURCE_BINDING_TIER_3;
+        static constexpr D3D12_RAYTRACING_TIER ExpectedRaytracingTier =
+            D3D12_RAYTRACING_TIER_1_1; // 1_2 not supported by AMD yet.
+        static constexpr D3D12_MESH_SHADER_TIER ExpectedMeshShaderTier = D3D12_MESH_SHADER_TIER_1;
+        static constexpr D3D12_RESOURCE_BINDING_TIER ExpectedResourceBindingTier = D3D12_RESOURCE_BINDING_TIER_3;
 
-		static constexpr uint8 ShaderModelVersionMajor = 6;
-		static constexpr uint8 ShaderModelVersionMinor = 9;
-	};
-}
+        static constexpr uint8 ShaderModelVersionMajor = 6;
+        static constexpr uint8 ShaderModelVersionMinor = 9;
+    };
+} // namespace Hydrogen

@@ -6,26 +6,26 @@
 
 namespace Hydrogen
 {
-	enum class GpuMeshState : uint8
-	{
-		Empty,          // never registered
-		Registered,     // slot reserved, upload queued
-		GeometryReady,  // vertex/index data uploaded — rasterizable
-		BlasReady,      // BLAS built — raytraceable
-	};
+    enum class GpuMeshState : uint8
+    {
+        Empty,         // never registered
+        Registered,    // slot reserved, upload queued
+        GeometryReady, // vertex/index data uploaded — rasterizable
+        BlasReady,     // BLAS built — raytraceable
+    };
 
-	struct GpuMesh
-	{
-		std::string name;
+    struct GpuMesh
+    {
+        std::string name;
 
-		uint32 baseVertex = 0;
-		uint32 vertexCount = 0;
+        uint32 baseVertex = 0;
+        uint32 vertexCount = 0;
 
-		uint32 baseIndex = 0;
-		uint32 indexCount = 0;
+        uint32 baseIndex = 0;
+        uint32 indexCount = 0;
 
-		uint64 blasAddress = 0;
+        uint64 blasAddress = 0;
 
-		GpuMeshState state = GpuMeshState::Empty;
-	};
-}
+        GpuMeshState state = GpuMeshState::Empty;
+    };
+} // namespace Hydrogen

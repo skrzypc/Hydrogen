@@ -9,8 +9,7 @@
 
 namespace Hydrogen
 {
-    template<typename T>
-    class ComponentStore
+    template <typename T> class ComponentStore
     {
     public:
         void Add(Entity entity, T component)
@@ -67,18 +66,26 @@ namespace Hydrogen
 
         bool Has(Entity entity) const
         {
-            return entity.id < m_sparse.size() &&
-                   m_sparse[entity.id] != std::numeric_limits<uint32>::max();
+            return entity.id < m_sparse.size() && m_sparse[entity.id] != std::numeric_limits<uint32>::max();
         }
 
-        std::span<T> GetAll() { return m_dense; }
-        std::span<const T> GetAll() const { return m_dense; }
+        std::span<T> GetAll()
+        {
+            return m_dense;
+        }
+        std::span<const T> GetAll() const
+        {
+            return m_dense;
+        }
 
-        const std::vector<Entity>& GetEntities() const { return m_entities; }
+        const std::vector<Entity>& GetEntities() const
+        {
+            return m_entities;
+        }
 
     private:
         std::vector<T> m_dense{};
         std::vector<Entity> m_entities{};
         std::vector<uint32> m_sparse{};
     };
-}
+} // namespace Hydrogen

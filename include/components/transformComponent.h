@@ -8,4 +8,4 @@ namespace Hydrogen
     {
         Transform transform{};
     };
-}
+} // namespace Hydrogen

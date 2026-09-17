@@ -19,14 +19,24 @@ namespace Hydrogen
         Window(Window&&) noexcept = default;
         Window& operator=(Window&&) noexcept = default;
 
-		void Create(uint32 width, uint32 height, const std::wstring_view& windowTitle, const std::wstring_view& windowClassName = L"HydrogenWindowClass");
+        void Create(uint32 width, uint32 height, const std::wstring_view& windowTitle,
+                    const std::wstring_view& windowClassName = L"HydrogenWindowClass");
 
         void Resize(uint32 newWidth, uint32 newHeight);
 
-        HWND GetHandle() const { return m_hwnd; }
+        HWND GetHandle() const
+        {
+            return m_hwnd;
+        }
 
-		uint32 GetWidth() const { return m_width; }
-		uint32 GetHeight() const { return m_height; }
+        uint32 GetWidth() const
+        {
+            return m_width;
+        }
+        uint32 GetHeight() const
+        {
+            return m_height;
+        }
 
         std::optional<int32> ProcessMessages();
 
@@ -75,11 +85,11 @@ namespace Hydrogen
         HINSTANCE m_hInstance{};
         ATOM m_atom{};
 
-		bool m_wasResized = false;
+        bool m_wasResized = false;
         uint32 m_width = 0u;
         uint32 m_height = 0u;
 
         InputState m_currentInput{};
         InputState m_previousInput{};
     };
-}
+} // namespace Hydrogen

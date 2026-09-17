@@ -14,7 +14,7 @@ namespace Hydrogen
     public:
         AssetRegistry()
         {
-            RegisterMaterial(Material{ .name = "Default" });
+            RegisterMaterial(Material{.name = "Default"});
         }
         ~AssetRegistry() = default;
         AssetRegistry(const AssetRegistry&) = delete;
@@ -24,10 +24,10 @@ namespace Hydrogen
 
         MeshHandle RegisterMesh(MeshMetadata&& metadata, Mesh&& mesh)
         {
-            MeshHandle handle{ static_cast<uint32>(m_meshMetadata.size()) };
+            MeshHandle handle{static_cast<uint32>(m_meshMetadata.size())};
 
             m_meshMetadata.push_back(std::move(metadata));
-            m_uploadQueue.Push({ handle, m_meshMetadata.back(), std::move(mesh) });
+            m_uploadQueue.Push({handle, m_meshMetadata.back(), std::move(mesh)});
 
             return handle;
         }
@@ -43,15 +43,18 @@ namespace Hydrogen
 
         MaterialHandle RegisterMaterial(Material&& material)
         {
-            MaterialHandle handle{ static_cast<uint32>(m_materials.size()) };
+            MaterialHandle handle{static_cast<uint32>(m_materials.size())};
 
             m_materials.push_back(std::move(material));
-            m_uploadQueue.PushMaterial({ handle, m_materials.back() });
+            m_uploadQueue.PushMaterial({handle, m_materials.back()});
 
             return handle;
         }
 
-        AssetUploadQueue& GetUploadQueue() { return m_uploadQueue; }
+        AssetUploadQueue& GetUploadQueue()
+        {
+            return m_uploadQueue;
+        }
 
     private:
         std::vector<MeshMetadata> m_meshMetadata{};
@@ -59,4 +62,4 @@ namespace Hydrogen
 
         AssetUploadQueue m_uploadQueue{};
     };
-}
+} // namespace Hydrogen

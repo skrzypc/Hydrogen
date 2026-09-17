@@ -33,11 +33,12 @@ namespace Hydrogen
         if (TransformComponent* pTransformComponent = scene.transforms.Get(context.selection))
         {
             const bool selectionChanged = context.selection != m_lastSelection;
-            const bool rotationChangedExternally = !QuaternionEquals(pTransformComponent->transform.rotation, m_lastKnownRotation);
+            const bool rotationChangedExternally =
+                !QuaternionEquals(pTransformComponent->transform.rotation, m_lastKnownRotation);
             if (selectionChanged || rotationChangedExternally)
             {
                 const Vector3 euler = Quaternion(pTransformComponent->transform.rotation).ToEuler();
-                m_cachedEulerDeg = { ToDegrees(euler.x), ToDegrees(euler.y), ToDegrees(euler.z) };
+                m_cachedEulerDeg = {ToDegrees(euler.x), ToDegrees(euler.y), ToDegrees(euler.z)};
             }
 
             if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
@@ -79,8 +80,9 @@ namespace Hydrogen
             m_cachedEulerDeg.y = WrapDegrees(m_cachedEulerDeg.y);
             m_cachedEulerDeg.z = WrapDegrees(m_cachedEulerDeg.z);
 
-            XMStoreFloat4(&transform.rotation,
-                Quaternion::CreateFromYawPitchRoll(ToRadians(m_cachedEulerDeg.y), ToRadians(m_cachedEulerDeg.x), ToRadians(m_cachedEulerDeg.z)));
+            XMStoreFloat4(&transform.rotation, Quaternion::CreateFromYawPitchRoll(ToRadians(m_cachedEulerDeg.y),
+                                                                                  ToRadians(m_cachedEulerDeg.x),
+                                                                                  ToRadians(m_cachedEulerDeg.z)));
         }
 
         ImGui::DragFloat3("Scale", &transform.scale.x, 0.01f, 0.001f, 1000.0f);
@@ -106,9 +108,10 @@ namespace Hydrogen
         {
             // UI authors total luminous flux (lumens); the shader needs candela (lm/sr), so convert
             // through the solid angle the light actually emits into (full sphere vs. its cone).
-            const float32 solidAngleSr = (light.type == eLightType::Spot)
-                ? 2.0f * DirectX::XM_PI * (1.0f - std::cos(light.outerConeAngle.value_or(ToRadians(45.0f))))
-                : 4.0f * DirectX::XM_PI;
+            const float32 solidAngleSr =
+                (light.type == eLightType::Spot)
+                    ? 2.0f * DirectX::XM_PI * (1.0f - std::cos(light.outerConeAngle.value_or(ToRadians(45.0f))))
+                    : 4.0f * DirectX::XM_PI;
 
             float32 lumens = light.intensity * solidAngleSr;
             if (ImGui::SliderFloat("Intensity (lm)", &lumens, 0.0f, 5000.0f, "%.0f"))
@@ -149,4 +152,4 @@ namespace Hydrogen
         ImGui::DragFloat("Far Z", &camera.farZ, 0.1f, camera.nearZ + 0.01f, 10000.0f, "%.1f");
         ImGui::SliderFloat("Exposure", &camera.exposure, 0.01f, 1000.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
     }
-}
+} // namespace Hydrogen

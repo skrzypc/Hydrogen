@@ -8,75 +8,74 @@
 
 namespace Hydrogen
 {
-	std::ofstream Logger::m_file;
-	eLogLevel Logger::m_currentLogLevel = Config::LogLevel;
+    std::ofstream Logger::m_file;
+    eLogLevel Logger::m_currentLogLevel = Config::LogLevel;
 
-	void Logger::Initialize()
-	{
-		//std::lock_guard<std::mutex> lock(m_mutex);
+    void Logger::Initialize()
+    {
+        // std::lock_guard<std::mutex> lock(m_mutex);
 
-		//if (AllocConsole())
-		//{
-		//	FILE* fp;
-		//	freopen_s(&fp, "CONOUT$", "w", stdout);
-		//	freopen_s(&fp, "CONIN$", "r", stdin);
-		//	std::cout.sync_with_stdio();
-		//}
+        // if (AllocConsole())
+        //{
+        //   FILE* fp;
+        //   freopen_s(&fp, "CONOUT$", "w", stdout);
+        //   freopen_s(&fp, "CONIN$", "r", stdin);
+        //   std::cout.sync_with_stdio();
+        // }
 
-		m_file.open(m_logFileName.data(), std::ios::out | std::ios::trunc);
+        m_file.open(m_logFileName.data(), std::ios::out | std::ios::trunc);
 
-		if (!m_file.is_open())
-		{
-			H2_ERROR(eLogLevel::Minimal, "Failed to open log file!");
-		}
-	}
+        if (!m_file.is_open())
+        {
+            H2_ERROR(eLogLevel::Minimal, "Failed to open log file!");
+        }
+    }
 
-	void Logger::Log(eLogType logType, eLogLevel logLevel, std::string_view message)
-	{
-		//std::lock_guard<std::mutex> lock(m_mutex);
+    void Logger::Log(eLogType logType, eLogLevel logLevel, std::string_view message)
+    {
+        // std::lock_guard<std::mutex> lock(m_mutex);
 
-		if (logLevel > m_currentLogLevel)
-		{
-			return;
-		}
+        if (logLevel > m_currentLogLevel)
+        {
+            return;
+        }
 
-		std::string finalMessage = std::format(
-			"[{}][{}] {}\n",
-			std::format("{:%H:%M:%S}", Timer::GetTime()),
-			LogTypeToString(logType),
-			message
-		);
+        std::string finalMessage = std::format("[{}][{}] {}\n", std::format("{:%H:%M:%S}", Timer::GetTime()),
+                                               LogTypeToString(logType), message);
 
-		if constexpr (m_bLogToFile)
-		{
-			if (m_file.is_open())
-			{
-				m_file << finalMessage;
-				m_file.flush();
-			}
-		}
+        if constexpr (m_bLogToFile)
+        {
+            if (m_file.is_open())
+            {
+                m_file << finalMessage;
+                m_file.flush();
+            }
+        }
 
-		if constexpr (m_bLogToConsole)
-		{
-			OutputDebugStringA(finalMessage.data());
-		}
-	}
+        if constexpr (m_bLogToConsole)
+        {
+            OutputDebugStringA(finalMessage.data());
+        }
+    }
 
-	void Logger::SetLogLevel(eLogLevel logLevel)
-	{
-		//std::lock_guard<std::mutex> lock(m_mutex);
+    void Logger::SetLogLevel(eLogLevel logLevel)
+    {
+        // std::lock_guard<std::mutex> lock(m_mutex);
 
-		m_currentLogLevel = logLevel;
-	}
+        m_currentLogLevel = logLevel;
+    }
 
-	std::string_view Logger::LogTypeToString(eLogType logType)
-	{
-		switch (logType)
-		{
-		case eLogType::Info: return "INFO";
-		case eLogType::Warning: return "WARNING";
-		case eLogType::Error: return "ERROR";
-		}
-		return "UNKNOWN";
-	}
-}
+    std::string_view Logger::LogTypeToString(eLogType logType)
+    {
+        switch (logType)
+        {
+        case eLogType::Info:
+            return "INFO";
+        case eLogType::Warning:
+            return "WARNING";
+        case eLogType::Error:
+            return "ERROR";
+        }
+        return "UNKNOWN";
+    }
+} // namespace Hydrogen

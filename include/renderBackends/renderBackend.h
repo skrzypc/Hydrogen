@@ -39,4 +39,4 @@ namespace Hydrogen
     protected:
         GpuDevice* m_pDevice = nullptr;
     };
-}
+} // namespace Hydrogen

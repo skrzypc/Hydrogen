@@ -41,4 +41,4 @@ namespace Hydrogen
         std::vector<RenderLight> lights{};
         CameraData camera{};
     };
-}
+} // namespace Hydrogen

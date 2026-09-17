@@ -35,10 +35,19 @@ namespace Hydrogen
             Indirect = 1 << 5,
         };
 
-        const Desc& GetDesc() const { return m_desc; }
-        void SetDesc(const Desc& desc) { m_desc = desc; }
+        const Desc& GetDesc() const
+        {
+            return m_desc;
+        }
+        void SetDesc(const Desc& desc)
+        {
+            m_desc = desc;
+        }
 
-        uint64 GetSize() const { return m_desc.size; }
+        uint64 GetSize() const
+        {
+            return m_desc.size;
+        }
 
     private:
         Desc m_desc{};
@@ -51,9 +60,7 @@ namespace Hydrogen
         {
             uint64 seed = 0;
             auto combine = [&](auto v)
-                {
-                    seed ^= std::hash<decltype(v)>{}(v) + 0x9e3779b9u + (seed << 6) + (seed >> 2);
-                };
+            { seed ^= std::hash<decltype(v)>{}(v) + 0x9e3779b9u + (seed << 6) + (seed >> 2); };
             combine(k.size);
             combine(static_cast<uint32>(k.flags));
             combine(static_cast<uint32>(k.heapType));
@@ -61,4 +68,4 @@ namespace Hydrogen
             return seed;
         }
     };
-}
+} // namespace Hydrogen

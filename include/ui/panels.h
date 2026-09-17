@@ -15,14 +15,20 @@ namespace Hydrogen
     {
     public:
         void Draw(UiContext& context) override;
-        const char* GetName() const override { return "Scene"; }
+        const char* GetName() const override
+        {
+            return "Scene";
+        }
     };
 
     class InspectorPanel : public IPanel
     {
     public:
         void Draw(UiContext& context) override;
-        const char* GetName() const override { return "Inspector"; }
+        const char* GetName() const override
+        {
+            return "Inspector";
+        }
 
     private:
         void DrawTransformEditor(Transform& transform);
@@ -30,7 +36,7 @@ namespace Hydrogen
         void DrawCameraEditor(CameraComponent& camera);
 
         Entity m_lastSelection{};
-        DirectX::XMFLOAT4 m_lastKnownRotation{ 0.0f, 0.0f, 0.0f, 1.0f };
+        DirectX::XMFLOAT4 m_lastKnownRotation{0.0f, 0.0f, 0.0f, 1.0f};
         DirectX::XMFLOAT3 m_cachedEulerDeg{};
     };
 
@@ -38,13 +44,19 @@ namespace Hydrogen
     {
     public:
         void Draw(UiContext& context) override;
-        const char* GetName() const override { return "Stats"; }
+        const char* GetName() const override
+        {
+            return "Stats";
+        }
     };
 
     class RendererPanel : public IPanel
     {
     public:
         void Draw(UiContext& context) override;
-        const char* GetName() const override { return "Renderer"; }
+        const char* GetName() const override
+        {
+            return "Renderer";
+        }
     };
-}
+} // namespace Hydrogen

@@ -14,8 +14,9 @@ namespace Hydrogen
 {
     namespace
     {
-        template<typename NameFn>
-        void DrawSelectableList(const char* headerLabel, const std::vector<Entity>& entities, Entity& selection, NameFn&& nameFn)
+        template <typename NameFn>
+        void DrawSelectableList(const char* headerLabel, const std::vector<Entity>& entities, Entity& selection,
+                                NameFn&& nameFn)
         {
             if (!ImGui::CollapsingHeader(headerLabel, ImGuiTreeNodeFlags_None))
             {
@@ -32,7 +33,7 @@ namespace Hydrogen
                 }
             }
         }
-    }
+    } // namespace
 
     void ScenePanel::Draw(UiContext& context)
     {
@@ -42,22 +43,23 @@ namespace Hydrogen
         AssetRegistry& assetRegistry = *context.pAssetRegistry;
 
         DrawSelectableList("Meshes", scene.meshes.GetEntities(), context.selection,
-            [&](uint32 index, Entity entity)
-            {
-                const MeshComponent& meshComponent = scene.meshes.GetAll()[index];
-                if (const MeshMetadata* pMetadata = assetRegistry.GetMeshMetadata(meshComponent.mesh); pMetadata && !pMetadata->name.empty())
-                {
-                    return pMetadata->name;
-                }
-                return "Mesh " + std::to_string(entity.id);
-            });
+                           [&](uint32 index, Entity entity)
+                           {
+                               const MeshComponent& meshComponent = scene.meshes.GetAll()[index];
+                               if (const MeshMetadata* pMetadata = assetRegistry.GetMeshMetadata(meshComponent.mesh);
+                                   pMetadata && !pMetadata->name.empty())
+                               {
+                                   return pMetadata->name;
+                               }
+                               return "Mesh " + std::to_string(entity.id);
+                           });
 
         DrawSelectableList("Lights", scene.lights.GetEntities(), context.selection,
-            [](uint32 index, Entity entity) { return "Light " + std::to_string(entity.id); });
+                           [](uint32 index, Entity entity) { return "Light " + std::to_string(entity.id); });
 
         DrawSelectableList("Cameras", scene.cameras.GetEntities(), context.selection,
-            [](uint32 index, Entity entity) { return "Camera " + std::to_string(entity.id); });
+                           [](uint32 index, Entity entity) { return "Camera " + std::to_string(entity.id); });
 
         ImGui::End();
     }
-}
+} // namespace Hydrogen

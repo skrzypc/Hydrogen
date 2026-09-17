@@ -11,4 +11,4 @@ namespace Hydrogen
             context.fnBuildRendererUi();
         }
     }
-}
+} // namespace Hydrogen

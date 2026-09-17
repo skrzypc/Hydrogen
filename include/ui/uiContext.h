@@ -21,4 +21,4 @@ namespace Hydrogen
         float32 deltaTime = 0.0f;
         float64 time = 0.0;
     };
-}
+} // namespace Hydrogen

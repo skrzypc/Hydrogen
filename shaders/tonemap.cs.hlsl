@@ -1,5 +1,5 @@
-#include "common.hlsli"
-#include "shaderUtils.hlsli"
+#include "include/common.hlsli"
+#include "include/shaderUtils.hlsli"
 
 struct PushConstants
 {

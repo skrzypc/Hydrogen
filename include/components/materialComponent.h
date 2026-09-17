@@ -8,4 +8,4 @@ namespace Hydrogen
     {
         MaterialHandle material{};
     };
-}
+} // namespace Hydrogen

@@ -34,4 +34,4 @@ namespace Hydrogen
         std::filesystem::path m_shaderSourceDir{};
         std::filesystem::path m_shaderOutputDir{};
     };
-}
+} // namespace Hydrogen

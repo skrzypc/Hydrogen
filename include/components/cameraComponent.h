@@ -11,4 +11,4 @@ namespace Hydrogen
         float32 farZ = 100.0f;
         float32 exposure = 6.0f;
     };
-}
+} // namespace Hydrogen

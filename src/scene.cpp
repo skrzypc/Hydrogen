@@ -4,7 +4,7 @@ namespace Hydrogen
 {
     Entity Scene::CreateEntity()
     {
-        return Entity{ m_nextId++ };
+        return Entity{m_nextId++};
     }
 
     void Scene::DestroyEntity(Entity entity)
@@ -13,4 +13,4 @@ namespace Hydrogen
         meshes.Remove(entity);
         hierarchy.Remove(entity);
     }
-}
+} // namespace Hydrogen

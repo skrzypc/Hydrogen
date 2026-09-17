@@ -26,6 +26,6 @@ namespace Hydrogen
         float64 time = 0.0;
         float32 deltaTime = 0.0f;
 
-		bool sceneChanged = false;
+        bool sceneChanged = false;
     };
-}
+} // namespace Hydrogen

@@ -24,7 +24,10 @@ namespace Hydrogen
 
         void Write(const void* pData, uint64 sizeInBytes, uint64 offsetInBytes = 0);
 
-        uint8* GetMappedPtr() const { return m_pMapped; }
+        uint8* GetMappedPtr() const
+        {
+            return m_pMapped;
+        }
         D3D12_GPU_VIRTUAL_ADDRESS GetGpuAddress(uint64 offsetInBytes = 0) const
         {
             return GetResource()->GetGPUVirtualAddress() + offsetInBytes;
@@ -33,4 +36,4 @@ namespace Hydrogen
     private:
         uint8* m_pMapped = nullptr;
     };
-}
+} // namespace Hydrogen

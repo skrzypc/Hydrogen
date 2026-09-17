@@ -11,25 +11,25 @@ struct ImDrawData;
 
 namespace Hydrogen
 {
-	class ImguiPass : public IRenderPass
-	{
-	public:
-		std::string target;
-		ImDrawData* pDrawData = nullptr;
+    class ImguiPass : public IRenderPass
+    {
+    public:
+        std::string target;
+        ImDrawData* pDrawData = nullptr;
 
-		void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler) override;
-		void Setup(FGBuilder& builder) override;
-		void Execute(FGExecuteContext& fgExecuteContext, GraphicsContext& graphicsContext) override;
+        void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler) override;
+        void Setup(FGBuilder& builder) override;
+        void Execute(FGExecuteContext& fgExecuteContext, GraphicsContext& graphicsContext) override;
 
-		void Shutdown();
+        void Shutdown();
 
-	private:
-		struct HeapSlotAllocator
-		{
-			const DescriptorHeap* descHeap = nullptr;
-			FreeListIndexAllocator descAllocator{};
-		};
+    private:
+        struct HeapSlotAllocator
+        {
+            const DescriptorHeap* descHeap = nullptr;
+            FreeListIndexAllocator descAllocator{};
+        };
 
-		HeapSlotAllocator m_descriptorBundle{};
-	};
-}
+        HeapSlotAllocator m_descriptorBundle{};
+    };
+} // namespace Hydrogen

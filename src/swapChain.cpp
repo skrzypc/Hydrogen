@@ -9,71 +9,59 @@
 
 namespace Hydrogen
 {
-	void SwapChain::Create(GpuDevice& gpuDevice, HWND hWnd)
-	{
-		DXGI_SWAP_CHAIN_DESC1 swapChainDesc
-		{
-			.Width = 0,
-			.Height = 0,
-			.Format = DXGI_FORMAT_R8G8B8A8_UNORM,
-			.Stereo = FALSE,
-			.SampleDesc = {1, 0},
-			.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT | DXGI_USAGE_SHADER_INPUT,
-			.BufferCount = Config::FramesInFlight,
-			.Scaling = DXGI_SCALING_NONE,
-			.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
-			.AlphaMode = DXGI_ALPHA_MODE_IGNORE,
-			.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT
-		};
+    void SwapChain::Create(GpuDevice& gpuDevice, HWND hWnd)
+    {
+        DXGI_SWAP_CHAIN_DESC1 swapChainDesc{.Width = 0,
+                                            .Height = 0,
+                                            .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+                                            .Stereo = FALSE,
+                                            .SampleDesc = {1, 0},
+                                            .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT | DXGI_USAGE_SHADER_INPUT,
+                                            .BufferCount = Config::FramesInFlight,
+                                            .Scaling = DXGI_SCALING_NONE,
+                                            .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
+                                            .AlphaMode = DXGI_ALPHA_MODE_IGNORE,
+                                            .Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING |
+                                                     DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT};
 
-		Microsoft::WRL::ComPtr<IDXGISwapChain1> pSwapChain = nullptr;
-		H2_VERIFY_FATAL(
-			gpuDevice.GetDxgiFactory()->CreateSwapChainForHwnd(
-				gpuDevice.GetDxQueue<eQueueType::Direct>(),
-				hWnd,
-				&swapChainDesc,
-				nullptr,
-				nullptr,
-				&pSwapChain),
-			"Failed to create swap chain"
-		);
+        Microsoft::WRL::ComPtr<IDXGISwapChain1> pSwapChain = nullptr;
+        H2_VERIFY_FATAL(gpuDevice.GetDxgiFactory()->CreateSwapChainForHwnd(gpuDevice.GetDxQueue<eQueueType::Direct>(),
+                                                                           hWnd, &swapChainDesc, nullptr, nullptr,
+                                                                           &pSwapChain),
+                        "Failed to create swap chain");
 
-		pSwapChain.As(&m_pSwapChain);
-		m_pSwapChain->GetDesc1(&swapChainDesc);
+        pSwapChain.As(&m_pSwapChain);
+        m_pSwapChain->GetDesc1(&swapChainDesc);
 
-		ResourceState backbufferInitialState{};
-		backbufferInitialState.layout = D3D12_BARRIER_LAYOUT_PRESENT;
-		for (uint32 i = 0; i < m_backBuffers.size(); ++i)
-		{
-			ID3D12Resource* pBackBuffer = nullptr;
-			H2_VERIFY_FATAL(m_pSwapChain->GetBuffer(i, IID_PPV_ARGS(&pBackBuffer)), "Failed to obtain back buffer from swap chain!");
+        ResourceState backbufferInitialState{};
+        backbufferInitialState.layout = D3D12_BARRIER_LAYOUT_PRESENT;
+        for (uint32 i = 0; i < m_backBuffers.size(); ++i)
+        {
+            ID3D12Resource* pBackBuffer = nullptr;
+            H2_VERIFY_FATAL(m_pSwapChain->GetBuffer(i, IID_PPV_ARGS(&pBackBuffer)),
+                            "Failed to obtain back buffer from swap chain!");
 
-			auto pBackBufferTexture = gpuDevice.CreateTexture(
-				String::Format(L"H2_BACKBUFFER_{}", i),
-				pBackBuffer,
-				{
-					.width = swapChainDesc.Width,
-					.height = swapChainDesc.Height,
-					.mipLevels = 1,
-					.arraySize = 1,
-					.format = swapChainDesc.Format,
-					.flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
-					.dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D
-				},
-				backbufferInitialState
-			);
+            auto pBackBufferTexture = gpuDevice.CreateTexture(String::Format(L"H2_BACKBUFFER_{}", i), pBackBuffer,
+                                                              {.width = swapChainDesc.Width,
+                                                               .height = swapChainDesc.Height,
+                                                               .mipLevels = 1,
+                                                               .arraySize = 1,
+                                                               .format = swapChainDesc.Format,
+                                                               .flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+                                                               .dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D},
+                                                              backbufferInitialState);
 
-			m_backBuffers[i] = std::move(pBackBufferTexture);
-		}
-	}
+            m_backBuffers[i] = std::move(pBackBufferTexture);
+        }
+    }
 
-	void SwapChain::Present()
-	{
-		H2_VERIFY_FATAL(m_pSwapChain->Present(0, DXGI_PRESENT_ALLOW_TEARING), "Failed to present swap chain!");
-		//H2_VERIFY_FATAL(m_pSwapChain->Present(1, 0), "Failed to present swap chain!");
+    void SwapChain::Present()
+    {
+        H2_VERIFY_FATAL(m_pSwapChain->Present(0, DXGI_PRESENT_ALLOW_TEARING), "Failed to present swap chain!");
+        // H2_VERIFY_FATAL(m_pSwapChain->Present(1, 0), "Failed to present swap chain!");
 
-		// We should probably update that at the beginning of the new frame, not at the end of the current one?
-		m_frameNumber++;
-		m_frameIndex = m_frameNumber % Config::FramesInFlight;
-	}
-}
+        // We should probably update that at the beginning of the new frame, not at the end of the current one?
+        m_frameNumber++;
+        m_frameIndex = m_frameNumber % Config::FramesInFlight;
+    }
+} // namespace Hydrogen

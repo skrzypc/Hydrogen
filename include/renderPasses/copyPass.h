@@ -6,20 +6,20 @@
 
 namespace Hydrogen
 {
-	class CopyPass : public IRenderPass
-	{
-	public:
-		std::string src;
-		std::string dst;
+    class CopyPass : public IRenderPass
+    {
+    public:
+        std::string src;
+        std::string dst;
 
-		void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler) override {}
+        void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler) override {}
 
-		void Setup(FGBuilder& builder) override
-		{
-			builder.Read(src, FGAccess::Read::CopySrc);
-			builder.Write(dst, FGAccess::Write::CopyDst);
-		}
+        void Setup(FGBuilder& builder) override
+        {
+            builder.Read(src, FGAccess::Read::CopySrc);
+            builder.Write(dst, FGAccess::Write::CopyDst);
+        }
 
-		void Execute(FGExecuteContext& fgExecuteContext, GraphicsContext& graphicsContext) override;
-	};
-}
+        void Execute(FGExecuteContext& fgExecuteContext, GraphicsContext& graphicsContext) override;
+    };
+} // namespace Hydrogen

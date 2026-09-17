@@ -9,7 +9,8 @@
 
 namespace Hydrogen
 {
-    static Mesh ExtractPrimitive(const fastgltf::Asset& asset, const fastgltf::Primitive& prim, std::string_view meshName, uint32 primIndex)
+    static Mesh ExtractPrimitive(const fastgltf::Asset& asset, const fastgltf::Primitive& prim,
+                                 std::string_view meshName, uint32 primIndex)
     {
         Mesh sm{};
         sm.name = std::string(meshName);
@@ -20,47 +21,43 @@ namespace Hydrogen
 
         // Positions — negate Z to convert RH (glTF) → LH
         auto posIt = std::find_if(prim.attributes.begin(), prim.attributes.end(),
-            [](const fastgltf::Attribute& a) { return a.name == "POSITION"; });
+                                  [](const fastgltf::Attribute& a) { return a.name == "POSITION"; });
         H2_VERIFY_FATAL(posIt != prim.attributes.end(), "Mesh primitive has no POSITION attribute");
         const fastgltf::Accessor& posAccessor = asset.accessors[posIt->accessorIndex];
         sm.positions.resize(posAccessor.count);
         fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec3>(asset, posAccessor,
-            [&](fastgltf::math::fvec3 v, std::size_t i) {
-                sm.positions[i] = { v.x(), v.y(), -v.z() };
-            });
+                                                                  [&](fastgltf::math::fvec3 v, std::size_t i)
+                                                                  { sm.positions[i] = {v.x(), v.y(), -v.z()}; });
 
         // Normals — negate Z to convert RH → LH
         auto nrmIt = std::find_if(prim.attributes.begin(), prim.attributes.end(),
-            [](const fastgltf::Attribute& a) { return a.name == "NORMAL"; });
+                                  [](const fastgltf::Attribute& a) { return a.name == "NORMAL"; });
         if (nrmIt != prim.attributes.end())
         {
             const fastgltf::Accessor& nrmAccessor = asset.accessors[nrmIt->accessorIndex];
             sm.normals.resize(nrmAccessor.count);
             fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec3>(asset, nrmAccessor,
-                [&](fastgltf::math::fvec3 v, std::size_t i) {
-                    sm.normals[i] = { v.x(), v.y(), -v.z() };
-                });
+                                                                      [&](fastgltf::math::fvec3 v, std::size_t i)
+                                                                      { sm.normals[i] = {v.x(), v.y(), -v.z()}; });
         }
         else
         {
-            sm.normals.resize(sm.positions.size(), { 0.0f, 0.0f, 1.0f });
+            sm.normals.resize(sm.positions.size(), {0.0f, 0.0f, 1.0f});
         }
 
         // UVs
         auto uvIt = std::find_if(prim.attributes.begin(), prim.attributes.end(),
-            [](const fastgltf::Attribute& a) { return a.name == "TEXCOORD_0"; });
+                                 [](const fastgltf::Attribute& a) { return a.name == "TEXCOORD_0"; });
         if (uvIt != prim.attributes.end())
         {
             const fastgltf::Accessor& uvAccessor = asset.accessors[uvIt->accessorIndex];
             sm.uvs.resize(uvAccessor.count);
-            fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec2>(asset, uvAccessor,
-                [&](fastgltf::math::fvec2 v, std::size_t i) {
-                    sm.uvs[i] = { v.x(), v.y() };
-                });
+            fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec2>(
+                asset, uvAccessor, [&](fastgltf::math::fvec2 v, std::size_t i) { sm.uvs[i] = {v.x(), v.y()}; });
         }
         else
         {
-            sm.uvs.resize(sm.positions.size(), { 0.0f, 0.0f });
+            sm.uvs.resize(sm.positions.size(), {0.0f, 0.0f});
         }
 
         // Indices — swap winding CCW→CW (Z negation mirrors geometry, flipping winding)
@@ -69,9 +66,7 @@ namespace Hydrogen
             const fastgltf::Accessor& idxAccessor = asset.accessors[prim.indicesAccessor.value()];
             sm.indices.resize(idxAccessor.count);
             fastgltf::iterateAccessorWithIndex<uint32>(asset, idxAccessor,
-                [&](uint32 idx, std::size_t i) {
-                    sm.indices[i] = idx;
-                });
+                                                       [&](uint32 idx, std::size_t i) { sm.indices[i] = idx; });
         }
         else
         {
@@ -87,14 +82,13 @@ namespace Hydrogen
             std::swap(sm.indices[i + 1], sm.indices[i + 2]);
         }
 
-
         return sm;
     }
 
     static Light ExtractLight(const fastgltf::Light& modelLight)
     {
         Light light{};
-        light.color = { modelLight.color.x(), modelLight.color.y(), modelLight.color.z() };
+        light.color = {modelLight.color.x(), modelLight.color.y(), modelLight.color.z()};
         light.intensity = static_cast<float32>(modelLight.intensity);
 
         switch (modelLight.type)
@@ -133,22 +127,15 @@ namespace Hydrogen
         Material result{};
         result.name = std::string(material.name);
 
-        result.baseColor =
-        {
-            material.pbrData.baseColorFactor.x(),
-            material.pbrData.baseColorFactor.y(),
-            material.pbrData.baseColorFactor.z()
-        };
+        result.baseColor = {material.pbrData.baseColorFactor.x(), material.pbrData.baseColorFactor.y(),
+                            material.pbrData.baseColorFactor.z()};
         result.roughness = material.pbrData.roughnessFactor;
         result.metallic = material.pbrData.metallicFactor;
 
         const float32 emissiveStrength = material.emissiveStrength;
-        result.emissive =
-        {
-            material.emissiveFactor.x() * emissiveStrength,
-            material.emissiveFactor.y() * emissiveStrength,
-            material.emissiveFactor.z() * emissiveStrength
-        };
+        result.emissive = {material.emissiveFactor.x() * emissiveStrength,
+                           material.emissiveFactor.y() * emissiveStrength,
+                           material.emissiveFactor.z() * emissiveStrength};
 
         return result;
     }
@@ -189,9 +176,9 @@ namespace Hydrogen
         {
             const auto& trs = std::get<fastgltf::TRS>(node.transform);
             // Convert RH → LH: negate Z position, negate qx/qy of rotation
-            localTransform.position = { trs.translation.x(), trs.translation.y(), -trs.translation.z() };
-            localTransform.rotation = { -trs.rotation.x(), -trs.rotation.y(), trs.rotation.z(), trs.rotation.w() };
-            localTransform.scale = { trs.scale.x(), trs.scale.y(), trs.scale.z() };
+            localTransform.position = {trs.translation.x(), trs.translation.y(), -trs.translation.z()};
+            localTransform.rotation = {-trs.rotation.x(), -trs.rotation.y(), trs.rotation.z(), trs.rotation.w()};
+            localTransform.scale = {trs.scale.x(), trs.scale.y(), trs.scale.z()};
         }
 
         Transform worldTransform = ComposeTransforms(parentWorldTransform, localTransform);
@@ -205,7 +192,8 @@ namespace Hydrogen
         if (node.meshIndex.has_value())
         {
             const fastgltf::Mesh& mesh = asset.meshes[node.meshIndex.value()];
-            for (uint32 primitiveIndex = 0; primitiveIndex < static_cast<uint32>(mesh.primitives.size()); ++primitiveIndex)
+            for (uint32 primitiveIndex = 0; primitiveIndex < static_cast<uint32>(mesh.primitives.size());
+                 ++primitiveIndex)
             {
                 const fastgltf::Primitive& primitive = mesh.primitives[primitiveIndex];
 
@@ -268,13 +256,10 @@ namespace Hydrogen
         auto mappedFile = fastgltf::MappedGltfFile::FromPath(filePath);
         H2_VERIFY_FATAL(mappedFile.error() == fastgltf::Error::None, "Failed to open file: {}", path);
 
-        auto result = parser.loadGltf(
-            mappedFile.get(),
-            directory,
-            fastgltf::Options::LoadExternalBuffers |
-            fastgltf::Options::DecomposeNodeMatrices |
-            fastgltf::Options::GenerateMeshIndices
-        );
+        auto result =
+            parser.loadGltf(mappedFile.get(), directory,
+                            fastgltf::Options::LoadExternalBuffers | fastgltf::Options::DecomposeNodeMatrices |
+                                fastgltf::Options::GenerateMeshIndices);
 
         H2_VERIFY_FATAL(result.error() == fastgltf::Error::None, "Failed to parse glTF: {}", path);
 
@@ -314,7 +299,8 @@ namespace Hydrogen
             }
         }
 
-        H2_INFO(eLogLevel::Minimal, "Loaded model '{}': {} meshes, {} lights, {} materials, {} nodes", model.name, model.meshes.size(), model.lights.size(), model.materials.size(), model.nodes.size());
+        H2_INFO(eLogLevel::Minimal, "Loaded model '{}': {} meshes, {} lights, {} materials, {} nodes", model.name,
+                model.meshes.size(), model.lights.size(), model.materials.size(), model.nodes.size());
         return model;
     }
-}
+} // namespace Hydrogen

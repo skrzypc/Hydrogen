@@ -6,37 +6,39 @@
 
 namespace Hydrogen
 {
-	class FrameGraph;
+    class FrameGraph;
 
-	class FGBuilder
-	{
-		friend class FrameGraph;
-	private:
-		FGBuilder(FrameGraph& frameGraph, FGPass& pass);
-		~FGBuilder() = default;
-		FGBuilder(const FGBuilder&) = delete;
-		FGBuilder& operator=(const FGBuilder&) = delete;
-		FGBuilder(FGBuilder&&) noexcept = default;
-		FGBuilder& operator=(FGBuilder&&) noexcept = default;
+    class FGBuilder
+    {
+        friend class FrameGraph;
 
-	public:
-		void Read(std::string_view name, FGAccess::Read access);
-		void Write(std::string_view name, FGAccess::Write access, FGLoadOp loadOp = FGLoadOp::DontCare);
+    private:
+        FGBuilder(FrameGraph& frameGraph, FGPass& pass);
+        ~FGBuilder() = default;
+        FGBuilder(const FGBuilder&) = delete;
+        FGBuilder& operator=(const FGBuilder&) = delete;
+        FGBuilder(FGBuilder&&) noexcept = default;
+        FGBuilder& operator=(FGBuilder&&) noexcept = default;
 
-		const Texture::Desc& GetTextureDesc(std::string_view name) const;
-		const Buffer::Desc& GetBufferDesc(std::string_view name) const;
+    public:
+        void Read(std::string_view name, FGAccess::Read access);
+        void Write(std::string_view name, FGAccess::Write access, FGLoadOp loadOp = FGLoadOp::DontCare);
 
-	private:
-		FGResourceHandle Read(FGResourceHandle handle, FGAccess::Read access);
-		FGResourceHandle Write(FGResourceHandle handle, FGAccess::Write access, FGLoadOp loadOp);
+        const Texture::Desc& GetTextureDesc(std::string_view name) const;
+        const Buffer::Desc& GetBufferDesc(std::string_view name) const;
 
-		FGPassNodeAccess ResolveRead(FGAccess::Read access);
-		FGPassNodeAccess ResolveWrite(FGAccess::Write access);
+    private:
+        FGResourceHandle Read(FGResourceHandle handle, FGAccess::Read access);
+        FGResourceHandle Write(FGResourceHandle handle, FGAccess::Write access, FGLoadOp loadOp);
 
-		FGResourceHandle AccessInternal(FGResourceHandle handle, FGPassNodeType direction, FGPassNodeAccess access, FGSubresourceRange range, FGLoadOp loadOp);
+        FGPassNodeAccess ResolveRead(FGAccess::Read access);
+        FGPassNodeAccess ResolveWrite(FGAccess::Write access);
 
-	private:
-		FrameGraph& m_frameGraph;
-		FGPass& m_pass;
-	};
-}
+        FGResourceHandle AccessInternal(FGResourceHandle handle, FGPassNodeType direction, FGPassNodeAccess access,
+                                        FGSubresourceRange range, FGLoadOp loadOp);
+
+    private:
+        FrameGraph& m_frameGraph;
+        FGPass& m_pass;
+    };
+} // namespace Hydrogen

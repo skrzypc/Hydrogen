@@ -7,7 +7,8 @@ static const float kRangeFalloffStartFraction = 0.8f;
 static const uint kRisCandidatesLightsCount = 8;
 
 // Distance is -1 for directional lights, matching GetLightContribution/GetLightContributionPT's convention.
-void GetLightDirectionAndDistance(GpuLight light, float3 surfaceWorldPosition, out float3 lightDirection, out float lightDistance)
+void GetLightDirectionAndDistance(GpuLight light, float3 surfaceWorldPosition, out float3 lightDirection,
+                                  out float lightDistance)
 {
     if (light.type == LightTypeDirectional)
     {
@@ -88,7 +89,7 @@ float3 GetLightContributionPT(const GpuLight light, const float3 lightDirection,
 
 bool SampleLightUniformly(inout RngState rngState, out GpuLight lightSample, out float lightSampleWeight)
 {
-    lightSample = (GpuLight) 0;
+    lightSample = (GpuLight)0;
     lightSampleWeight = 0.0f;
 
     if (g_frame.lightCount == 0)
@@ -104,19 +105,20 @@ bool SampleLightUniformly(inout RngState rngState, out GpuLight lightSample, out
     return true;
 }
 
-bool SampleLightRIS(inout RngState rngState, const float3 surfaceWorldPosition, const float3 surfaceNormal, out GpuLight lightSample, out float lightSampleWeight)
+bool SampleLightRIS(inout RngState rngState, const float3 surfaceWorldPosition, const float3 surfaceNormal,
+                    out GpuLight lightSample, out float lightSampleWeight)
 {
-    lightSample = (GpuLight) 0;
+    lightSample = (GpuLight)0;
     lightSampleWeight = 0.0;
-    
+
     if (g_frame.lightCount == 0)
     {
         return false;
     }
-    
+
     float totalRisWeight = 0.0f;
     float sampleTargetPdf = 0.0f;
-    
+
     for (uint i = 0; i < kRisCandidatesLightsCount; ++i)
     {
         GpuLight candidateLightSample;
@@ -127,11 +129,15 @@ bool SampleLightRIS(inout RngState rngState, const float3 surfaceWorldPosition, 
             float lightDistance;
             GetLightDirectionAndDistance(candidateLightSample, surfaceWorldPosition, lightDirection, lightDistance);
 
-            if (dot(surfaceNormal, lightDirection) < 0.00001f) continue;
-            
-            float candidateTargetPdf = CalculateLuminance(GetLightContributionPT(candidateLightSample, lightDirection, lightDistance));
+            if (dot(surfaceNormal, lightDirection) < 0.00001f)
+            {
+                continue;
+            }
+
+            float candidateTargetPdf =
+                CalculateLuminance(GetLightContributionPT(candidateLightSample, lightDirection, lightDistance));
             const float candidateRisWeight = candidateTargetPdf * candidateLightSampleWeight; // p_hat / pdf
-            
+
             totalRisWeight += candidateRisWeight;
             if (NextRandomFloat(rngState) < (candidateRisWeight / totalRisWeight))
             {
@@ -140,14 +146,14 @@ bool SampleLightRIS(inout RngState rngState, const float3 surfaceWorldPosition, 
             }
         }
     }
-    
+
     if (totalRisWeight == 0.0f)
     {
         return false;
     }
-    
+
     lightSampleWeight = (totalRisWeight / float(kRisCandidatesLightsCount)) / sampleTargetPdf;
-    
+
     return true;
 }
 

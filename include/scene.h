@@ -35,4 +35,4 @@ namespace Hydrogen
     private:
         uint32 m_nextId = 0;
     };
-}
+} // namespace Hydrogen

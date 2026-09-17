@@ -79,4 +79,4 @@ namespace Hydrogen
     {
         return ImGui::GetIO().WantCaptureKeyboard;
     }
-}
+} // namespace Hydrogen

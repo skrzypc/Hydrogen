@@ -16,7 +16,10 @@ namespace Hydrogen
         std::string_view Render(FrameGraph& frameGraph, const FrameContext& frameContext) override;
         void BuildUI() override;
 
-        const char* GetName() const override { return "Deferred"; }
+        const char* GetName() const override
+        {
+            return "Deferred";
+        }
 
     private:
         void DefineFrameGraphResources(FrameGraph& frameGraph, const FrameContext& frameContext);
@@ -26,4 +29,4 @@ namespace Hydrogen
         LightingPass m_lightingPass{};
         TonemapPass m_tonemapPass{};
     };
-}
+} // namespace Hydrogen

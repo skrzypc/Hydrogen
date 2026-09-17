@@ -11,45 +11,46 @@
 
 namespace Hydrogen
 {
-	class GpuDevice;
+    class GpuDevice;
 
-	class GpuUploader
-	{
-	public:
-		void Initialize(GpuDevice& device, uint64 stagingCapacity);
+    class GpuUploader
+    {
+    public:
+        void Initialize(GpuDevice& device, uint64 stagingCapacity);
 
-		// Copies [pData, pData+byteSize) into pDstBuffer at dstOffset.
-		void Upload(const void* pData, uint64 byteSize, Buffer* pDstBuffer, uint64 dstOffset = 0);
+        // Copies [pData, pData+byteSize) into pDstBuffer at dstOffset.
+        void Upload(const void* pData, uint64 byteSize, Buffer* pDstBuffer, uint64 dstOffset = 0);
 
-		// Copies pData into pDstTexture subresource. Source is assumed tightly packed (no row padding).
-		void Upload(const void* pData, Texture* pDstTexture, uint32 subresource = 0);
+        // Copies pData into pDstTexture subresource. Source is assumed tightly packed (no row padding).
+        void Upload(const void* pData, Texture* pDstTexture, uint32 subresource = 0);
 
-		uint64 Flush();
+        uint64 Flush();
 
-	private:
-		struct Segment {
-			uint64 start = 0;
-			uint64 end = 0;      // exclusive, 4KB-aligned
-			uint64 fenceValue = 0;
-		};
+    private:
+        struct Segment
+        {
+            uint64 start = 0;
+            uint64 end = 0; // exclusive, 4KB-aligned
+            uint64 fenceValue = 0;
+        };
 
-		// Returns the staging offset to write at (4KB-aligned). Retires completed
-		// segments, wraps if needed, waits for the oldest segment only if unavoidable.
-		uint64 Allocate(uint64 byteSize);
+        // Returns the staging offset to write at (4KB-aligned). Retires completed
+        // segments, wraps if needed, waits for the oldest segment only if unavoidable.
+        uint64 Allocate(uint64 byteSize);
 
-		void RetireCompletedSegments();
-		void EnsureActiveContext();
+        void RetireCompletedSegments();
+        void EnsureActiveContext();
 
-		GpuDevice* m_pDevice = nullptr;
-		std::optional<CopyContext> m_activeContext;
+        GpuDevice* m_pDevice = nullptr;
+        std::optional<CopyContext> m_activeContext;
 
-		std::unique_ptr<UploadBuffer> m_stagingBuffer;
-		uint64 m_capacity = 0;
-		uint64 m_writeOffset = 0;
-		uint64 m_batchStart = 0;    // start of the current unflushed batch
+        std::unique_ptr<UploadBuffer> m_stagingBuffer;
+        uint64 m_capacity = 0;
+        uint64 m_writeOffset = 0;
+        uint64 m_batchStart = 0; // start of the current unflushed batch
 
-		std::queue<Segment> m_pendingSegments;
+        std::queue<Segment> m_pendingSegments;
 
-		bool m_bRequiresFlush = false;
-	};
-}
+        bool m_bRequiresFlush = false;
+    };
+} // namespace Hydrogen
