@@ -55,7 +55,7 @@ namespace Hydrogen
 
 	struct GpuMaterialData
 	{
-		float3 baseColor;
+		float3 albedo;
 		float roughness;
 
 		float3 emissive;

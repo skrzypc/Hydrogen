@@ -4,6 +4,8 @@
 struct PushConstants
 {
     uint transformIndex;
+    uint materialIndex;
+    uint baseVertex;
 };
 
 ConstantBuffer<PushConstants> g_push : register(b0, space0);
@@ -18,30 +20,20 @@ struct PsOut
 {
     float4 albedo : SV_Target0;
     float2 normal : SV_Target1;
-    float2 roughnessMetalness : SV_Target2;
+    float2 roughnessMetallic : SV_Target2;
 };
-
-static const float3 kPalette[4] =
-{
-    float3(1.0f, 0.65f, 0.25f),
-    float3(0.55f, 0.55f, 0.58f),
-    float3(0.40f, 0.75f, 0.45f),
-    float3(0.65f, 0.45f, 0.80f)
-};
-
-// Placeholder variation until real materials land, so the BRDF has something to show.
-static const float kRoughness[4] = { 0.1f, 0.35f, 0.6f, 0.9f };
-static const float kMetalness[4] = { 0.0f, 1.0f, 0.0f, 0.0f };
 
 PsOut mainPS(PsIn input)
 {
-    uint materialIndex = g_push.transformIndex % 4;
+    StructuredBuffer<GpuMaterialData> materialDataBuffer = ResourceDescriptorHeap[g_frame.materialDataBufferIndex];
+
+    GpuMaterialData material = materialDataBuffer[g_push.materialIndex];
 
     PsOut output;
 
-    output.albedo = float4(1.0, 1.0, 1.0, 1.0f);
+    output.albedo = float4(material.albedo, 1.0f);
     output.normal = EncodeOctahedral(normalize(input.normalWorldSpace));
-    output.roughnessMetalness = float2(0.1f, 0.1f);
+    output.roughnessMetallic = float2(material.roughness, material.metallic);
 
     return output;
 }

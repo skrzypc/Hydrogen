@@ -67,9 +67,9 @@ namespace Hydrogen
 			m_instanceDataBuffers[i] = device.CreateUploadBuffer(L"H2_SCENE_INSTANCE_DATA", m_sceneCapacity * sizeof(GpuInstanceData));
 			m_instanceDataSrvs[i] = device.CreateShaderResourceView(m_instanceDataBuffers[i].get(), srvDesc);
 
-			srvDesc.Buffer.NumElements = 1;
+			srvDesc.Buffer.NumElements = m_sceneCapacity;
 			srvDesc.Buffer.StructureByteStride = sizeof(GpuMaterialData);
-			m_materialDataBuffers[i] = device.CreateUploadBuffer(L"H2_SCENE_MATERIAL_DATA", sizeof(GpuMaterialData));
+			m_materialDataBuffers[i] = device.CreateUploadBuffer(L"H2_SCENE_MATERIAL_DATA", m_sceneCapacity * sizeof(GpuMaterialData));
 			m_materialDataSrvs[i] = device.CreateShaderResourceView(m_materialDataBuffers[i].get(), srvDesc);
 
 			m_instanceDescs[i] = device.CreateUploadBuffer(L"H2_SCENE_TLAS_INSTANCES", m_sceneCapacity * sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
@@ -77,14 +77,6 @@ namespace Hydrogen
 			srvDesc.Buffer.NumElements = m_sceneCapacity;
 			srvDesc.Buffer.StructureByteStride = sizeof(DirectX::XMFLOAT4X4);
 		}
-
-		m_defaultMaterialData =
-		{
-			.baseColor = { 0.8f, 0.8f, 0.8f },
-			.roughness = 1.0f,
-			.emissive = { 0.0f, 0.0f, 0.0f },
-			.metallic = 0.0f,
-		};
 
 		srvDesc.Buffer.NumElements = m_maxLights;
 		srvDesc.Buffer.StructureByteStride = sizeof(GpuLight);
@@ -117,6 +109,30 @@ namespace Hydrogen
 		for (uint32 i = 0; i < meshHandles.size(); ++i)
 		{
 			RegisterMesh(meshHandles[i], std::move(meshes[i]));
+		}
+	}
+
+	void GpuScene::RegisterMaterial(MaterialHandle handle, const Material& material)
+	{
+		if (handle.id >= m_materialCache.size())
+		{
+			m_materialCache.resize(handle.id + 1);
+		}
+
+		m_materialCache[handle.id] =
+		{
+			.albedo = material.baseColor,
+			.roughness = material.roughness,
+			.emissive = material.emissive,
+			.metallic = material.metallic,
+		};
+	}
+
+	void GpuScene::RegisterMaterials(std::vector<MaterialHandle>& materialHandles, std::vector<Material>& materials)
+	{
+		for (uint32 i = 0; i < materialHandles.size(); ++i)
+		{
+			RegisterMaterial(materialHandles[i], materials[i]);
 		}
 	}
 
@@ -408,7 +424,14 @@ namespace Hydrogen
 
 	void GpuScene::UpdateMaterials()
 	{
-		m_materialDataBuffers[m_currentFrameIndex]->Write(&m_defaultMaterialData, sizeof(GpuMaterialData));
+		H2_VERIFY_FATAL(m_materialCache.size() <= m_sceneCapacity, "GpuScene material count exceeds scene capacity!");
+
+		if (!m_materialCache.empty())
+		{
+			m_materialDataBuffers[m_currentFrameIndex]->Write(
+				m_materialCache.data(),
+				m_materialCache.size() * sizeof(GpuMaterialData));
+		}
 	}
 
 	void GpuScene::UpdateLights(std::span<const RenderLight> lights)

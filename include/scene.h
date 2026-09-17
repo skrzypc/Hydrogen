@@ -4,6 +4,7 @@
 #include "componentStore.h"
 #include "components/transformComponent.h"
 #include "components/meshComponent.h"
+#include "components/materialComponent.h"
 #include "components/hierarchyComponent.h"
 #include "components/cameraComponent.h"
 #include "components/lightComponent.h"
@@ -26,6 +27,7 @@ namespace Hydrogen
 
         ComponentStore<TransformComponent> transforms;
         ComponentStore<MeshComponent> meshes;
+        ComponentStore<MaterialComponent> materials;
         ComponentStore<HierarchyComponent> hierarchy;
         ComponentStore<CameraComponent> cameras;
         ComponentStore<LightComponent> lights;

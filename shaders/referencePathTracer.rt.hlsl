@@ -2,6 +2,7 @@
 #include "common.hlsli"
 #include "lighting.hlsli"
 #include "rng.hlsli"
+#include "shaderUtils.hlsli"
 
 struct PushConstants
 {
@@ -13,18 +14,19 @@ struct PushConstants
 
 ConstantBuffer<PushConstants> g_push : register(b0, space0);
 
-static const float3 kSkyRadiance = float3(0.02f, 0.04f, 0.08f);
+//static const float3 kSkyRadiance = float3(0.02f, 0.04f, 0.08f);
+static const float3 kSkyRadiance = float3(0.05f, 0.05f, 0.05f);
 
-static const uint MIN_BOUNCES = 1;
-static const uint MAX_BOUNCES = 3;
+static const uint MIN_BOUNCES = 2;
+static const uint MAX_BOUNCES = 5;
 
 struct [raypayload] RayPayload
 {
     float3 shadingNormal : write(closesthit) : read(caller);
-    float3 geometryNormal : write(closesthit) : read(caller);
-    float2 uv : write(closesthit) : read(caller);
-    float hitDistance : write(closesthit, miss) : read(caller);
-    uint materialId : write(closesthit) : read(caller);
+float3 geometryNormal : write(closesthit) : read(caller);
+float2 uv : write(closesthit) : read(caller);
+float hitDistance : write(closesthit, miss) : read(caller);
+uint materialId : write(closesthit) : read(caller);
 };
 
 struct [raypayload] ShadowRayPayload
@@ -131,23 +133,32 @@ void mainRayGen()
     
     RngState rngState = InitRng(DispatchRaysIndex().xy, DispatchRaysDimensions().xy, g_frame.frameNumber);
     
+    // Anti-alliasing
     const float2 pixelOffset = float2(NextRandomFloat(rngState), NextRandomFloat(rngState));
     pixelCoords += lerp(-0.5f.xx, 0.5f.xx, pixelOffset);
     
-    pixelCoords = (((pixelCoords + 0.5f) / resolution) * 2.0f - 1.0f);
+    // To [-1.0, 1.0]
+    pixelCoords = (((pixelCoords + float2(0.5f, 0.5f)) / resolution) * 2.0f - 1.0f);
     
     // Primary ray
     RayDesc currentRay = GenerateCameraRay(pixelCoords);
     
     RayPayload rayPayload;
+    
+    // The actual output.
+    // Sum of every light contribution (NEE + emissive) collected so far, each already weighted by throughput at the time.
     float3 currentRadiance = 0.0f.xxx;
+    // Cumulative BRDF * cosTheta / pdf product along the path so far.
+    // How much of any future contribution along this path still reaches the camera.
     float3 throughput = 1.0f.xxx;
     
     RaytracingAccelerationStructure tlas = ResourceDescriptorHeap[g_push.tlasIndex];
+    StructuredBuffer<GpuMaterialData> materialDataBuffer = ResourceDescriptorHeap[g_frame.materialDataBufferIndex];
 
-    const float3 materialAlbedo = float3(0.8f, 0.8f, 0.8f);
     for (uint i = 0; i <= MAX_BOUNCES; ++i)
     {
+        // i = 0 <- Primary ray.
+        // i > 0 <- Bounce ray.
         TraceRay(
             tlas,
             RAY_FLAG_FORCE_OPAQUE, // flags
@@ -155,8 +166,8 @@ void mainRayGen()
             0, // hit group offset (contributionToHitGroupIndex)
             1, // geometry multiplier (stride, usually 1 hit group per geometry)
             0, // miss shader index
-            currentRay, // the RayDesc from GenerateCameraRay
-            rayPayload // payload
+            currentRay,
+            rayPayload
         );
         
         bool hit = rayPayload.hitDistance > 0.0f;
@@ -175,13 +186,18 @@ void mainRayGen()
         rayPayload.geometryNormal *= dot(rayPayload.geometryNormal, -currentRay.Direction) < 0.0f ? -1.0f : 1.0f;
         rayPayload.shadingNormal *= dot(rayPayload.geometryNormal, rayPayload.shadingNormal) < 0.0f ? -1.0f : 1.0f;
             
-        float3 tangent, bitangent;
-        OrthonormalBasis(rayPayload.shadingNormal, tangent, bitangent);
+        GpuMaterialData material = materialDataBuffer[rayPayload.materialId];
+
+        // Material emissive contribution.
+        {
+            currentRadiance += throughput * material.emissive;
+        }
         
+        // Light contribution.
+        // Next Event Estimation. Sample a light, add its contribution if unoccluded.
         GpuLight sampledLight;
         float lightSampleWeight;
         if (SampleLightRIS(rngState, hitWorldPosition, rayPayload.shadingNormal, sampledLight, lightSampleWeight))
-        //if (SampleLightUniformly(rngState, sampledLight, lightSampleWeight))
         {
             float3 lightDirection;
             float lightDistance;
@@ -212,13 +228,16 @@ void mainRayGen()
             if (!shadowRayPayload.occluded)
             {
                 float3 lightRadiance = GetLightContributionPT(sampledLight, lightDirection, lightDistance);
-                float3 materialBrdf = materialAlbedo / kPi; // Diffuse for now.
+                float3 materialBrdf = material.albedo / kPi; // Diffuse for now.
                 float NoL = saturate(dot(rayPayload.shadingNormal, lightDirection));
 
                 currentRadiance += throughput * materialBrdf * lightRadiance * NoL * lightSampleWeight;
             }
         }
         
+        // Russian Roulette
+        // Probabilistically kill the path based on throughput, boosting survivors to compensate.
+        // Unbiased alternative to a hard bounce cutoff.
         if (i > MIN_BOUNCES)
         {
             float russianRuletteFactor = min(0.95f, CalculateLuminance(throughput));
@@ -227,14 +246,13 @@ void mainRayGen()
             {
                 break;
             }
-                
+            
+            // Keeps result unbiased.
             throughput /= russianRuletteFactor;
         }
-
-        // Generate bound ray.
+        
+        // Generate bounce ray.
         float3 bounceRayDir;
-        float3 brdf;
-        float brdfPdf;
         {
             // Cosine weighted hemisphere sampling.
             float u1 = NextRandomFloat(rngState);
@@ -249,12 +267,28 @@ void mainRayGen()
             z *= r;
             y = sqrt(max(0.0f, 1.0f - u1));
             
+            float3 tangent, bitangent;
+            OrthonormalBasis(rayPayload.shadingNormal, tangent, bitangent);
+            
             bounceRayDir = normalize(x * tangent + y * rayPayload.shadingNormal + z * bitangent);
-            brdf = materialAlbedo;
-            brdfPdf = 1.0f;
+            
+            // Full form.
+            //{
+            //    float cosTheta = dot(bounceRayDir, rayPayload.shadingNormal);
+            //    brdf = material.albedo / kPi;
+            //    brdfPdf = cosTheta / kPi;
+                
+            //    throughput *= brdf * cosTheta / brdfPdf;
+            //}
+            
+            // Simplified form.
+            {
+                // brdf * cosTheta / brdfPdf <==>
+                // (material.albedo / kPi) * cosTheta / (cosTheta / kPi) <==>
+                // material.albedo
+                throughput *= material.albedo;
+            }
         }
-
-        throughput *= brdf / brdfPdf;
 
         currentRay.Origin = OffsetRayOrigin(hitWorldPosition, rayPayload.geometryNormal);
         currentRay.Direction = bounceRayDir;
@@ -294,5 +328,5 @@ void mainClosestHit(inout RayPayload rayPayload, in BuiltInTriangleIntersectionA
     rayPayload.geometryNormal = hit.geometryNormal;
     rayPayload.uv = hit.uv;
     rayPayload.hitDistance = RayTCurrent();
-    rayPayload.materialId = 0;
+    rayPayload.materialId = hit.materialIndex;
 }

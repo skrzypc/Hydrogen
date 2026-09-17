@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "mesh.h"
+#include "material.h"
 
 namespace Hydrogen
 {
@@ -11,6 +12,12 @@ namespace Hydrogen
         MeshHandle handle{};
         MeshMetadata metadata{};
         Mesh mesh{};
+    };
+
+    struct MaterialUploadRequest
+    {
+        MaterialHandle handle{};
+        Material material{};
     };
 
     class AssetUploadQueue
@@ -31,7 +38,23 @@ namespace Hydrogen
             return result;
         }
 
+        void PushMaterial(MaterialUploadRequest request)
+        {
+            // TODO: add mutex when multithreading is introduced
+            m_pendingMaterials.push_back(std::move(request));
+        }
+
+        std::vector<MaterialUploadRequest> DrainMaterials()
+        {
+            // TODO: add mutex when multithreading is introduced
+            std::vector<MaterialUploadRequest> result{};
+            result.swap(m_pendingMaterials);
+
+            return result;
+        }
+
     private:
         std::vector<MeshUploadRequest> m_pending{};
+        std::vector<MaterialUploadRequest> m_pendingMaterials{};
     };
 }

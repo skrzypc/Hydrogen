@@ -10,6 +10,7 @@
 #include "config.h"
 #include "gpuMesh.h"
 #include "mesh.h"
+#include "material.h"
 #include "assetUploadQueue.h"
 #include "buffer.h"
 #include "uploadBuffer.h"
@@ -32,6 +33,9 @@ namespace Hydrogen
 		// Enqueues a mesh for upload. Actual GPU upload happens during Update(), up to m_maxMeshUploadsPerFrame per frame.
 		void RegisterMesh(MeshHandle handle, Mesh&& mesh);
 		void RegisterMeshes(std::vector<MeshHandle>& meshHandles, std::vector<Mesh>& meshes);
+
+		void RegisterMaterial(MaterialHandle handle, const Material& material);
+		void RegisterMaterials(std::vector<MaterialHandle>& materialHandles, std::vector<Material>& materials);
 
 		// TODO: Should this take the FrameContext at all? It only needs frameIndex and
 		// renderScene.objects, and the context it gets holds a reference back to this scene.
@@ -113,7 +117,7 @@ namespace Hydrogen
 
 		std::array<std::unique_ptr<UploadBuffer>, Config::FramesInFlight> m_materialDataBuffers{};
 		std::array<ShaderResourceViewHandle, Config::FramesInFlight> m_materialDataSrvs{};
-		GpuMaterialData m_defaultMaterialData{};
+		std::vector<GpuMaterialData> m_materialCache{};
 
 		std::array<std::unique_ptr<UploadBuffer>, Config::FramesInFlight> m_lightBuffers{};
 		std::array<ShaderResourceViewHandle, Config::FramesInFlight> m_lightSrvs{};

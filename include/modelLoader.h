@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "mesh.h"
+#include "material.h"
 #include "transform.h"
 #include "light.h"
 
@@ -19,6 +20,7 @@ namespace Hydrogen
         uint32 parentIndex = std::numeric_limits<uint32>::max(); // root node
         std::optional<uint32> meshIndex{}; // index into Model::meshes
         std::optional<uint32> lightIndex{}; // index into Model::lights
+        std::optional<uint32> materialIndex{}; // index into Model::materials
     };
 
     struct Model
@@ -26,6 +28,7 @@ namespace Hydrogen
         std::string name{};
         std::vector<Mesh> meshes{};
         std::vector<Light> lights{};
+        std::vector<Material> materials{};
         std::vector<ModelNode> nodes{};
     };
 

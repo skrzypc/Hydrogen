@@ -131,6 +131,24 @@ namespace Hydrogen
 
 			m_gpuScene.RegisterMeshes(meshHandles, meshes);
 		}
+
+		auto materialRequests = m_pUploadQueue->DrainMaterials();
+		if (!materialRequests.empty())
+		{
+			std::vector<MaterialHandle> materialHandles{};
+			materialHandles.reserve(materialRequests.size());
+
+			std::vector<Material> materials{};
+			materials.reserve(materialRequests.size());
+
+			for (auto&& request : materialRequests)
+			{
+				materialHandles.push_back(request.handle);
+				materials.push_back(std::move(request.material));
+			}
+
+			m_gpuScene.RegisterMaterials(materialHandles, materials);
+		}
 	}
 
 	void Renderer::CreateBackend(eRenderBackendType type)

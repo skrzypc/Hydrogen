@@ -128,6 +128,31 @@ namespace Hydrogen
         return light;
     }
 
+    static Material ExtractMaterial(const fastgltf::Material& material)
+    {
+        Material result{};
+        result.name = std::string(material.name);
+
+        result.baseColor =
+        {
+            material.pbrData.baseColorFactor.x(),
+            material.pbrData.baseColorFactor.y(),
+            material.pbrData.baseColorFactor.z()
+        };
+        result.roughness = material.pbrData.roughnessFactor;
+        result.metallic = material.pbrData.metallicFactor;
+
+        const float32 emissiveStrength = material.emissiveStrength;
+        result.emissive =
+        {
+            material.emissiveFactor.x() * emissiveStrength,
+            material.emissiveFactor.y() * emissiveStrength,
+            material.emissiveFactor.z() * emissiveStrength
+        };
+
+        return result;
+    }
+
     static Transform ComposeTransforms(const Transform& parent, const Transform& local)
     {
         using namespace DirectX;
@@ -182,12 +207,26 @@ namespace Hydrogen
             const fastgltf::Mesh& mesh = asset.meshes[node.meshIndex.value()];
             for (uint32 primitiveIndex = 0; primitiveIndex < static_cast<uint32>(mesh.primitives.size()); ++primitiveIndex)
             {
+                const fastgltf::Primitive& primitive = mesh.primitives[primitiveIndex];
+
                 uint32 meshIdx = static_cast<uint32>(model.meshes.size());
-                model.meshes.push_back(ExtractPrimitive(asset, mesh.primitives[primitiveIndex], mesh.name, primitiveIndex));
+                model.meshes.push_back(ExtractPrimitive(asset, primitive, mesh.name, primitiveIndex));
+
+                std::optional<uint32> materialIndex{};
+                if (primitive.materialIndex.has_value())
+                {
+                    materialIndex = static_cast<uint32>(primitive.materialIndex.value());
+                }
+
+                if (materialIndex.value() == 17)
+                {
+                    int dbg = 4;
+                }
 
                 if (primitiveIndex == 0)
                 {
                     mn.meshIndex = meshIdx;
+                    mn.materialIndex = materialIndex;
                     model.nodes.push_back(std::move(mn));
                 }
                 else
@@ -197,6 +236,7 @@ namespace Hydrogen
                     extra.name = model.meshes.back().name;
                     extra.parentIndex = currentIndex;
                     extra.meshIndex = meshIdx;
+                    extra.materialIndex = materialIndex;
                     extra.localTransform = worldTransform;
                     model.nodes.push_back(std::move(extra));
                 }
@@ -251,6 +291,14 @@ namespace Hydrogen
             model.lights.push_back(ExtractLight(light));
         }
 
+        // Material indices are kept in step with the glTF asset so primitives can
+        // reference them directly, and so materials shared by several primitives stay shared.
+        model.materials.reserve(asset.materials.size());
+        for (const fastgltf::Material& material : asset.materials)
+        {
+            model.materials.push_back(ExtractMaterial(material));
+        }
+
         std::size_t sceneIndex = 0;
         if (asset.defaultScene.has_value())
         {
@@ -266,7 +314,7 @@ namespace Hydrogen
             }
         }
 
-        H2_INFO(eLogLevel::Minimal, "Loaded model '{}': {} meshes, {} lights, {} nodes", model.name, model.meshes.size(), model.lights.size(), model.nodes.size());
+        H2_INFO(eLogLevel::Minimal, "Loaded model '{}': {} meshes, {} lights, {} materials, {} nodes", model.name, model.meshes.size(), model.lights.size(), model.materials.size(), model.nodes.size());
         return model;
     }
 }

@@ -52,7 +52,7 @@ void mainCS(uint3 dispatchThreadId : SV_DispatchThreadID)
     if (depth > 0.0f)
     {
         float2 uv = (float2(pixel) + 0.5f) / view.viewportSize;
-        float3 positionWS = ReconstructWorldPosition(uv, depth, view.invViewProjectionMx);
+        float3 surfacePosition = ReconstructWorldPosition(uv, depth, view.invViewProjectionMx);
 
         float2 roughnessMetalness = roughnessMetalnessTarget[pixel];
 
@@ -62,7 +62,7 @@ void mainCS(uint3 dispatchThreadId : SV_DispatchThreadID)
         surface.metalness = roughnessMetalness.y;
 
         float3 N = DecodeOctahedral(normalTarget[pixel]);
-        float3 V = normalize(view.worldPosition - positionWS);
+        float3 V = normalize(view.worldPosition - surfacePosition);
 
         StructuredBuffer<GpuLight> lights = ResourceDescriptorHeap[g_frame.lightBufferIndex];
 
@@ -71,7 +71,7 @@ void mainCS(uint3 dispatchThreadId : SV_DispatchThreadID)
         {
             float3 lightDirection;
             float lightDistance;
-            GetLightDirectionAndDistance(lights[i], positionWS, lightDirection, lightDistance);
+            GetLightDirectionAndDistance(lights[i], surfacePosition, lightDirection, lightDistance);
 
             float NoL = saturate(dot(N, lightDirection));
             if (NoL <= 0.0f)

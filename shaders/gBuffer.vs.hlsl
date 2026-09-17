@@ -3,6 +3,7 @@
 struct PushConstants
 {
     uint transformIndex;
+    uint materialIndex;
     uint baseVertex;
 };
 

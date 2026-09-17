@@ -25,6 +25,7 @@ namespace Hydrogen
 		struct PushConstants
 		{
 			uint32 transformIndex = 0;
+			uint32 materialIndex = 0;
 			uint32 baseVertex = 0;
 		};
 

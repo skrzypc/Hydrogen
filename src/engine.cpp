@@ -11,6 +11,7 @@
 #include "primitiveBuilders.h"
 #include "components/transformComponent.h"
 #include "components/meshComponent.h"
+#include "components/materialComponent.h"
 #include "components/cameraComponent.h"
 #include "components/lightComponent.h"
 #include "hydrogenMath.h"
@@ -81,9 +82,9 @@ namespace Hydrogen
 		{
 			std::vector<Model> models{};
 			//models.emplace_back(ModelLoader::Load("data/models/stanfordBunny/scene.gltf"));
-			models.emplace_back(ModelLoader::Load("data/models/AmdSponza/MainSponza.gltf"));
+			//models.emplace_back(ModelLoader::Load("data/models/AmdSponza/MainSponza.gltf"));
 			{
-				//models.emplace_back(ModelLoader::Load("data/models/IntelSponza/main_sponza/NewSponza_Main_glTF_003.gltf"));
+				models.emplace_back(ModelLoader::Load("data/models/IntelSponza/main_sponza/NewSponza_Main_glTF_003.gltf"));
 				//models.emplace_back(ModelLoader::Load("data/models/IntelSponza/pkg_a_curtains/NewSponza_Curtains_glTF.gltf"));
 				//models.emplace_back(ModelLoader::Load("data/models/IntelSponza/pkg_b_ivy/NewSponza_IvyGrowth_glTF.gltf"));
 				//models.emplace_back(ModelLoader::Load("data/models/IntelSponza/pkg_c_trees/NewSponza_CypressTree_glTF.gltf"));
@@ -103,6 +104,12 @@ namespace Hydrogen
 					handles.push_back(m_assetRegistry.RegisterMesh(std::move(metaData), std::move(mesh)));
 				}
 
+				std::vector<MaterialHandle> materialHandles;
+				for (Material& material : model.materials)
+				{
+					materialHandles.push_back(m_assetRegistry.RegisterMaterial(std::move(material)));
+				}
+
 				for (uint32 i = 0; i < static_cast<uint32>(model.nodes.size()); ++i)
 				{
 					const ModelNode& node = model.nodes[i];
@@ -114,12 +121,14 @@ namespace Hydrogen
 						m_scene.meshes.Add(entity, MeshComponent{ handles[*node.meshIndex] });
 					}
 
+					if (node.materialIndex.has_value())
+					{
+						m_scene.materials.Add(entity, MaterialComponent{ materialHandles[*node.materialIndex] });
+					}
+
 					if (node.lightIndex.has_value())
 					{
-						//if (m_scene.lights.GetAll().size() == 0)
-						{
-							m_scene.lights.Add(entity, LightComponent{ model.lights[*node.lightIndex] });
-						}
+						m_scene.lights.Add(entity, LightComponent{ model.lights[*node.lightIndex] });
 					}
 				}
 			}
@@ -253,6 +262,10 @@ namespace Hydrogen
 
 				RenderObject obj{};
 				obj.mesh = meshComponents[i].mesh;
+				if (const MaterialComponent* pMaterialComponent = m_scene.materials.Get(meshEntities[i]))
+				{
+					obj.materialDataIndex = pMaterialComponent->material.id;
+				}
 				DirectX::XMStoreFloat4x4(&obj.worldMatrix, tc->transform.GetWorldMatrix());
 				renderScene.objects.push_back(obj);
 			}

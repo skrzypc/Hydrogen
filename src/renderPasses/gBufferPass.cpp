@@ -114,6 +114,7 @@ namespace Hydrogen
 
 			PushConstants push{};
 			push.transformIndex = i;
+			push.materialIndex = renderObjects[i].materialDataIndex;
 			push.baseVertex = gpuMesh->baseVertex; // TODO: Do we need this?
 			graphicsContext.SetPushConstants(push);
 
