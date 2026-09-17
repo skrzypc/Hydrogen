@@ -8,6 +8,7 @@
 
 #include "frameGraph.h"
 #include "gpuScene.h"
+#include "renderPasses/lightingPass.h"
 #include "shaderInterop.h"
 
 namespace Hydrogen
@@ -18,6 +19,7 @@ namespace Hydrogen
 
         m_buildTlasPass.Initialize(device, shaderCompiler);
         m_rayTraceDispatchPass.Initialize(device, shaderCompiler);
+        m_tonemapPass.Initialize(device, shaderCompiler);
     }
 
     void RayTracingBackend::Shutdown()
@@ -36,7 +38,9 @@ namespace Hydrogen
 		m_rayTraceDispatchPass.resetAccumulation = frameContext.sceneChanged;
         frameGraph.AddPass("RayTraceDispatch", m_rayTraceDispatchPass);
 
-        return "SceneColor";
+        frameGraph.AddPass("Tonemap", m_tonemapPass);
+
+        return "Output";
     }
 
     void RayTracingBackend::DefineFrameGraphResources(FrameGraph& frameGraph, const FrameContext& frameContext)
@@ -45,6 +49,18 @@ namespace Hydrogen
             {
                 .width = frameContext.renderWidth,
                 .height = frameContext.renderHeight,
+                .mipLevels = 1,
+                .arraySize = 1,
+                .format = LightingPass::SceneColorFormat,
+                .flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+                .dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+                .optimizedClearColor = { 0.0f, 0.0f, 0.0f, 1.0f },
+            });
+
+        frameGraph.CreateTexture("Output",
+            {
+                .width = frameContext.displayWidth,
+                .height = frameContext.displayHeight,
                 .mipLevels = 1,
                 .arraySize = 1,
                 .format = frameContext.displayFormat,

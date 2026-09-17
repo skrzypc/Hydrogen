@@ -8,6 +8,10 @@
 
 namespace Hydrogen
 {
+    // CIE photopic peak (555nm), used to convert Light::intensity to radiometric
+    // units for the GPU. See GpuScene::UpdateLights.
+    static constexpr float32 kLuminousEfficacy = 683.0f; // lm/W
+
     enum class eLightType : uint8
     {
         Directional,

@@ -73,7 +73,8 @@ namespace Hydrogen
 		uint type;
 
 		float3 color;
-		// Candela (lm/sr) for point and spot, lux (lm/m^2) for directional.
+		// Radiometric: W/sr for point and spot, W/m^2 for directional. Converted from the
+		// photometric Light::intensity (candela/lux) in GpuScene::UpdateLights.
 		float intensity;
 
 		float3 direction;

@@ -3,6 +3,7 @@
 #include "renderBackend.h"
 #include "renderPasses/buildTlasPass.h"
 #include "renderPasses/rayTraceDispatchPass.h"
+#include "renderPasses/tonemapPass.h"
 
 namespace Hydrogen
 {
@@ -23,5 +24,6 @@ namespace Hydrogen
     private:
         BuildTlasPass m_buildTlasPass{};
         RayTraceDispatchPass m_rayTraceDispatchPass{};
+        TonemapPass m_tonemapPass{};
     };
 }

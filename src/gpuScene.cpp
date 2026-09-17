@@ -451,7 +451,8 @@ namespace Hydrogen
 			gpuLight.position = renderLight.position;
 			gpuLight.type = static_cast<uint32>(light.type);
 			gpuLight.color = light.color;
-			gpuLight.intensity = light.intensity;
+			// Photometric (candela/lux) -> radiometric (W/sr, W/m^2) for the shader.
+			gpuLight.intensity = light.intensity / kLuminousEfficacy;
 			gpuLight.direction = renderLight.direction;
 			gpuLight.range = light.range.value_or(std::numeric_limits<float32>::max());
 			gpuLight.cosInnerConeAngle = std::cos(light.innerConeAngle.value_or(0.0f));

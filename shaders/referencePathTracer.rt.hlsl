@@ -14,11 +14,11 @@ struct PushConstants
 
 ConstantBuffer<PushConstants> g_push : register(b0, space0);
 
-//static const float3 kSkyRadiance = float3(0.02f, 0.04f, 0.08f);
-static const float3 kSkyRadiance = float3(0.05f, 0.05f, 0.05f);
+static const float3 kSkyRadiance = float3(0.02f, 0.04f, 0.08f);
+//static const float3 kSkyRadiance = float3(0.05f, 0.05f, 0.05f);
 
-static const uint MIN_BOUNCES = 2;
-static const uint MAX_BOUNCES = 5;
+static const uint MIN_BOUNCES = 1;
+static const uint MAX_BOUNCES = 3;
 
 struct [raypayload] RayPayload
 {
