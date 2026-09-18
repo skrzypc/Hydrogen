@@ -99,18 +99,23 @@ namespace Hydrogen
     {
         EnsureActiveContext();
 
-        const uint64 alignedOffset = AlignUp(m_writeOffset, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
-
         D3D12_RESOURCE_DESC resourceDesc = pDstTexture->GetResource()->GetDesc();
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{};
         UINT numRows = 0;
         UINT64 rowSizeInBytes = 0;
         UINT64 totalBytes = 0;
 
-        m_pDevice->GetDxDevice()->GetCopyableFootprints(&resourceDesc, subresource, 1, alignedOffset, &footprint,
+        m_pDevice->GetDxDevice()->GetCopyableFootprints(&resourceDesc, subresource, 1, 0, &footprint, &numRows,
+                                                        &rowSizeInBytes, &totalBytes);
+
+        const uint64 stagingOffset = Allocate(totalBytes);
+
+        m_pDevice->GetDxDevice()->GetCopyableFootprints(&resourceDesc, subresource, 1, stagingOffset, &footprint,
                                                         &numRows, &rowSizeInBytes, &totalBytes);
 
-        H2_VERIFY_FATAL(totalBytes <= m_capacity, "GpuUploader staging buffer exhausted for texture upload!");
+        H2_VERIFY_FATAL(footprint.Offset == stagingOffset,
+                        "Texture footprint offset ({}) doesn't match staging allocation ({}) — alignment mismatch!",
+                        footprint.Offset, stagingOffset);
 
         const uint8* pSrc = static_cast<const uint8*>(pData);
         uint8* pDst = m_stagingBuffer->GetMappedPtr() + footprint.Offset;
@@ -118,8 +123,6 @@ namespace Hydrogen
         {
             memcpy(pDst + row * footprint.Footprint.RowPitch, pSrc + row * rowSizeInBytes, rowSizeInBytes);
         }
-
-        m_writeOffset = AlignUp(footprint.Offset + totalBytes, kBlockSize);
 
         D3D12_TEXTURE_COPY_LOCATION src{};
         src.pResource = m_stagingBuffer->GetResource();

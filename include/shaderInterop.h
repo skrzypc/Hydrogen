@@ -53,6 +53,8 @@ namespace Hydrogen
         uint _pad;
     };
 
+    static const uint InvalidTextureIndex = 0xFFFFFFFFu;
+
     struct GpuMaterialData
     {
         float3 albedo;
@@ -60,6 +62,11 @@ namespace Hydrogen
 
         float3 emissive;
         float metallic;
+
+        uint albedoTextureIndex;
+        uint normalTextureIndex;
+        uint metallicRoughnessTextureIndex;
+        uint _pad;
     };
 
     // Must match eLightType. Duplicated because light.h is not shader safe.

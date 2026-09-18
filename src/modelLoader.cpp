@@ -122,7 +122,39 @@ namespace Hydrogen
         return light;
     }
 
-    static Material ExtractMaterial(const fastgltf::Material& material)
+    template <typename OptionalTextureInfoT>
+    static std::optional<std::string> ResolveTexturePath(const fastgltf::Asset& asset,
+                                                          const OptionalTextureInfoT& textureInfo,
+                                                          const std::filesystem::path& directory)
+    {
+        if (!textureInfo.has_value())
+        {
+            return std::nullopt;
+        }
+
+        const fastgltf::Texture& texture = asset.textures[textureInfo->textureIndex];
+        if (!texture.imageIndex.has_value())
+        {
+            return std::nullopt;
+        }
+
+        const fastgltf::Image& image = asset.images[texture.imageIndex.value()];
+        if (!std::holds_alternative<fastgltf::sources::URI>(image.data))
+        {
+            H2_WARNING(eLogLevel::Regular, "Texture image '{}' is not URI-based, skipping", image.name);
+            return std::nullopt;
+        }
+
+        const auto& uriSource = std::get<fastgltf::sources::URI>(image.data);
+
+        std::filesystem::path ddsPath = directory / uriSource.uri.fspath();
+        ddsPath.replace_extension(".dds");
+
+        return ddsPath.string();
+    }
+
+    static Material ExtractMaterial(const fastgltf::Asset& asset, const fastgltf::Material& material,
+                                    const std::filesystem::path& directory)
     {
         Material result{};
         result.name = std::string(material.name);
@@ -136,6 +168,11 @@ namespace Hydrogen
         result.emissive = {material.emissiveFactor.x() * emissiveStrength,
                            material.emissiveFactor.y() * emissiveStrength,
                            material.emissiveFactor.z() * emissiveStrength};
+
+        result.albedoTexturePath = ResolveTexturePath(asset, material.pbrData.baseColorTexture, directory);
+        result.normalTexturePath = ResolveTexturePath(asset, material.normalTexture, directory);
+        result.metallicRoughnessTexturePath =
+            ResolveTexturePath(asset, material.pbrData.metallicRoughnessTexture, directory);
 
         return result;
     }
@@ -281,7 +318,7 @@ namespace Hydrogen
         model.materials.reserve(asset.materials.size());
         for (const fastgltf::Material& material : asset.materials)
         {
-            model.materials.push_back(ExtractMaterial(material));
+            model.materials.push_back(ExtractMaterial(asset, material, directory));
         }
 
         std::size_t sceneIndex = 0;

@@ -9,8 +9,10 @@
 
 #include "config.h"
 #include "gpuMesh.h"
+#include "gpuTexture.h"
 #include "mesh.h"
 #include "material.h"
+#include "textureAsset.h"
 #include "assetUploadQueue.h"
 #include "buffer.h"
 #include "uploadBuffer.h"
@@ -38,6 +40,11 @@ namespace Hydrogen
 
         void RegisterMaterial(MaterialHandle handle, const Material& material);
         void RegisterMaterials(std::vector<MaterialHandle>& materialHandles, std::vector<Material>& materials);
+
+        // Enqueues a texture for upload. Actual GPU upload happens during Update(), up to
+        // m_maxTextureUploadsPerFrame per frame.
+        void RegisterTexture(TextureHandle handle, TextureData&& data);
+        void RegisterTextures(std::vector<TextureHandle>& textureHandles, std::vector<TextureData>& textures);
 
         // TODO: Should this take the FrameContext at all? It only needs frameIndex and
         // renderScene.objects, and the context it gets holds a reference back to this scene.
@@ -90,6 +97,7 @@ namespace Hydrogen
             return m_indexBuffer.get();
         }
         const GpuMesh* GetGpuMesh(MeshHandle handle) const;
+        const GpuTexture* GetGpuTexture(TextureHandle handle) const;
 
         const UploadBuffer* GetInstanceDescs() const
         {
@@ -118,17 +126,44 @@ namespace Hydrogen
             uint64 buildFence = 0;
         };
 
+        struct TextureUploadData
+        {
+            TextureHandle handle{};
+            TextureData data{};
+        };
+        struct InFlightTextureUploadData
+        {
+            TextureHandle handle{};
+            uint64 copyFence = 0;
+        };
+
+        // Per-material texture bindings, kept alongside m_materialCache so UpdateMaterials() can
+        // re-resolve TextureHandle -> current SRV index every frame (the texture may not have an
+        // SRV yet at RegisterMaterial time).
+        struct MaterialTextureBindings
+        {
+            TextureHandle albedo{};
+            TextureHandle normal{};
+            TextureHandle metallicRoughness{};
+        };
+
         void ProcessMeshUploads();
         void ProcessBlasBuilds();
         void PublishReadyMeshes();
 
+        void ProcessTextureUploads();
+        void PublishReadyTextures();
+
         void UploadMeshGeometry(MeshHandle handle, const Mesh& mesh);
         void BuildBlas(std::span<const InFlightMeshUploadData> uploads);
+        void UploadTextureData(TextureHandle handle, const TextureData& data);
 
         void UpdateMeshData();
         void UpdateTransforms(std::span<const RenderObject> objects);
         void UpdateMaterials();
         void UpdateLights(std::span<const RenderLight> lights);
+
+        uint32 ResolveTextureSrvIndex(TextureHandle handle) const;
 
         GpuDevice* m_pDevice = nullptr;
         GpuUploader* m_pUploader = nullptr;
@@ -140,6 +175,7 @@ namespace Hydrogen
         uint32 m_nextIndex = 0;
 
         std::vector<GpuMesh> m_gpuMeshCache{};
+        std::vector<GpuTexture> m_gpuTextureCache{};
 
         std::unique_ptr<Buffer> m_positionBuffer{};
         ShaderResourceViewHandle m_positionSrv{};
@@ -172,6 +208,7 @@ namespace Hydrogen
         std::array<std::unique_ptr<UploadBuffer>, Config::FramesInFlight> m_materialDataBuffers{};
         std::array<ShaderResourceViewHandle, Config::FramesInFlight> m_materialDataSrvs{};
         std::vector<GpuMaterialData> m_materialCache{};
+        std::vector<MaterialTextureBindings> m_materialTextureBindings{};
 
         std::array<std::unique_ptr<UploadBuffer>, Config::FramesInFlight> m_lightBuffers{};
         std::array<ShaderResourceViewHandle, Config::FramesInFlight> m_lightSrvs{};
@@ -185,6 +222,11 @@ namespace Hydrogen
         std::queue<MeshUploadData> m_meshUploadQueue{};
         std::vector<InFlightMeshUploadData> m_inFlightMeshUploads{};
         std::vector<InFlightBlasBuildData> m_inFlightBlasBuilds{};
+
+        // Async texture pipeline
+        static constexpr uint32 m_maxTextureUploadsPerFrame = 8;
+        std::queue<TextureUploadData> m_textureUploadQueue{};
+        std::vector<InFlightTextureUploadData> m_inFlightTextureUploads{};
 
         std::array<std::unique_ptr<Buffer>, Config::FramesInFlight> m_blasScratchBuffers{};
         std::vector<std::unique_ptr<Buffer>> m_blasBuffers{};

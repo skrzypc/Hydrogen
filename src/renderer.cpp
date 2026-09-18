@@ -47,7 +47,7 @@ namespace Hydrogen
         m_frameGraph.Initialize(m_gpuDevice);
         m_uploadBuffer.Initialize(m_gpuDevice, 1024 * 1024); // 1 MiB per frame
         GraphicsContext::s_pUploadBuffer = &m_uploadBuffer;
-        m_gpuUploader.Initialize(m_gpuDevice, 256 * 1024 * 1024);
+        m_gpuUploader.Initialize(m_gpuDevice, static_cast<uint64>(256ull * 1024ull * 1024ull));
         m_gpuScene.Initialize(m_gpuDevice, m_gpuUploader, 50'000'000, 150'000'000);
 
         m_viewBuffer = m_gpuDevice.CreateUploadBuffer(L"H2_VIEW_BUFFER", m_maxViews * sizeof(ViewData));
@@ -147,6 +147,24 @@ namespace Hydrogen
             }
 
             m_gpuScene.RegisterMaterials(materialHandles, materials);
+        }
+
+        auto textureRequests = m_pUploadQueue->DrainTextures();
+        if (!textureRequests.empty())
+        {
+            std::vector<TextureHandle> textureHandles{};
+            textureHandles.reserve(textureRequests.size());
+
+            std::vector<TextureData> textures{};
+            textures.reserve(textureRequests.size());
+
+            for (auto&& request : textureRequests)
+            {
+                textureHandles.push_back(request.handle);
+                textures.push_back(std::move(request.data));
+            }
+
+            m_gpuScene.RegisterTextures(textureHandles, textures);
         }
     }
 

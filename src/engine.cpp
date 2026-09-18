@@ -8,6 +8,7 @@
 #include "verifier.h"
 #include "renderScene.h"
 #include "modelLoader.h"
+#include "textureLoader.h"
 #include "primitiveBuilders.h"
 #include "components/transformComponent.h"
 #include "components/meshComponent.h"
@@ -43,7 +44,7 @@ namespace Hydrogen
             std::vector<Model> models{};
             // AMD SPONZA
             {
-                // models.emplace_back(ModelLoader::Load("data/models/AmdSponza/MainSponza.gltf"));
+                models.emplace_back(ModelLoader::Load("data/models/AmdSponza/MainSponza.gltf"));
             }
             // INTEL SPONZA
             {
@@ -54,7 +55,7 @@ namespace Hydrogen
             }
             // CORNELL BOX
             {
-                models.emplace_back(ModelLoader::Load("data/models/cornell_box/scene.gltf"));
+                // models.emplace_back(ModelLoader::Load("data/models/cornell_box/scene.gltf"));
             }
 
             for (Model& model : models)
@@ -67,9 +68,23 @@ namespace Hydrogen
                     handles.push_back(m_assetRegistry.RegisterMesh(std::move(metaData), std::move(mesh)));
                 }
 
+                auto registerTextureIfPresent = [this](const std::optional<std::string>& path) -> TextureHandle
+                {
+                    if (!path.has_value())
+                    {
+                        return TextureHandle{};
+                    }
+                    TextureMetadata metadata{.name = *path, .path = *path};
+                    return m_assetRegistry.RegisterTexture(std::move(metadata), TextureLoader::Load(*path));
+                };
+
                 std::vector<MaterialHandle> materialHandles;
                 for (Material& material : model.materials)
                 {
+                    material.albedoTexture = registerTextureIfPresent(material.albedoTexturePath);
+                    material.normalTexture = registerTextureIfPresent(material.normalTexturePath);
+                    material.metallicRoughnessTexture = registerTextureIfPresent(material.metallicRoughnessTexturePath);
+
                     materialHandles.push_back(m_assetRegistry.RegisterMaterial(std::move(material)));
                 }
 

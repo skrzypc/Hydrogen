@@ -127,6 +127,7 @@ namespace Hydrogen
         if (handle.id >= m_materialCache.size())
         {
             m_materialCache.resize(handle.id + 1);
+            m_materialTextureBindings.resize(handle.id + 1);
         }
 
         m_materialCache[handle.id] = {
@@ -134,6 +135,12 @@ namespace Hydrogen
             .roughness = material.roughness,
             .emissive = material.emissive,
             .metallic = material.metallic,
+        };
+
+        m_materialTextureBindings[handle.id] = {
+            .albedo = material.albedoTexture,
+            .normal = material.normalTexture,
+            .metallicRoughness = material.metallicRoughnessTexture,
         };
     }
 
@@ -145,6 +152,30 @@ namespace Hydrogen
         }
     }
 
+    void GpuScene::RegisterTexture(TextureHandle handle, TextureData&& data)
+    {
+        if (handle.id >= m_gpuTextureCache.size())
+        {
+            m_gpuTextureCache.resize(handle.id + 1);
+        }
+
+        if (m_gpuTextureCache[handle.id].state != GpuTextureState::Empty)
+        {
+            return;
+        }
+
+        m_gpuTextureCache[handle.id].state = GpuTextureState::Registered;
+        m_textureUploadQueue.push(TextureUploadData{handle, std::move(data)});
+    }
+
+    void GpuScene::RegisterTextures(std::vector<TextureHandle>& textureHandles, std::vector<TextureData>& textures)
+    {
+        for (uint32 i = 0; i < textureHandles.size(); ++i)
+        {
+            RegisterTexture(textureHandles[i], std::move(textures[i]));
+        }
+    }
+
     void GpuScene::Update(const FrameContext& frameContext)
     {
         m_currentFrameIndex = frameContext.frameIndex;
@@ -152,6 +183,9 @@ namespace Hydrogen
         ProcessMeshUploads();
         ProcessBlasBuilds();
         PublishReadyMeshes();
+
+        ProcessTextureUploads();
+        PublishReadyTextures();
 
         UpdateMeshData();
         UpdateTransforms(frameContext.renderScene.objects);
@@ -355,6 +389,57 @@ namespace Hydrogen
         m_inFlightBlasBuilds = std::move(remaining);
     }
 
+    void GpuScene::ProcessTextureUploads()
+    {
+        if (m_textureUploadQueue.empty())
+        {
+            return;
+        }
+
+        const uint32 firstPendingIdx = static_cast<uint32>(m_inFlightTextureUploads.size());
+        uint32 count = 0;
+
+        while (!m_textureUploadQueue.empty() && count < m_maxTextureUploadsPerFrame)
+        {
+            TextureUploadData& queued = m_textureUploadQueue.front();
+
+            UploadTextureData(queued.handle, queued.data);
+            m_inFlightTextureUploads.push_back(InFlightTextureUploadData{queued.handle, 0});
+            m_textureUploadQueue.pop();
+            ++count;
+        }
+
+        const uint64 fence = m_pUploader->Flush();
+        for (uint32 i = firstPendingIdx; i < static_cast<uint32>(m_inFlightTextureUploads.size()); ++i)
+        {
+            m_inFlightTextureUploads[i].copyFence = fence;
+        }
+    }
+
+    void GpuScene::PublishReadyTextures()
+    {
+        if (m_inFlightTextureUploads.empty())
+        {
+            return;
+        }
+
+        const uint64 completedCopy = m_pDevice->GetCompletedFenceValue<eQueueType::Copy>();
+
+        std::vector<InFlightTextureUploadData> remaining{};
+        for (auto& entry : m_inFlightTextureUploads)
+        {
+            if (entry.copyFence <= completedCopy)
+            {
+                m_gpuTextureCache[entry.handle.id].state = GpuTextureState::Ready;
+            }
+            else
+            {
+                remaining.push_back(entry);
+            }
+        }
+        m_inFlightTextureUploads = std::move(remaining);
+    }
+
     void GpuScene::UpdateMeshData()
     {
         H2_VERIFY_FATAL(m_gpuMeshCache.size() <= m_sceneCapacity, "GpuScene mesh count exceeds scene capacity!");
@@ -431,6 +516,16 @@ namespace Hydrogen
     {
         H2_VERIFY_FATAL(m_materialCache.size() <= m_sceneCapacity, "GpuScene material count exceeds scene capacity!");
 
+        for (uint32 materialIndex = 0; materialIndex < static_cast<uint32>(m_materialCache.size()); ++materialIndex)
+        {
+            const MaterialTextureBindings& bindings = m_materialTextureBindings[materialIndex];
+            GpuMaterialData& data = m_materialCache[materialIndex];
+
+            data.albedoTextureIndex = ResolveTextureSrvIndex(bindings.albedo);
+            data.normalTextureIndex = ResolveTextureSrvIndex(bindings.normal);
+            data.metallicRoughnessTextureIndex = ResolveTextureSrvIndex(bindings.metallicRoughness);
+        }
+
         if (!m_materialCache.empty())
         {
             m_materialDataBuffers[m_currentFrameIndex]->Write(m_materialCache.data(),
@@ -497,6 +592,31 @@ namespace Hydrogen
         m_nextIndex += indexCount;
     }
 
+    void GpuScene::UploadTextureData(TextureHandle handle, const TextureData& data)
+    {
+        GpuTexture& gpuTexture = m_gpuTextureCache[handle.id];
+
+        ResourceState initialState{};
+        initialState.layout = D3D12_BARRIER_LAYOUT_COMMON;
+        gpuTexture.texture =
+            m_pDevice->CreateTexture(String::ToWide(String::Format("H2_TEXTURE_{}", handle.id)), data.desc, initialState);
+
+        for (uint32 mipIndex = 0; mipIndex < static_cast<uint32>(data.subresources.size()); ++mipIndex)
+        {
+            const SubresourceLayout& layout = data.subresources[mipIndex];
+            m_pUploader->Upload(data.pixelData.data() + layout.offset, gpuTexture.texture.get(), mipIndex);
+        }
+
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+        srvDesc.Format = data.desc.format;
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srvDesc.Texture2D.MostDetailedMip = 0;
+        srvDesc.Texture2D.MipLevels = data.desc.mipLevels;
+
+        gpuTexture.srv = m_pDevice->CreateShaderResourceView(gpuTexture.texture.get(), srvDesc);
+    }
+
     const GpuMesh* GpuScene::GetGpuMesh(MeshHandle handle) const
     {
         if (handle.id >= m_gpuMeshCache.size())
@@ -504,5 +624,24 @@ namespace Hydrogen
             return nullptr;
         }
         return &m_gpuMeshCache[handle.id];
+    }
+
+    const GpuTexture* GpuScene::GetGpuTexture(TextureHandle handle) const
+    {
+        if (handle.id >= m_gpuTextureCache.size())
+        {
+            return nullptr;
+        }
+        return &m_gpuTextureCache[handle.id];
+    }
+
+    uint32 GpuScene::ResolveTextureSrvIndex(TextureHandle handle) const
+    {
+        const GpuTexture* pTexture = GetGpuTexture(handle);
+        if (!pTexture || !pTexture->texture)
+        {
+            return InvalidTextureIndex;
+        }
+        return pTexture->srv.index;
     }
 } // namespace Hydrogen

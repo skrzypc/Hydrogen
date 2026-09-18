@@ -4,6 +4,7 @@
 
 #include "mesh.h"
 #include "material.h"
+#include "textureAsset.h"
 
 namespace Hydrogen
 {
@@ -18,6 +19,13 @@ namespace Hydrogen
     {
         MaterialHandle handle{};
         Material material{};
+    };
+
+    struct TextureUploadRequest
+    {
+        TextureHandle handle{};
+        TextureMetadata metadata{};
+        TextureData data{};
     };
 
     class AssetUploadQueue
@@ -53,8 +61,24 @@ namespace Hydrogen
             return result;
         }
 
+        void PushTexture(TextureUploadRequest request)
+        {
+            // TODO: add mutex when multithreading is introduced
+            m_pendingTextures.push_back(std::move(request));
+        }
+
+        std::vector<TextureUploadRequest> DrainTextures()
+        {
+            // TODO: add mutex when multithreading is introduced
+            std::vector<TextureUploadRequest> result{};
+            result.swap(m_pendingTextures);
+
+            return result;
+        }
+
     private:
         std::vector<MeshUploadRequest> m_pending{};
         std::vector<MaterialUploadRequest> m_pendingMaterials{};
+        std::vector<TextureUploadRequest> m_pendingTextures{};
     };
 } // namespace Hydrogen
