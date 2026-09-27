@@ -1,3 +1,4 @@
+#include <cmath>
 #include <filesystem>
 
 #include <fastgltf/core.hpp>
@@ -9,6 +10,83 @@
 
 namespace Hydrogen
 {
+    static void GenerateTangents(Mesh& mesh)
+    {
+        std::vector<DirectX::XMFLOAT3> tangentAccum(mesh.positions.size(), DirectX::XMFLOAT3{0.0f, 0.0f, 0.0f});
+        std::vector<DirectX::XMFLOAT3> bitangentAccum(mesh.positions.size(), DirectX::XMFLOAT3{0.0f, 0.0f, 0.0f});
+
+        for (std::size_t i = 0; i + 2 < mesh.indices.size(); i += 3)
+        {
+            const uint32 i0 = mesh.indices[i];
+            const uint32 i1 = mesh.indices[i + 1];
+            const uint32 i2 = mesh.indices[i + 2];
+
+            const DirectX::XMVECTOR p0 = DirectX::XMLoadFloat3(&mesh.positions[i0]);
+            const DirectX::XMVECTOR p1 = DirectX::XMLoadFloat3(&mesh.positions[i1]);
+            const DirectX::XMVECTOR p2 = DirectX::XMLoadFloat3(&mesh.positions[i2]);
+
+            const DirectX::XMFLOAT2& uv0 = mesh.uvs[i0];
+            const DirectX::XMFLOAT2& uv1 = mesh.uvs[i1];
+            const DirectX::XMFLOAT2& uv2 = mesh.uvs[i2];
+
+            const DirectX::XMVECTOR edge1 = DirectX::XMVectorSubtract(p1, p0);
+            const DirectX::XMVECTOR edge2 = DirectX::XMVectorSubtract(p2, p0);
+
+            const float32 deltaU1 = uv1.x - uv0.x;
+            const float32 deltaV1 = uv1.y - uv0.y;
+            const float32 deltaU2 = uv2.x - uv0.x;
+            const float32 deltaV2 = uv2.y - uv0.y;
+
+            const float32 determinant = deltaU1 * deltaV2 - deltaU2 * deltaV1;
+            if (std::abs(determinant) < 1e-8f)
+            {
+                continue; // Degenerate UVs — leave this triangle's contribution out.
+            }
+            const float32 invDeterminant = 1.0f / determinant;
+
+            const DirectX::XMVECTOR faceTangent = DirectX::XMVectorScale(
+                DirectX::XMVectorSubtract(DirectX::XMVectorScale(edge1, deltaV2), DirectX::XMVectorScale(edge2, deltaV1)),
+                invDeterminant);
+            const DirectX::XMVECTOR faceBitangent = DirectX::XMVectorScale(
+                DirectX::XMVectorSubtract(DirectX::XMVectorScale(edge2, deltaU1), DirectX::XMVectorScale(edge1, deltaU2)),
+                invDeterminant);
+
+            for (uint32 vertexIndex : {i0, i1, i2})
+            {
+                DirectX::XMStoreFloat3(&tangentAccum[vertexIndex],
+                                       DirectX::XMVectorAdd(DirectX::XMLoadFloat3(&tangentAccum[vertexIndex]), faceTangent));
+                DirectX::XMStoreFloat3(
+                    &bitangentAccum[vertexIndex],
+                    DirectX::XMVectorAdd(DirectX::XMLoadFloat3(&bitangentAccum[vertexIndex]), faceBitangent));
+            }
+        }
+
+        mesh.tangents.resize(mesh.positions.size());
+        for (uint32 vertexIndex = 0; vertexIndex < static_cast<uint32>(mesh.positions.size()); ++vertexIndex)
+        {
+            const DirectX::XMVECTOR normal = DirectX::XMLoadFloat3(&mesh.normals[vertexIndex]);
+            DirectX::XMVECTOR tangent = DirectX::XMLoadFloat3(&tangentAccum[vertexIndex]);
+            const DirectX::XMVECTOR bitangent = DirectX::XMLoadFloat3(&bitangentAccum[vertexIndex]);
+
+            // Gram-Schmidt orthogonalize against the vertex normal.
+            tangent = DirectX::XMVectorSubtract(tangent, DirectX::XMVectorScale(normal, DirectX::XMVectorGetX(DirectX::XMVector3Dot(normal, tangent))));
+
+            DirectX::XMFLOAT3 tangentXyz{1.0f, 0.0f, 0.0f};
+            if (DirectX::XMVectorGetX(DirectX::XMVector3LengthSq(tangent)) > 1e-12f)
+            {
+                DirectX::XMStoreFloat3(&tangentXyz, DirectX::XMVector3Normalize(tangent));
+                tangent = DirectX::XMLoadFloat3(&tangentXyz);
+            }
+
+            const float32 handedness =
+                DirectX::XMVectorGetX(DirectX::XMVector3Dot(DirectX::XMVector3Cross(normal, tangent), bitangent)) < 0.0f
+                    ? -1.0f
+                    : 1.0f;
+
+            mesh.tangents[vertexIndex] = {tangentXyz.x, tangentXyz.y, tangentXyz.z, handedness};
+        }
+    }
+
     static Mesh ExtractPrimitive(const fastgltf::Asset& asset, const fastgltf::Primitive& prim,
                                  std::string_view meshName, uint32 primIndex)
     {
@@ -80,6 +158,22 @@ namespace Hydrogen
         for (std::size_t i = 0; i + 2 < sm.indices.size(); i += 3)
         {
             std::swap(sm.indices[i + 1], sm.indices[i + 2]);
+        }
+
+        // Tangents — negate Z to match the RH→LH conversion applied to positions/normals above.
+        auto tanIt = std::find_if(prim.attributes.begin(), prim.attributes.end(),
+                                  [](const fastgltf::Attribute& a) { return a.name == "TANGENT"; });
+        if (tanIt != prim.attributes.end())
+        {
+            const fastgltf::Accessor& tanAccessor = asset.accessors[tanIt->accessorIndex];
+            sm.tangents.resize(tanAccessor.count);
+            fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec4>(
+                asset, tanAccessor, [&](fastgltf::math::fvec4 v, std::size_t i)
+                { sm.tangents[i] = {v.x(), v.y(), -v.z(), v.w()}; });
+        }
+        else
+        {
+            GenerateTangents(sm);
         }
 
         return sm;

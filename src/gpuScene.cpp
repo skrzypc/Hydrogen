@@ -32,6 +32,8 @@ namespace Hydrogen
             L"H2_SCENE_POSITIONS", Buffer::Desc{.size = maxVertices * sizeof(DirectX::XMFLOAT3)}, initialState);
         m_normalBuffer = device.CreateBuffer(
             L"H2_SCENE_NORMALS", Buffer::Desc{.size = maxVertices * sizeof(DirectX::XMFLOAT3)}, initialState);
+        m_tangentBuffer = device.CreateBuffer(
+            L"H2_SCENE_TANGENTS", Buffer::Desc{.size = maxVertices * sizeof(DirectX::XMFLOAT4)}, initialState);
         m_uvBuffer = device.CreateBuffer(L"H2_SCENE_UVS", Buffer::Desc{.size = maxVertices * sizeof(DirectX::XMFLOAT2)},
                                          initialState);
         m_indexBuffer =
@@ -48,6 +50,9 @@ namespace Hydrogen
         srvDesc.Buffer.StructureByteStride = sizeof(DirectX::XMFLOAT3);
         m_positionSrv = device.CreateShaderResourceView(m_positionBuffer.get(), srvDesc);
         m_normalSrv = device.CreateShaderResourceView(m_normalBuffer.get(), srvDesc);
+
+        srvDesc.Buffer.StructureByteStride = sizeof(DirectX::XMFLOAT4);
+        m_tangentSrv = device.CreateShaderResourceView(m_tangentBuffer.get(), srvDesc);
 
         srvDesc.Buffer.StructureByteStride = sizeof(DirectX::XMFLOAT2);
         m_uvSrv = device.CreateShaderResourceView(m_uvBuffer.get(), srvDesc);
@@ -523,7 +528,7 @@ namespace Hydrogen
 
             data.albedoTextureIndex = ResolveTextureSrvIndex(bindings.albedo);
             data.normalTextureIndex = ResolveTextureSrvIndex(bindings.normal);
-            data.metallicRoughnessTextureIndex = ResolveTextureSrvIndex(bindings.metallicRoughness);
+            data.roughnessMetallicTextureIndex = ResolveTextureSrvIndex(bindings.metallicRoughness);
         }
 
         if (!m_materialCache.empty())
@@ -576,6 +581,8 @@ namespace Hydrogen
                             m_nextVertex * sizeof(DirectX::XMFLOAT3));
         m_pUploader->Upload(src.normals.data(), vertexCount * sizeof(DirectX::XMFLOAT3), m_normalBuffer.get(),
                             m_nextVertex * sizeof(DirectX::XMFLOAT3));
+        m_pUploader->Upload(src.tangents.data(), vertexCount * sizeof(DirectX::XMFLOAT4), m_tangentBuffer.get(),
+                            m_nextVertex * sizeof(DirectX::XMFLOAT4));
         m_pUploader->Upload(src.uvs.data(), vertexCount * sizeof(DirectX::XMFLOAT2), m_uvBuffer.get(),
                             m_nextVertex * sizeof(DirectX::XMFLOAT2));
         m_pUploader->Upload(src.indices.data(), indexCount * sizeof(uint32), m_indexBuffer.get(),

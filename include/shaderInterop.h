@@ -18,6 +18,7 @@ namespace Hydrogen
     {
         uint vertexPositionBufferIndex;
         uint vertexNormalBufferIndex;
+        uint vertexTangentBufferIndex;
         uint vertexUvBufferIndex;
         uint indexBufferIndex;
 
@@ -65,7 +66,7 @@ namespace Hydrogen
 
         uint albedoTextureIndex;
         uint normalTextureIndex;
-        uint metallicRoughnessTextureIndex;
+        uint roughnessMetallicTextureIndex;
         uint _pad;
     };
 

@@ -59,6 +59,10 @@ namespace Hydrogen
         {
             return m_normalSrv.index;
         }
+        uint32 GetTangentBufferIndex() const
+        {
+            return m_tangentSrv.index;
+        }
         uint32 GetUvBufferIndex() const
         {
             return m_uvSrv.index;
@@ -185,6 +189,9 @@ namespace Hydrogen
 
         std::unique_ptr<Buffer> m_normalBuffer{};
         ShaderResourceViewHandle m_normalSrv{};
+
+        std::unique_ptr<Buffer> m_tangentBuffer{};
+        ShaderResourceViewHandle m_tangentSrv{};
 
         std::unique_ptr<Buffer> m_uvBuffer{};
         ShaderResourceViewHandle m_uvSrv{};

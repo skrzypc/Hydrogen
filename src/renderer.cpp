@@ -266,6 +266,7 @@ namespace Hydrogen
         frameData.mainViewIndex = 0;
         frameData.vertexPositionBufferIndex = m_gpuScene.GetPositionBufferIndex();
         frameData.vertexNormalBufferIndex = m_gpuScene.GetNormalBufferIndex();
+        frameData.vertexTangentBufferIndex = m_gpuScene.GetTangentBufferIndex();
         frameData.vertexUvBufferIndex = m_gpuScene.GetUvBufferIndex();
         frameData.indexBufferIndex = m_gpuScene.GetIndexBufferIndex();
         frameData.meshDataBufferIndex = m_gpuScene.GetMeshDataBufferIndex();

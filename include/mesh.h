@@ -30,6 +30,7 @@ namespace Hydrogen
 
         std::vector<DirectX::XMFLOAT3> positions;
         std::vector<DirectX::XMFLOAT3> normals;
+        std::vector<DirectX::XMFLOAT4> tangents;
         std::vector<DirectX::XMFLOAT2> uvs;
 
         std::vector<uint32> indices;

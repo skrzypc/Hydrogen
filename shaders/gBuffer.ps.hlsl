@@ -1,6 +1,12 @@
 #include "include/common.hlsli"
 #include "include/shaderUtils.hlsli"
 
+SamplerState LinearWrapSampler : register(s0);
+SamplerState LinearClampSampler : register(s1);
+SamplerState PointClampSampler : register(s2);
+SamplerState AnisoWrapSampler : register(s3);
+SamplerState LinearBorderSampler : register(s4);
+
 struct PushConstants
 {
     uint transformIndex;
@@ -14,6 +20,8 @@ struct PsIn
 {
     float4 positionClipSpace : SV_Position;
     float3 normalWorldSpace : NORMAL;
+    float4 tangentWorldSpace : TANGENT;
+    float2 uvCoords : TEXCOORD0;
 };
 
 struct PsOut
@@ -31,9 +39,38 @@ PsOut mainPS(PsIn input)
 
     PsOut output;
 
-    output.albedo = float4(material.albedo, 1.0f);
-    output.normal = EncodeOctahedral(normalize(input.normalWorldSpace));
-    output.roughnessMetallic = float2(material.roughness, material.metallic);
+    float3 albedo = material.albedo;
+    if (material.albedoTextureIndex != InvalidTextureIndex)
+    {
+        Texture2D<float4> albedoTexture = ResourceDescriptorHeap[material.albedoTextureIndex];
+        albedo = albedoTexture.Sample(AnisoWrapSampler, input.uvCoords).rgb;
+    }
+
+    float2 roughnessMetallic = float2(material.roughness, material.metallic);
+    if (material.roughnessMetallicTextureIndex != InvalidTextureIndex)
+    {
+        Texture2D<float4> roughnessMetallicTexture = ResourceDescriptorHeap[material.roughnessMetallicTextureIndex];
+        roughnessMetallic = roughnessMetallicTexture.Sample(AnisoWrapSampler, input.uvCoords).gb;
+    }
+
+    float3 normal = normalize(input.normalWorldSpace);
+    if (material.normalTextureIndex != InvalidTextureIndex)
+    {
+        Texture2D<float4> normalTexture = ResourceDescriptorHeap[material.normalTextureIndex];
+        float3 tangentSpaceNormal = normalTexture.Sample(AnisoWrapSampler, input.uvCoords).xyz * 2.0f - 1.0f;
+
+        float3 T = normalize(input.tangentWorldSpace.xyz);
+        float3 N = normal;
+        T = normalize(T - N * dot(N, T)); // re-orthogonalize after interpolation
+        float3 B = cross(N, T) * input.tangentWorldSpace.w;
+        float3x3 TBN = float3x3(T, B, N);
+
+        normal = normalize(mul(tangentSpaceNormal, TBN));
+    }
+
+    output.albedo = float4(albedo, 1.0f);
+    output.normal = EncodeOctahedral(normal);
+    output.roughnessMetallic = float2(roughnessMetallic.x, roughnessMetallic.y);
 
     return output;
 }
