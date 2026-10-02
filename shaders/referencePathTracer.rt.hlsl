@@ -17,16 +17,17 @@ ConstantBuffer<PushConstants> g_push : register(b0, space0);
 static const float3 kSkyRadiance = float3(0.02f, 0.04f, 0.08f);
 // static const float3 kSkyRadiance = float3(0.05f, 0.05f, 0.05f);
 
-static const uint MIN_BOUNCES = 1;
-static const uint MAX_BOUNCES = 3;
+static const uint MIN_BOUNCES = 2;
+static const uint MAX_BOUNCES = 5;
 
 struct [raypayload] RayPayload
 {
     float3 shadingNormal : write(closesthit) : read(caller);
-    float3 geometryNormal : write(closesthit) : read(caller);
-    float2 uv : write(closesthit) : read(caller);
-    float hitDistance : write(closesthit, miss) : read(caller);
-    uint materialId : write(closesthit) : read(caller);
+float4 shadingTangent : write(closesthit) : read(caller);
+float3 geometryNormal : write(closesthit) : read(caller);
+float2 uv : write(closesthit) : read(caller);
+float hitDistance : write(closesthit, miss) : read(caller);
+uint materialId : write(closesthit) : read(caller);
 };
 
 struct [raypayload] ShadowRayPayload
@@ -37,8 +38,9 @@ struct [raypayload] ShadowRayPayload
 struct SurfaceHit
 {
     float3 position;
-    float3 shadingNormal;
     float3 geometryNormal;
+    float3 shadingNormal;
+    float4 shadingTangent;
     float2 uv;
 
     uint materialIndex;
@@ -53,6 +55,7 @@ SurfaceHit GetSurfaceHit(BuiltInTriangleIntersectionAttributes triangleAttribute
 
     StructuredBuffer<float3> positionsBuffer = ResourceDescriptorHeap[g_frame.vertexPositionBufferIndex];
     StructuredBuffer<float3> normalsBuffer = ResourceDescriptorHeap[g_frame.vertexNormalBufferIndex];
+    StructuredBuffer<float4> tangentsBuffer = ResourceDescriptorHeap[g_frame.vertexTangentBufferIndex];
     StructuredBuffer<float2> uvsBuffer = ResourceDescriptorHeap[g_frame.vertexUvBufferIndex];
 
     GpuInstanceData sInstanceData = instancesDataBuffer[InstanceID()];
@@ -72,11 +75,17 @@ SurfaceHit GetSurfaceHit(BuiltInTriangleIntersectionAttributes triangleAttribute
     const float3 v1 = mul(ObjectToWorld3x4(), float4(positionsBuffer[i1], 1.0f)).xyz;
     const float3 v2 = mul(ObjectToWorld3x4(), float4(positionsBuffer[i2], 1.0f)).xyz;
 
+    const float4 t0 = tangentsBuffer[i0];
+    const float4 t1 = tangentsBuffer[i1];
+    const float4 t2 = tangentsBuffer[i2];
+
     SurfaceHit hit;
     hit.position = b0 * v0 + b1 * v1 + b2 * v2;
-    hit.shadingNormal = normalize(mul(transpose((float3x3)WorldToObject3x4()),
+    hit.shadingNormal = normalize(mul(transpose((float3x3) WorldToObject3x4()),
                                       b0 * normalsBuffer[i0] + b1 * normalsBuffer[i1] + b2 * normalsBuffer[i2]));
     hit.geometryNormal = normalize(cross(v1 - v0, v2 - v0));
+    hit.shadingTangent.xyz = normalize(mul((float3x3) ObjectToWorld3x4(), b0 * t0.xyz + b1 * t1.xyz + b2 * t2.xyz));
+    hit.shadingTangent.w = b0 * t0.w + b1 * t1.w + b2 * t2.w;
     hit.uv = b0 * uvsBuffer[i0] + b1 * uvsBuffer[i1] + b2 * uvsBuffer[i2];
 
     hit.materialIndex = sInstanceData.materialDataIndex;
@@ -164,10 +173,10 @@ void mainRayGen()
         // i > 0 <- Bounce ray.
         TraceRay(tlas,
                  RAY_FLAG_FORCE_OPAQUE, // flags
-                 0xFF,                  // instance mask
-                 0,                     // hit group offset (contributionToHitGroupIndex)
-                 1,                     // geometry multiplier (stride, usually 1 hit group per geometry)
-                 0,                     // miss shader index
+                 0xFF, // instance mask
+                 0, // hit group offset (contributionToHitGroupIndex)
+                 1, // geometry multiplier (stride, usually 1 hit group per geometry)
+                 0, // miss shader index
                  currentRay, rayPayload);
 
         bool hit = rayPayload.hitDistance > 0.0f;
@@ -187,6 +196,28 @@ void mainRayGen()
         rayPayload.shadingNormal *= dot(rayPayload.geometryNormal, rayPayload.shadingNormal) < 0.0f ? -1.0f : 1.0f;
 
         GpuMaterialData material = materialDataBuffer[rayPayload.materialId];
+
+        if (material.normalTextureIndex != InvalidTextureIndex)
+        {
+            Texture2D<float4> normalTexture = ResourceDescriptorHeap[material.normalTextureIndex];
+            float3 tangentSpaceNormal = normalTexture.SampleLevel(AnisoWrapSampler, rayPayload.uv, 0.0f).xyz * 2.0f - 1.0f;
+
+            float3 T = normalize(rayPayload.shadingTangent.xyz);
+            float3 N = rayPayload.shadingNormal;
+            T = normalize(T - N * dot(N, T)); // re-orthogonalize after interpolation
+            float3 B = cross(N, T) * rayPayload.shadingTangent.w;
+            float3x3 TBN = float3x3(T, B, N);
+
+            rayPayload.shadingNormal = normalize(mul(tangentSpaceNormal, TBN));
+        }
+        
+        float3 albedo = material.albedo;
+        if (material.albedoTextureIndex != InvalidTextureIndex)
+        {
+            Texture2D<float4> albedoTexture = ResourceDescriptorHeap[material.albedoTextureIndex];
+            // TODO: Mipmapping.
+            albedo *= albedoTexture.SampleLevel(AnisoWrapSampler, rayPayload.uv, 0.0f).rgb;
+        }
 
         // Material emissive contribution.
         {
@@ -217,16 +248,16 @@ void mainRayGen()
                      RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER |
                          RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,
                      0xFF, // instance mask
-                     0,    // hit group offset (contributionToHitGroupIndex)
-                     1,    // geometry multiplier (stride, usually 1 hit group per geometry)
-                     1,    // miss shader index
+                     0, // hit group offset (contributionToHitGroupIndex)
+                     1, // geometry multiplier (stride, usually 1 hit group per geometry)
+                     1, // miss shader index
                      shadowRay, shadowRayPayload);
 
             // Light unoccluded, calculate total contribution for given point on surface.
             if (!shadowRayPayload.occluded)
             {
                 float3 lightRadiance = GetLightContributionPT(sampledLight, lightDirection, lightDistance);
-                float3 materialBrdf = material.albedo / kPi; // Diffuse for now.
+                float3 materialBrdf = albedo / kPi; // Diffuse for now.
                 float NoL = saturate(dot(rayPayload.shadingNormal, lightDirection));
 
                 currentRadiance += throughput * materialBrdf * lightRadiance * NoL * lightSampleWeight;
@@ -273,7 +304,7 @@ void mainRayGen()
             // Full form.
             //{
             //    float cosTheta = dot(bounceRayDir, rayPayload.shadingNormal);
-            //    brdf = material.albedo / kPi;
+            //    brdf = albedo / kPi;
             //    brdfPdf = cosTheta / kPi;
 
             //    throughput *= brdf * cosTheta / brdfPdf;
@@ -282,9 +313,9 @@ void mainRayGen()
             // Simplified form.
             {
                 // brdf * cosTheta / brdfPdf <==>
-                // (material.albedo / kPi) * cosTheta / (cosTheta / kPi) <==>
-                // material.albedo
-                throughput *= material.albedo;
+                // (albedo / kPi) * cosTheta / (cosTheta / kPi) <==>
+                // albedo
+                throughput *= albedo;
             }
         }
 
@@ -325,6 +356,7 @@ void mainClosestHit(inout RayPayload rayPayload,
     SurfaceHit hit = GetSurfaceHit(triangleAttributes);
 
     rayPayload.shadingNormal = hit.shadingNormal;
+    rayPayload.shadingTangent = hit.shadingTangent;
     rayPayload.geometryNormal = hit.geometryNormal;
     rayPayload.uv = hit.uv;
     rayPayload.hitDistance = RayTCurrent();

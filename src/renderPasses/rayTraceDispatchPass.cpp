@@ -31,7 +31,7 @@ namespace Hydrogen
         RaytracingPipelineState::Desc psoDesc{
             .pLibrary = &library,
             .hitGroups = hitGroups,
-            .payloadSizeBytes = sizeof(float32) * 10,
+            .payloadSizeBytes = sizeof(float32) * 14,
             .attributeSizeBytes = sizeof(float32) * 2,
             .maxRecursionDepth = 1,
         };

@@ -1,12 +1,6 @@
 #include "include/common.hlsli"
 #include "include/shaderUtils.hlsli"
 
-SamplerState LinearWrapSampler : register(s0);
-SamplerState LinearClampSampler : register(s1);
-SamplerState PointClampSampler : register(s2);
-SamplerState AnisoWrapSampler : register(s3);
-SamplerState LinearBorderSampler : register(s4);
-
 struct PushConstants
 {
     uint transformIndex;
@@ -43,7 +37,7 @@ PsOut mainPS(PsIn input)
     if (material.albedoTextureIndex != InvalidTextureIndex)
     {
         Texture2D<float4> albedoTexture = ResourceDescriptorHeap[material.albedoTextureIndex];
-        albedo = albedoTexture.Sample(AnisoWrapSampler, input.uvCoords).rgb;
+        albedo *= albedoTexture.Sample(AnisoWrapSampler, input.uvCoords).rgb;
     }
 
     float2 roughnessMetallic = float2(material.roughness, material.metallic);
