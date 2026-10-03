@@ -17,8 +17,8 @@ ConstantBuffer<PushConstants> g_push : register(b0, space0);
 static const float3 kSkyRadiance = float3(0.02f, 0.04f, 0.08f);
 // static const float3 kSkyRadiance = float3(0.05f, 0.05f, 0.05f);
 
-static const uint MIN_BOUNCES = 2;
-static const uint MAX_BOUNCES = 5;
+static const uint MIN_BOUNCES = 1;
+static const uint MAX_BOUNCES = 3;
 
 struct [raypayload] RayPayload
 {
@@ -172,12 +172,13 @@ void mainRayGen()
         // i = 0 <- Primary ray.
         // i > 0 <- Bounce ray.
         TraceRay(tlas,
-                 RAY_FLAG_FORCE_OPAQUE, // flags
-                 0xFF, // instance mask
-                 0, // hit group offset (contributionToHitGroupIndex)
-                 1, // geometry multiplier (stride, usually 1 hit group per geometry)
-                 0, // miss shader index
-                 currentRay, rayPayload);
+            RAY_FLAG_FORCE_OPAQUE, // flags
+            0xFF, // instance mask
+            0, // hit group offset (contributionToHitGroupIndex)
+            1, // geometry multiplier (stride, usually 1 hit group per geometry)
+            0, // miss shader index
+            currentRay, rayPayload
+        );
 
         bool hit = rayPayload.hitDistance > 0.0f;
 
@@ -199,7 +200,7 @@ void mainRayGen()
 
         if (material.normalTextureIndex != InvalidTextureIndex)
         {
-            Texture2D<float4> normalTexture = ResourceDescriptorHeap[material.normalTextureIndex];
+            Texture2D<float4> normalTexture = ResourceDescriptorHeap[NonUniformResourceIndex(material.normalTextureIndex)];
             float3 tangentSpaceNormal = normalTexture.SampleLevel(AnisoWrapSampler, rayPayload.uv, 0.0f).xyz * 2.0f - 1.0f;
 
             float3 T = normalize(rayPayload.shadingTangent.xyz);
@@ -214,7 +215,7 @@ void mainRayGen()
         float3 albedo = material.albedo;
         if (material.albedoTextureIndex != InvalidTextureIndex)
         {
-            Texture2D<float4> albedoTexture = ResourceDescriptorHeap[material.albedoTextureIndex];
+            Texture2D<float4> albedoTexture = ResourceDescriptorHeap[NonUniformResourceIndex(material.albedoTextureIndex)];
             // TODO: Mipmapping.
             albedo *= albedoTexture.SampleLevel(AnisoWrapSampler, rayPayload.uv, 0.0f).rgb;
         }
