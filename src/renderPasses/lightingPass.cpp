@@ -55,7 +55,7 @@ namespace Hydrogen
         const PushConstants push{
             .albedoIndex = fgExecuteContext.GetSRVIndex("GBuffer_Albedo"),
             .normalIndex = fgExecuteContext.GetSRVIndex("GBuffer_Normal"),
-            .roughnessMetalnessIndex = fgExecuteContext.GetSRVIndex("GBuffer_RM"),
+            .roughnessMetallicIndex = fgExecuteContext.GetSRVIndex("GBuffer_RM"),
             .depthIndex = fgExecuteContext.GetSRVIndex("SceneDepth"),
             .outputIndex = fgExecuteContext.GetUAVIndex("SceneColor"),
         };

@@ -3,6 +3,7 @@
 #include "include/lighting.hlsli"
 #include "include/rng.hlsli"
 #include "include/shaderUtils.hlsli"
+#include "include/brdf.hlsli"
 
 struct PushConstants
 {
@@ -14,6 +15,7 @@ struct PushConstants
 
 ConstantBuffer<PushConstants> g_push : register(b0, space0);
 
+//static const float3 kSkyRadiance = float3(0.0f, 0.0f, 0.0f);
 static const float3 kSkyRadiance = float3(0.02f, 0.04f, 0.08f);
 // static const float3 kSkyRadiance = float3(0.05f, 0.05f, 0.05f);
 
@@ -115,19 +117,6 @@ RayDesc GenerateCameraRay(const float2 vfPixel)
     return wsRay;
 }
 
-// Based of https://jcgt.org/published/0006/01/01/
-void OrthonormalBasis(const float3 normal, out float3 tangent, out float3 bitangent)
-{
-    const float s = (normal.z >= 0.0f) ? 1.0f : -1.0f;
-    const float a = -1.0f / (s + normal.z);
-    const float b = normal.x * normal.y * a;
-
-    tangent = float3(1.0f + s * normal.x * normal.x * a, s * b, -s * normal.x);
-    bitangent = float3(b, s + normal.y * normal.y * a, -normal.y);
-
-    return;
-}
-
 // TODO: Implement RT Gems 2, Chapter 6's robust self-intersection avoidance instead of a fixed epsilon.
 static const float kRayOriginBiasDistance = 0.001f;
 
@@ -211,13 +200,26 @@ void mainRayGen()
 
             rayPayload.shadingNormal = normalize(mul(tangentSpaceNormal, TBN));
         }
+
+        Surface surface;
         
-        float3 albedo = material.albedo;
+        surface.albedo = material.albedo;
         if (material.albedoTextureIndex != InvalidTextureIndex)
         {
             Texture2D<float4> albedoTexture = ResourceDescriptorHeap[NonUniformResourceIndex(material.albedoTextureIndex)];
             // TODO: Mipmapping.
-            albedo *= albedoTexture.SampleLevel(AnisoWrapSampler, rayPayload.uv, 0.0f).rgb;
+            surface.albedo *= albedoTexture.SampleLevel(AnisoWrapSampler, rayPayload.uv, 0.0f).rgb;
+        }
+
+        surface.roughness = material.roughness;
+        surface.metallic = material.metallic;
+        if (material.roughnessMetallicTextureIndex != InvalidTextureIndex)
+        {
+            Texture2D<float4> roughnessMetallicTexture = ResourceDescriptorHeap[NonUniformResourceIndex(material.roughnessMetallicTextureIndex)];
+            float2 roughnessMetallic = roughnessMetallicTexture.SampleLevel(AnisoWrapSampler, rayPayload.uv, 0.0f).gb;
+
+            surface.roughness = roughnessMetallic.x;
+            surface.metallic = roughnessMetallic.y;
         }
 
         // Material emissive contribution.
@@ -258,7 +260,8 @@ void mainRayGen()
             if (!shadowRayPayload.occluded)
             {
                 float3 lightRadiance = GetLightContributionPT(sampledLight, lightDirection, lightDistance);
-                float3 materialBrdf = albedo / kPi; // Diffuse for now.
+                //float3 materialBrdf = EvaluateBrdfLambert(surface); // Lambert
+                float3 materialBrdf = EvaluateBrdfGgx(surface, rayPayload.shadingNormal, -currentRay.Direction, lightDirection); // GGX
                 float NoL = saturate(dot(rayPayload.shadingNormal, lightDirection));
 
                 currentRadiance += throughput * materialBrdf * lightRadiance * NoL * lightSampleWeight;
@@ -282,46 +285,31 @@ void mainRayGen()
         }
 
         // Generate bounce ray.
-        float3 bounceRayDir;
+        
+        // Lambert
+        //BrdfSample brdfSample = SampleBrdfLambert(
+        //    surface,
+        //    rayPayload.shadingNormal,
+        //    float2(NextRandomFloat(rngState), NextRandomFloat(rngState))
+        //);
+        
+        // GGX
+        BrdfSample brdfSample = SampleBrdfGgx(
+            surface,
+            rayPayload.shadingNormal,
+            -currentRay.Direction,
+            float2(NextRandomFloat(rngState), NextRandomFloat(rngState))
+        );
+
+        if (dot(brdfSample.direction, rayPayload.geometryNormal) <= 0.0f)
         {
-            // Cosine weighted hemisphere sampling.
-            float u1 = NextRandomFloat(rngState);
-            float u2 = NextRandomFloat(rngState);
-
-            float r = sqrt(u1);
-            float phi = 2.0f * kPi * u2;
-
-            float x, y, z;
-            sincos(phi, z, x);
-            x *= r;
-            z *= r;
-            y = sqrt(max(0.0f, 1.0f - u1));
-
-            float3 tangent, bitangent;
-            OrthonormalBasis(rayPayload.shadingNormal, tangent, bitangent);
-
-            bounceRayDir = normalize(x * tangent + y * rayPayload.shadingNormal + z * bitangent);
-
-            // Full form.
-            //{
-            //    float cosTheta = dot(bounceRayDir, rayPayload.shadingNormal);
-            //    brdf = albedo / kPi;
-            //    brdfPdf = cosTheta / kPi;
-
-            //    throughput *= brdf * cosTheta / brdfPdf;
-            //}
-
-            // Simplified form.
-            {
-                // brdf * cosTheta / brdfPdf <==>
-                // (albedo / kPi) * cosTheta / (cosTheta / kPi) <==>
-                // albedo
-                throughput *= albedo;
-            }
+            break;
         }
-
+        
+        throughput *= brdfSample.weight;
+        
         currentRay.Origin = OffsetRayOrigin(hitWorldPosition, rayPayload.geometryNormal);
-        currentRay.Direction = bounceRayDir;
+        currentRay.Direction = brdfSample.direction;
         currentRay.TMin = 0.0f;
         currentRay.TMax = 100000.0f;
     }

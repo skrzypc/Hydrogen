@@ -16,7 +16,7 @@ namespace Hydrogen
         {
             uint32 albedoIndex = 0;
             uint32 normalIndex = 0;
-            uint32 roughnessMetalnessIndex = 0;
+            uint32 roughnessMetallicIndex = 0;
             uint32 depthIndex = 0;
             uint32 outputIndex = 0;
         };

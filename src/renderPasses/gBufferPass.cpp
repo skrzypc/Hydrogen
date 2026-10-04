@@ -36,7 +36,7 @@ namespace Hydrogen
         const std::array<DXGI_FORMAT, 3> targetFormats{
             AlbedoFormat,
             NormalFormat,
-            RoughnessMetalnessFormat,
+            RoughnessMetallicFormat,
         };
 
         D3D12_RASTERIZER_DESC2 rasterizerDesc = PipelineState::DefaultRasterizer();

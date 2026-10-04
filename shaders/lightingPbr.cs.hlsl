@@ -7,7 +7,7 @@ struct PushConstants
 {
     uint albedoIndex;
     uint normalIndex;
-    uint roughnessMetalnessIndex;
+    uint roughnessMetallicIndex;
     uint depthIndex;
     uint outputIndex;
 };
@@ -40,7 +40,7 @@ void mainCS(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     Texture2D<float4> albedoTarget = ResourceDescriptorHeap[g_push.albedoIndex];
     Texture2D<float2> normalTarget = ResourceDescriptorHeap[g_push.normalIndex];
-    Texture2D<float2> roughnessMetalnessTarget = ResourceDescriptorHeap[g_push.roughnessMetalnessIndex];
+    Texture2D<float2> roughnessMetallicTarget = ResourceDescriptorHeap[g_push.roughnessMetallicIndex];
     Texture2D<float> depthTarget = ResourceDescriptorHeap[g_push.depthIndex];
     RWTexture2D<float4> output = ResourceDescriptorHeap[g_push.outputIndex];
 
@@ -54,12 +54,12 @@ void mainCS(uint3 dispatchThreadId : SV_DispatchThreadID)
         float2 uv = (float2(pixel) + 0.5f) / view.viewportSize;
         float3 surfacePosition = ReconstructWorldPosition(uv, depth, view.invViewProjectionMx);
 
-        float2 roughnessMetalness = roughnessMetalnessTarget[pixel];
+        float2 roughnessMetallic = roughnessMetallicTarget[pixel];
 
         Surface surface;
         surface.albedo = albedoTarget[pixel].rgb;
-        surface.roughness = roughnessMetalness.x;
-        surface.metalness = roughnessMetalness.y;
+        surface.roughness = roughnessMetallic.x;
+        surface.metallic = roughnessMetallic.y;
 
         float3 N = DecodeOctahedral(normalTarget[pixel]);
         float3 V = normalize(view.worldPosition - surfacePosition);
@@ -80,7 +80,7 @@ void mainCS(uint3 dispatchThreadId : SV_DispatchThreadID)
             }
 
             float3 lightRadiance = GetLightContribution(lights[i], lightDirection, lightDistance);
-            radiance += lightRadiance * EvaluateBrdf(surface, N, V, lightDirection) * NoL;
+            radiance += lightRadiance * EvaluateBrdfGgx(surface, N, V, lightDirection) * NoL;
         }
     }
 

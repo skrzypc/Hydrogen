@@ -50,6 +50,19 @@ float3 TonemapAces(float3 color)
     return saturate((color * (a * color + b)) / (color * (c * color + d) + e));
 }
 
+// Based of https://jcgt.org/published/0006/01/01/
+void OrthonormalBasis(const float3 normal, out float3 tangent, out float3 bitangent)
+{
+    const float s = (normal.z >= 0.0f) ? 1.0f : -1.0f;
+    const float a = -1.0f / (s + normal.z);
+    const float b = normal.x * normal.y * a;
+
+    tangent = float3(1.0f + s * normal.x * normal.x * a, s * b, -s * normal.x);
+    bitangent = float3(b, s + normal.y * normal.y * a, -normal.y);
+
+    return;
+}
+
 float3 DebugColorFromId(uint id)
 {
     uint hash = id * 2654435761u;
