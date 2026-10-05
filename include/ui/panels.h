@@ -10,6 +10,7 @@ namespace Hydrogen
     struct Transform;
     struct Light;
     struct CameraComponent;
+    struct Material;
 
     class ScenePanel : public IPanel
     {
@@ -34,6 +35,7 @@ namespace Hydrogen
         void DrawTransformEditor(Transform& transform);
         void DrawLightEditor(Light& light);
         void DrawCameraEditor(CameraComponent& camera);
+        bool DrawMaterialEditor(Material& material);
 
         Entity m_lastSelection{};
         DirectX::XMFLOAT4 m_lastKnownRotation{0.0f, 0.0f, 0.0f, 1.0f};

@@ -1,6 +1,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
 
 #include <imgui.h>
 
@@ -8,10 +9,12 @@
 #include "ui/panels.h"
 
 #include "scene.h"
+#include "assetRegistry.h"
 
 #include "components/transformComponent.h"
 #include "components/lightComponent.h"
 #include "components/cameraComponent.h"
+#include "components/materialComponent.h"
 
 #include "hydrogenMath.h"
 
@@ -64,6 +67,20 @@ namespace Hydrogen
             if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen))
             {
                 DrawCameraEditor(*pCamera);
+            }
+        }
+
+        if (const MaterialComponent* pMaterialComponent = scene.materials.Get(context.selection))
+        {
+            const MaterialHandle materialHandle = pMaterialComponent->material;
+            if (const Material* pMaterial = context.pAssetRegistry->GetMaterial(materialHandle);
+                pMaterial != nullptr && ImGui::CollapsingHeader("Material", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                Material editedMaterial = *pMaterial;
+                if (DrawMaterialEditor(editedMaterial))
+                {
+                    context.pAssetRegistry->UpdateMaterial(materialHandle, std::move(editedMaterial));
+                }
             }
         }
 
@@ -151,5 +168,36 @@ namespace Hydrogen
         ImGui::DragFloat("Near Z", &camera.nearZ, 0.001f, 0.001f, camera.farZ - 0.01f, "%.3f");
         ImGui::DragFloat("Far Z", &camera.farZ, 0.1f, camera.nearZ + 0.01f, 10000.0f, "%.1f");
         ImGui::SliderFloat("Exposure", &camera.exposure, 0.01f, 1000.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+    }
+
+    bool InspectorPanel::DrawMaterialEditor(Material& material)
+    {
+        ImGui::LabelText("Name", "%s", material.name.c_str());
+
+        ImGui::SeparatorText("Attributes");
+        bool changed = false;
+        changed |= ImGui::ColorEdit3("Albedo", &material.baseColor.x);
+        changed |= ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 1.0f, "%.3f");
+        changed |= ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f, "%.3f");
+        changed |= ImGui::ColorEdit3("Emissive", &material.emissive.x, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
+
+        const auto drawTexturePathRow = [](const char* pLabel, const std::optional<std::string>& texturePath)
+        {
+            if (!texturePath.has_value())
+            {
+                ImGui::LabelText(pLabel, "None");
+                return;
+            }
+
+            const auto fileName = std::filesystem::path(*texturePath).filename().string();
+            ImGui::LabelText(pLabel, "%s", fileName.c_str());
+        };
+
+        ImGui::SeparatorText("Textures");
+        drawTexturePathRow("Albedo", material.albedoTexturePath);
+        drawTexturePathRow("Normal", material.normalTexturePath);
+        drawTexturePathRow("Metallic / Roughness", material.metallicRoughnessTexturePath);
+
+        return changed;
     }
 } // namespace Hydrogen

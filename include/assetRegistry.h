@@ -52,6 +52,26 @@ namespace Hydrogen
             return handle;
         }
 
+        void UpdateMaterial(MaterialHandle handle, Material&& material)
+        {
+            if (handle.id >= m_materials.size())
+            {
+                return;
+            }
+
+            m_materials[handle.id] = std::move(material);
+            m_uploadQueue.PushMaterial({handle, m_materials[handle.id]});
+        }
+
+        const Material* GetMaterial(MaterialHandle handle) const
+        {
+            if (handle.id >= m_materials.size())
+            {
+                return nullptr;
+            }
+            return &m_materials[handle.id];
+        }
+
         TextureHandle RegisterTexture(TextureMetadata&& metadata, TextureData&& data)
         {
             for (uint32 i = 0; i < m_textureMetadata.size(); ++i)
