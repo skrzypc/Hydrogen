@@ -112,6 +112,15 @@ namespace Hydrogen
             return m_lastInstanceCount;
         }
 
+        bool HasSceneChanged() const
+        {
+            return m_sceneChanged;
+        }
+        void ClearSceneChanged()
+        {
+            m_sceneChanged = false;
+        }
+
     private:
         struct MeshUploadData
         {
@@ -242,5 +251,7 @@ namespace Hydrogen
         uint32 m_lastInstanceCount = 0;
 
         uint32 m_currentFrameIndex = 0;
+
+        bool m_sceneChanged = false;
     };
 } // namespace Hydrogen

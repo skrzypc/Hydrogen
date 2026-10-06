@@ -147,6 +147,8 @@ namespace Hydrogen
             .normal = material.normalTexture,
             .metallicRoughness = material.metallicRoughnessTexture,
         };
+
+        m_sceneChanged = true;
     }
 
     void GpuScene::RegisterMaterials(std::vector<MaterialHandle>& materialHandles, std::vector<Material>& materials)
@@ -385,6 +387,7 @@ namespace Hydrogen
                 GpuMesh& gpuMesh = m_gpuMeshCache[entry.handle.id];
                 gpuMesh.blasAddress = m_blasBuffers[entry.blasBufferIndex]->GetResource()->GetGPUVirtualAddress();
                 gpuMesh.state = GpuMeshState::BlasReady;
+                m_sceneChanged = true;
             }
             else
             {
@@ -436,6 +439,7 @@ namespace Hydrogen
             if (entry.copyFence <= completedCopy)
             {
                 m_gpuTextureCache[entry.handle.id].state = GpuTextureState::Ready;
+                m_sceneChanged = true;
             }
             else
             {
@@ -472,6 +476,7 @@ namespace Hydrogen
     {
         H2_VERIFY_FATAL(objects.size() <= m_sceneCapacity, "RenderScene object count exceeds scene capacity!");
 
+        m_sceneChanged |= m_transformStaging.size() != objects.size();
         m_transformStaging.resize(objects.size());
         m_instanceDataStaging.resize(objects.size());
 
@@ -483,12 +488,17 @@ namespace Hydrogen
         {
             const RenderObject& obj = objects[transformIndex];
 
-            m_transformStaging[transformIndex] = obj.worldMatrix;
-            m_instanceDataStaging[transformIndex] = {
+            const GpuInstanceData instanceData{
                 .meshDataIndex = obj.mesh.id,
                 .transformIndex = transformIndex,
                 .materialDataIndex = obj.materialDataIndex,
             };
+
+            m_sceneChanged |= memcmp(&m_transformStaging[transformIndex], &obj.worldMatrix, sizeof(obj.worldMatrix)) != 0 ||
+                              memcmp(&m_instanceDataStaging[transformIndex], &instanceData, sizeof(instanceData)) != 0;
+
+            m_transformStaging[transformIndex] = obj.worldMatrix;
+            m_instanceDataStaging[transformIndex] = instanceData;
 
             const GpuMesh* pMesh = GetGpuMesh(obj.mesh);
             if (!pMesh || pMesh->state != GpuMeshState::BlasReady)
@@ -543,6 +553,7 @@ namespace Hydrogen
         H2_VERIFY_FATAL(lights.size() <= m_maxLights, "RenderScene light count exceeds light capacity!");
 
         m_lightCount = static_cast<uint32>(lights.size());
+        m_sceneChanged |= m_lightStaging.size() != lights.size();
         m_lightStaging.resize(lights.size());
 
         for (uint32 lightIndex = 0; lightIndex < m_lightCount; ++lightIndex)
@@ -550,8 +561,7 @@ namespace Hydrogen
             const RenderLight& renderLight = lights[lightIndex];
             const Light& light = renderLight.light;
 
-            GpuLight& gpuLight = m_lightStaging[lightIndex];
-            gpuLight = {};
+            GpuLight gpuLight{};
             gpuLight.position = renderLight.position;
             gpuLight.type = static_cast<uint32>(light.type);
             gpuLight.color = light.color;
@@ -561,6 +571,9 @@ namespace Hydrogen
             gpuLight.range = light.range.value_or(std::numeric_limits<float32>::max());
             gpuLight.cosInnerConeAngle = std::cos(light.innerConeAngle.value_or(0.0f));
             gpuLight.cosOuterConeAngle = std::cos(light.outerConeAngle.value_or(DirectX::XM_PIDIV4));
+
+            m_sceneChanged |= memcmp(&m_lightStaging[lightIndex], &gpuLight, sizeof(gpuLight)) != 0;
+            m_lightStaging[lightIndex] = gpuLight;
         }
 
         if (!m_lightStaging.empty())
