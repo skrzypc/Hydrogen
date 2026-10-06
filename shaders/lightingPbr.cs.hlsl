@@ -14,7 +14,8 @@ struct PushConstants
 
 ConstantBuffer<PushConstants> g_push : register(b0, space0);
 
-static const float3 kSkyRadiance = float3(0.02f, 0.04f, 0.08f);
+static const float3 kSkyRadiance = float3(0.0f, 0.0f, 0.0f);
+//static const float3 kSkyRadiance = float3(0.02f, 0.04f, 0.08f);
 
 float3 ReconstructWorldPosition(float2 uv, float depth, float4x4 invViewProjection)
 {

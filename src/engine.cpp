@@ -116,6 +116,20 @@ namespace Hydrogen
             }
         }
 
+        // Test directional light
+        //{
+        //    constexpr float32 sunLux = 20.0f;
+        //    constexpr float32 sunPitchDeg = 50.0f;
+        //    constexpr float32 sunYawDeg = 30.0f;
+
+        //    Entity sunEntity = m_scene.CreateEntity();
+        //    Transform sunTransform{};
+        //    XMStoreFloat4(&sunTransform.rotation,
+        //                  Quaternion::CreateFromYawPitchRoll(ToRadians(sunYawDeg), ToRadians(sunPitchDeg), 0.0f));
+        //    m_scene.transforms.Add(sunEntity, TransformComponent{sunTransform});
+        //    m_scene.lights.Add(sunEntity, LightComponent{Light{.type = eLightType::Directional, .intensity = sunLux}});
+        //}
+
         // Camera
         {
             m_activeCamera = m_scene.CreateEntity();
@@ -239,7 +253,7 @@ namespace Hydrogen
                     renderScene.camera.fovYDeg = pCameraComponent->fovYDeg;
                     renderScene.camera.nearZ = pCameraComponent->nearZ;
                     renderScene.camera.farZ = pCameraComponent->farZ;
-                    renderScene.camera.exposure = pCameraComponent->exposure;
+                    renderScene.camera.exposure = 683.0f / (1.2f * std::exp2(pCameraComponent->ev100)); // EV100 to exposure.
                 }
             }
 

@@ -117,9 +117,9 @@ namespace Hydrogen
 
         if (light.type == eLightType::Directional)
         {
-
-            // TODO: this range is tuned to look right at the default exposure, not real lux magnitudes.
-            ImGui::SliderFloat("Intensity (lux)", &light.intensity, 0.0f, 50.0f, "%.2f");
+            // Direct sun is ~100000 lux; headroom above it for over-bright lights.
+            static constexpr float32 MaxDirectionalLux = 150000.0f;
+            ImGui::SliderFloat("Intensity (lux)", &light.intensity, 0.0f, MaxDirectionalLux, "%.0f", ImGuiSliderFlags_Logarithmic);
         }
         else
         {
@@ -167,7 +167,7 @@ namespace Hydrogen
         ImGui::SliderFloat("FOV Y", &camera.fovYDeg, 10.0f, 120.0f, "%.1f deg");
         ImGui::DragFloat("Near Z", &camera.nearZ, 0.001f, 0.001f, camera.farZ - 0.01f, "%.3f");
         ImGui::DragFloat("Far Z", &camera.farZ, 0.1f, camera.nearZ + 0.01f, 10000.0f, "%.1f");
-        ImGui::SliderFloat("Exposure", &camera.exposure, 0.01f, 1000.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+        ImGui::SliderFloat("EV100", &camera.ev100, -2.0f, 16.0f, "%.2f");
     }
 
     bool InspectorPanel::DrawMaterialEditor(Material& material)
