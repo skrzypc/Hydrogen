@@ -51,7 +51,7 @@ float3 TonemapAces(float3 color)
 }
 
 // Based of https://jcgt.org/published/0006/01/01/
-void OrthonormalBasis(const float3 normal, out float3 tangent, out float3 bitangent)
+void OrthonormalBasis(out float3 tangent, const float3 normal, out float3 bitangent)
 {
     const float s = (normal.z >= 0.0f) ? 1.0f : -1.0f;
     const float a = -1.0f / (s + normal.z);

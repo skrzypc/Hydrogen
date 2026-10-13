@@ -44,7 +44,7 @@ namespace Hydrogen
             std::vector<Model> models{};
             // AMD SPONZA
             {
-                // models.emplace_back(ModelLoader::Load("data/models/AmdSponza/MainSponza.gltf"));
+                models.emplace_back(ModelLoader::Load("data/models/AmdSponza/MainSponza.gltf"));
             }
             // INTEL SPONZA
             {
@@ -59,7 +59,7 @@ namespace Hydrogen
             }
             // DEV SCENE
             {
-                models.emplace_back(ModelLoader::Load("data/models/dev_scene/scene.gltf"));
+                //models.emplace_back(ModelLoader::Load("data/models/dev_scene/scene.gltf"));
             }
 
             for (Model& model : models)

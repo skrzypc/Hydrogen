@@ -292,21 +292,51 @@ void mainRayGen()
         //    rayPayload.shadingNormal,
         //    float2(NextRandomFloat(rngState), NextRandomFloat(rngState))
         //);
-        
-        // GGX
-        BrdfSample brdfSample = SampleBrdfGgx(
-            surface,
-            rayPayload.shadingNormal,
-            -currentRay.Direction,
-            float2(NextRandomFloat(rngState), NextRandomFloat(rngState))
-        );
 
-        if (dot(brdfSample.direction, rayPayload.geometryNormal) <= 0.0f)
+        // Based on Ray Tracing Gems II, Chapter 14.
+        // probabilitySpec = eSpec / eSpec + eDiffuse
+        float3 F = FresnelSchlick(saturate(dot(rayPayload.shadingNormal, -currentRay.Direction)), lerp(0.04f, surface.albedo, surface.metallic));
+        float eSpec = CalculateLuminance(F);
+        float eDiffuse = CalculateLuminance(surface.albedo) * (1.0f - surface.metallic) * (1.0f - CalculateLuminance(F));
+        float pSpecularProbability = eSpec / (eSpec + eDiffuse);
+
+        pSpecularProbability = (pSpecularProbability != 0.0f && pSpecularProbability != 1.0f) ? clamp(pSpecularProbability, 0.1f, 0.9f) : pSpecularProbability;
+
+        BrdfSample brdfSample;
+        float lobeProbability;
+        if (NextRandomFloat(rngState) < pSpecularProbability)
+        {
+            // GGX
+            brdfSample = SampleBrdfGgx(
+                surface,
+                rayPayload.shadingNormal,
+                -currentRay.Direction,
+                float2(NextRandomFloat(rngState), NextRandomFloat(rngState)),
+                true
+            );
+
+            lobeProbability = pSpecularProbability;
+        }
+        else
+        {
+            // GGX
+            brdfSample = SampleBrdfGgx(
+                surface,
+                rayPayload.shadingNormal,
+                -currentRay.Direction,
+                float2(NextRandomFloat(rngState), NextRandomFloat(rngState)),
+                false
+            );
+
+            lobeProbability = (1.0f - pSpecularProbability);
+        }
+
+        if (!brdfSample.isValid || dot(brdfSample.direction, rayPayload.geometryNormal) <= 0.0f)
         {
             break;
         }
         
-        throughput *= brdfSample.weight;
+        throughput *= (brdfSample.weight / lobeProbability);
         
         currentRay.Origin = OffsetRayOrigin(hitWorldPosition, rayPayload.geometryNormal);
         currentRay.Direction = brdfSample.direction;
