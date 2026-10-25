@@ -23,7 +23,14 @@ namespace Hydrogen
         //   std::cout.sync_with_stdio();
         // }
 
-        m_file.open(m_logFileName.data(), std::ios::out | std::ios::trunc);
+        const std::filesystem::path logFilePath = m_logDir / m_logFileName;
+
+        if (!std::filesystem::exists(m_logDir))
+        {
+            std::filesystem::create_directory(m_logDir);
+        }
+
+        m_file.open(logFilePath.c_str(), std::ios::out | std::ios::trunc);
 
         if (!m_file.is_open())
         {

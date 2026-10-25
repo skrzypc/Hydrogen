@@ -14,13 +14,13 @@ namespace Hydrogen
         static constexpr uint32 FramesInFlight = 3;
 
         //static constexpr uint32 WindowWidth = 1920; static constexpr uint32 WindowHeight = 1080;
-        static constexpr uint32 WindowWidth = 2560; static constexpr uint32 WindowHeight = 1440;
-        //static constexpr uint32 WindowWidth = 3556; static constexpr uint32 WindowHeight = 2000;
+        //static constexpr uint32 WindowWidth = 2560; static constexpr uint32 WindowHeight = 1440;
+        static constexpr uint32 WindowWidth = 3556; static constexpr uint32 WindowHeight = 2000;
 
         static constexpr eLogLevel LogLevel = eLogLevel::Verbose;
 
         static constexpr bool EnableGPUBasedValidation = false;
-        static constexpr eAdapterVendor RequestedAdapter = eAdapterVendor::AMD;
+        static constexpr eAdapterVendor RequestedAdapter = eAdapterVendor::NVIDIA;
 
         static constexpr D3D12_RAYTRACING_TIER ExpectedRaytracingTier =
             D3D12_RAYTRACING_TIER_1_1; // 1_2 not supported by AMD yet.

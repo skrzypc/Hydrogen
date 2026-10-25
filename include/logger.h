@@ -3,6 +3,7 @@
 #include <string>
 #include <fstream>
 #include <format>
+#include <filesystem>
 #include <source_location>
 
 #include "basicTypes.h"
@@ -36,6 +37,7 @@ namespace Hydrogen
         static std::string_view LogTypeToString(eLogType logType);
 
     private:
+        const static inline std::filesystem::path m_logDir = "logs";
         constexpr static inline std::string_view m_logFileName = "Hydrogen.log";
         constexpr static inline bool m_bLogToFile = true;
         constexpr static inline bool m_bLogToConsole = true;

@@ -38,7 +38,6 @@ cmake -B %BUILD_DIR% -S %ROOT_DIR% ^
 
 if errorlevel 1 (
     echo Error! CMake configure failed.
-    exit /b 1
 )
 
 if /i "%1"=="/silent" goto :done

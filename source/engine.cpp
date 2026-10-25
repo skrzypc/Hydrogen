@@ -44,22 +44,22 @@ namespace Hydrogen
             std::vector<Model> models{};
             // AMD SPONZA
             {
-                models.emplace_back(ModelLoader::Load("data/models/AmdSponza/MainSponza.gltf"));
+                models.emplace_back(ModelLoader::Load("apps/assets/AmdSponza/MainSponza.gltf"));
             }
             // INTEL SPONZA
             {
-                // models.emplace_back(ModelLoader::Load("data/models/IntelSponza/main_sponza/NewSponza_Main_glTF_003.gltf"));
-                // models.emplace_back(ModelLoader::Load("data/models/IntelSponza/pkg_a_curtains/NewSponza_Curtains_glTF.gltf"));
-                // models.emplace_back(ModelLoader::Load("data/models/IntelSponza/pkg_b_ivy/NewSponza_IvyGrowth_glTF.gltf"));
-                // models.emplace_back(ModelLoader::Load("data/models/IntelSponza/pkg_c_trees/NewSponza_CypressTree_glTF.gltf"));
+                // models.emplace_back(ModelLoader::Load("apps/assets/IntelSponza/main_sponza/NewSponza_Main_glTF_003.gltf"));
+                // models.emplace_back(ModelLoader::Load("apps/assets/IntelSponza/pkg_a_curtains/NewSponza_Curtains_glTF.gltf"));
+                // models.emplace_back(ModelLoader::Load("apps/assets/IntelSponza/pkg_b_ivy/NewSponza_IvyGrowth_glTF.gltf"));
+                // models.emplace_back(ModelLoader::Load("apps/assets/IntelSponza/pkg_c_trees/NewSponza_CypressTree_glTF.gltf"));
             }
             // CORNELL BOX
             {
-                // models.emplace_back(ModelLoader::Load("data/models/cornell_box/scene.gltf"));
+                // models.emplace_back(ModelLoader::Load("apps/assets/models/cornell_box/scene.gltf"));
             }
             // DEV SCENE
             {
-                //models.emplace_back(ModelLoader::Load("data/models/dev_scene/scene.gltf"));
+                //models.emplace_back(ModelLoader::Load("apps/assets/dev_scene/scene.gltf"));
             }
 
             for (Model& model : models)

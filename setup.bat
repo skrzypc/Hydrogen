@@ -11,8 +11,6 @@ where git >nul 2>&1 || (
     exit /b 1
 )
 
-if not exist "%ROOT_DIR%\data\models" mkdir "%ROOT_DIR%\data\models"
-
 if not exist "%VCPKG_DIR%\.git" (
     echo Cloning vcpkg...
     git clone https://github.com/microsoft/vcpkg "%VCPKG_DIR%" || exit /b 1

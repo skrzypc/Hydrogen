@@ -428,7 +428,7 @@ thirdParty/vcpkg
 thirdParty/vcpkg/*
 thirdParty/vcpkg_installed/*
 build/*
-data/models/*
+apps/assets/*
 # Public documentation
 !docs/
 !docs/README.md

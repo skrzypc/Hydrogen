@@ -2,8 +2,9 @@
 #include <Windows.h>
 
 #include "basicTypes.h"
+
+#include "app.h"
 #include "engine.h"
-#include "config.h"
 
 extern "C"
 {
