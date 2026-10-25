@@ -1,0 +1,94 @@
+#include <array>
+
+#include <d3d12.h>
+
+#include <h2/renderer/gpu/device.h>
+#include <h2/shaders/shaderCompiler.h>
+#include <h2/renderer/gpu/commands/graphicsContext.h>
+#include <h2/renderer/framegraph/frameGraphBuilder.h>
+#include <h2/renderer/passes/rayTraceDispatchPass.h>
+
+namespace Hydrogen
+{
+    void RayTraceDispatchPass::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler)
+    {
+        m_pDevice = &device;
+
+        Shader::Desc libraryDesc{
+            .sourcePath = "referencePathTracer.rt.hlsl",
+            .name = "ReferencePathTracer",
+            .type = eShaderType::RT,
+        };
+
+        Shader library(libraryDesc);
+        shaderCompiler.Compile(library);
+
+        const std::array<RaytracingPipelineState::HitGroup, 1> hitGroups{RaytracingPipelineState::HitGroup{
+            .name = "defaultHitGroup",
+            .closestHitExport = "mainClosestHit",
+        }};
+
+        RaytracingPipelineState::Desc psoDesc{
+            .pLibrary = &library,
+            .hitGroups = hitGroups,
+            .payloadSizeBytes = sizeof(float32) * 14,
+            .attributeSizeBytes = sizeof(float32) * 2,
+            .maxRecursionDepth = 1,
+        };
+        m_raytracingPso.Create(device, psoDesc);
+
+        const std::array<std::string, 1> rayGenExports{"mainRayGen"};
+        const std::array<std::string, 2> missExports{"mainMiss", "shadowMiss"};
+        const std::array<std::string, 1> hitGroupExports{"defaultHitGroup"};
+
+        ShaderTable::Desc tableDesc{
+            .rayGenExports = rayGenExports,
+            .missExports = missExports,
+            .hitGroupExports = hitGroupExports,
+        };
+        m_shaderTable.Create(device, m_raytracingPso, tableDesc);
+
+        Texture::Desc accumulationTargetDesc{
+            .width = Config::WindowWidth,
+            .height = Config::WindowHeight,
+            .mipLevels = 1,
+            .arraySize = 1,
+            .format = DXGI_FORMAT_R32G32B32A32_FLOAT,
+            .flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+            .dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+        };
+
+        m_pAccumulationTarget = m_pDevice->CreateTexture(L"AccumulationTarget", accumulationTargetDesc);
+    }
+
+    void RayTraceDispatchPass::Setup(FGBuilder& builder)
+    {
+        builder.Read("TLAS", FGAccess::Read::AccelerationStructure);
+        builder.Write(outputTarget, FGAccess::Write::UnorderedAccess);
+        builder.Write("AccumulationTarget", FGAccess::Write::UnorderedAccess);
+
+        const Texture::Desc& desc = builder.GetTextureDesc(outputTarget);
+        m_width = desc.width;
+        m_height = desc.height;
+
+        m_accumulatedFramesCount = resetAccumulation ? 1 : m_accumulatedFramesCount + 1;
+    }
+
+    void RayTraceDispatchPass::Execute(FGExecuteContext& fgExecuteContext, GraphicsContext& graphicsContext)
+    {
+        ID3D12GraphicsCommandList10* cmd = graphicsContext.CmdList();
+        cmd->SetComputeRootSignature(m_pDevice->GetRootSignature().Get());
+        cmd->SetComputeRootConstantBufferView(static_cast<uint32>(eRootParam::FrameConstantBuffer),
+                                              GraphicsContext::s_frameDataAddr);
+        cmd->SetPipelineState1(m_raytracingPso.Get());
+
+        const PushConstants push{.tlasIndex = fgExecuteContext.GetSRVIndex("TLAS"),
+                                 .outputUavIndex = fgExecuteContext.GetUAVIndex(outputTarget),
+                                 .accumulationTargetUavIndex = fgExecuteContext.GetUAVIndex("AccumulationTarget"),
+                                 .accumulatedFramesCount = m_accumulatedFramesCount};
+        graphicsContext.SetComputePushConstants(push);
+
+        const D3D12_DISPATCH_RAYS_DESC dispatchDesc = m_shaderTable.GetDispatchRaysDesc(0, m_width, m_height);
+        cmd->DispatchRays(&dispatchDesc);
+    }
+} // namespace Hydrogen

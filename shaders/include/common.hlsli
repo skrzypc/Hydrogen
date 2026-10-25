@@ -1,7 +1,7 @@
 #ifndef COMMON_HLSLI
 #define COMMON_HLSLI
 
-#include "../../include/shaderInterop.h"
+#include "../../include/h2/shaders/shaderInterop.h"
 
 static const float INFINITY = asfloat(0x7F800000);
 static const float kPi = 3.14159265359f;

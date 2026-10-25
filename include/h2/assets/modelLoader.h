@@ -1,0 +1,40 @@
+#pragma once
+
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <vector>
+
+#include <h2/scene/mesh.h>
+#include <h2/scene/material.h>
+#include <h2/scene/transform.h>
+#include <h2/scene/light.h>
+
+namespace Hydrogen
+{
+    struct ModelNode
+    {
+        std::string name{};
+        Transform localTransform{};
+        uint32 parentIndex = std::numeric_limits<uint32>::max(); // root node
+        std::optional<uint32> meshIndex{};                       // index into Model::meshes
+        std::optional<uint32> lightIndex{};                      // index into Model::lights
+        std::optional<uint32> materialIndex{};                   // index into Model::materials
+    };
+
+    struct Model
+    {
+        std::string name{};
+        std::vector<Mesh> meshes{};
+        std::vector<Light> lights{};
+        std::vector<Material> materials{};
+        std::vector<ModelNode> nodes{};
+    };
+
+    class ModelLoader
+    {
+    public:
+        static Model Load(std::string_view path);
+    };
+} // namespace Hydrogen

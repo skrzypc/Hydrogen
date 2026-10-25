@@ -1,10 +1,10 @@
 
 #include <Windows.h>
 
-#include "basicTypes.h"
+#include <h2/core/basicTypes.h>
 
 #include "app.h"
-#include "engine.h"
+#include <h2/engine.h>
 
 extern "C"
 {
