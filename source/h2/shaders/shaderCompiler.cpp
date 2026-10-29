@@ -2,7 +2,7 @@
 #include <filesystem>
 
 #include <h2/shaders/shaderCompiler.h>
-#include <h2/engineConfig.h>
+#include <h2/hydrogenConfig.h>
 #include <h2/core/logger.h>
 #include <h2/core/verifier.h>
 #include <h2/core/stringUtilities.h>
@@ -35,7 +35,7 @@ namespace Hydrogen
                         "Failed to create DXC include handler");
 
         const std::wstring smSuffix =
-            String::Format(L"_{}_{}", Config::ShaderModelVersionMajor, Config::ShaderModelVersionMinor);
+            String::Format(L"_{}_{}", StaticConfig::ShaderModelVersionMajor, StaticConfig::ShaderModelVersionMinor);
 
         m_targetStrings[eShaderType::VS] = L"vs" + smSuffix;
         m_targetStrings[eShaderType::PS] = L"ps" + smSuffix;

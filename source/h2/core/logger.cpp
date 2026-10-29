@@ -4,12 +4,12 @@
 #include <h2/core/logger.h>
 #include <h2/core/timer.h>
 
-#include <h2/engineConfig.h>
+#include <h2/hydrogenConfig.h>
 
 namespace Hydrogen
 {
     std::ofstream Logger::m_file;
-    eLogLevel Logger::m_currentLogLevel = Config::LogLevel;
+    eLogLevel Logger::m_currentLogLevel = StaticConfig::LogLevel;
 
     void Logger::Initialize()
     {

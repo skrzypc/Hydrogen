@@ -3,6 +3,8 @@
 #include <optional>
 #include <vector>
 
+#include <h2/scene/scene.h>
+
 #include <h2/renderer/gpu/device.h>
 #include <h2/renderer/gpu/swapChain.h>
 #include <h2/renderer/framegraph/frameGraph.h>
@@ -37,16 +39,19 @@ namespace Hydrogen
         Renderer& operator=(Renderer&&) noexcept = default;
 
         void Initialize(HWND hWnd);
-        void RenderFrame(const RenderScene& renderScene, ImDrawData* drawData, float64 time, float32 deltaTime);
-
         void SetUploadQueue(AssetUploadQueue* pQueue)
         {
             m_pUploadQueue = pQueue;
         }
+
+        void SubmitFrame(const Scene& scene, uint64 frameNumber, float32 deltaTime);
+
+    private:
+        void RenderFrame(const RenderScene& renderScene, ImDrawData* drawData, float64 time, float32 deltaTime);
+
         void SwitchRenderer(eRendererType type);
         void BuildRendererUI();
 
-    private:
         [[nodiscard]] FrameContext BeginFrame(const RenderScene& renderScene, float64 time, float32 deltaTime);
         void EndFrame(uint32 frameIndex, uint64 fenceValue);
 
@@ -71,7 +76,7 @@ namespace Hydrogen
         ShaderResourceViewHandle m_viewBufferSrv{};
         uint32 m_maxViews = 16;
 
-        std::array<uint64, Config::FramesInFlight> m_frameFenceValues{};
+        std::array<uint64, StaticConfig::FramesInFlight> m_frameFenceValues{};
 
         std::unique_ptr<IRenderer> m_renderer = nullptr;
         eRendererType m_rendererType = eRendererType::RayTracing;

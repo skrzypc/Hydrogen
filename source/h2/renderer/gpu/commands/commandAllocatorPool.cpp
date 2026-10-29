@@ -1,7 +1,7 @@
 #include <h2/renderer/gpu/commands/commandAllocatorPool.h>
 
 #include <h2/renderer/gpu/device.h>
-#include <h2/engineConfig.h>
+#include <h2/hydrogenConfig.h>
 #include <h2/core/verifier.h>
 
 namespace Hydrogen
@@ -11,8 +11,8 @@ namespace Hydrogen
         m_pDevice = &device;
         m_type = type;
 
-        m_allAllocators.resize(Config::FramesInFlight);
-        m_freeAllocators.reserve(Config::FramesInFlight);
+        m_allAllocators.resize(StaticConfig::FramesInFlight);
+        m_freeAllocators.reserve(StaticConfig::FramesInFlight);
 
         for (auto& pAllocator : m_allAllocators)
         {

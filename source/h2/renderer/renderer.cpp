@@ -68,6 +68,12 @@ namespace Hydrogen
         m_imguiPass.Initialize(m_gpuDevice, m_shaderCompiler);
     }
 
+    void Renderer::SubmitFrame(const Scene& scene, uint64 frameNumber, float32 deltaTime)
+    {
+        RenderScene sc{};
+        RenderFrame(sc, nullptr, 0, 0);
+    }
+
     FrameContext Renderer::BeginFrame(const RenderScene& renderScene, float64 time, float32 deltaTime)
     {
         const uint32 frameIndex = m_swapChain.GetCurrentFrameIndex();
@@ -309,9 +315,12 @@ namespace Hydrogen
 
         std::string_view rendererOutput = m_renderer->Render(m_frameGraph, frameContext);
 
-        m_imguiPass.pDrawData = drawData;
-        m_imguiPass.target = rendererOutput;
-        m_frameGraph.AddPass("ImGui", m_imguiPass);
+        if (drawData != nullptr)
+        {
+            m_imguiPass.pDrawData = drawData;
+            m_imguiPass.target = rendererOutput;
+            m_frameGraph.AddPass("ImGui", m_imguiPass);
+        }
 
         m_copyPass.src = rendererOutput;
         m_copyPass.dst = "Backbuffer";

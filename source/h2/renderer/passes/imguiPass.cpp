@@ -21,7 +21,7 @@ namespace Hydrogen
         ImGui_ImplDX12_InitInfo initInfo{};
         initInfo.Device = device.GetDxDevice();
         initInfo.CommandQueue = device.GetDxQueue<eQueueType::Direct>();
-        initInfo.NumFramesInFlight = Config::FramesInFlight;
+        initInfo.NumFramesInFlight = StaticConfig::FramesInFlight;
         initInfo.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
         initInfo.SrvDescriptorHeap = m_descriptorBundle.descHeap->GetDxHeap();
         initInfo.UserData = &m_descriptorBundle;

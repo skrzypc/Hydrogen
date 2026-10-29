@@ -7,16 +7,11 @@
 
 namespace Hydrogen
 {
-    struct Config
+    struct StaticConfig
     {
-        static constexpr bool WaitForDebugger = false;
-
         static constexpr uint32 FramesInFlight = 3;
-
-        //static constexpr uint32 WindowWidth = 1920; static constexpr uint32 WindowHeight = 1080;
-        //static constexpr uint32 WindowWidth = 2560; static constexpr uint32 WindowHeight = 1440;
-        static constexpr uint32 WindowWidth = 3556; static constexpr uint32 WindowHeight = 2000;
-
+        static constexpr uint32 WindowWidth = 1920;
+        static constexpr uint32 WindowHeight = 1080;
         static constexpr eLogLevel LogLevel = eLogLevel::Verbose;
 
         static constexpr bool EnableGPUBasedValidation = false;
@@ -29,5 +24,16 @@ namespace Hydrogen
 
         static constexpr uint8 ShaderModelVersionMajor = 6;
         static constexpr uint8 ShaderModelVersionMinor = 9;
+    };
+
+    struct Config
+    {
+        uint16 windowWidth = 1920u;
+        uint16 windowHeight = 1080u;
+        std::wstring windowTitle = L"Hydrogen Engine";
+
+        bool waitForDebugger = false;
+
+        eLogLevel logLevel = eLogLevel::Verbose;
     };
 } // namespace Hydrogen

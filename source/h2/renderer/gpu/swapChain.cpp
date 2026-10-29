@@ -2,7 +2,7 @@
 #include <dxgi1_6.h>
 #include <d3d12.h>
 
-#include <h2/engineConfig.h>
+#include <h2/hydrogenConfig.h>
 #include <h2/renderer/gpu/swapChain.h>
 #include <h2/core/verifier.h>
 #include <h2/core/stringUtilities.h>
@@ -17,7 +17,7 @@ namespace Hydrogen
                                             .Stereo = FALSE,
                                             .SampleDesc = {1, 0},
                                             .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT | DXGI_USAGE_SHADER_INPUT,
-                                            .BufferCount = Config::FramesInFlight,
+                                            .BufferCount = StaticConfig::FramesInFlight,
                                             .Scaling = DXGI_SCALING_NONE,
                                             .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
                                             .AlphaMode = DXGI_ALPHA_MODE_IGNORE,
@@ -62,6 +62,6 @@ namespace Hydrogen
 
         // We should probably update that at the beginning of the new frame, not at the end of the current one?
         m_frameNumber++;
-        m_frameIndex = m_frameNumber % Config::FramesInFlight;
+        m_frameIndex = m_frameNumber % StaticConfig::FramesInFlight;
     }
 } // namespace Hydrogen

@@ -4,7 +4,7 @@
 #include <memory>
 
 #include <h2/core/basicTypes.h>
-#include <h2/engineConfig.h>
+#include <h2/hydrogenConfig.h>
 #include <h2/renderer/gpu/resources/uploadBuffer.h>
 
 namespace Hydrogen

@@ -64,7 +64,7 @@ namespace Hydrogen
         srvDesc.Buffer.NumElements = m_sceneCapacity;
         srvDesc.Buffer.StructureByteStride = sizeof(DirectX::XMFLOAT4X4);
 
-        for (uint32 i = 0; i < Config::FramesInFlight; ++i)
+        for (uint32 i = 0; i < StaticConfig::FramesInFlight; ++i)
         {
             m_transformBuffers[i] =
                 device.CreateUploadBuffer(L"H2_SCENE_TRANSFORMS", m_sceneCapacity * sizeof(DirectX::XMFLOAT4X4));
@@ -96,7 +96,7 @@ namespace Hydrogen
         srvDesc.Buffer.NumElements = m_maxLights;
         srvDesc.Buffer.StructureByteStride = sizeof(GpuLight);
 
-        for (uint32 i = 0; i < Config::FramesInFlight; ++i)
+        for (uint32 i = 0; i < StaticConfig::FramesInFlight; ++i)
         {
             m_lightBuffers[i] = device.CreateUploadBuffer(L"H2_SCENE_LIGHTS", m_maxLights * sizeof(GpuLight));
             m_lightSrvs[i] = device.CreateShaderResourceView(m_lightBuffers[i].get(), srvDesc);

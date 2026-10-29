@@ -1,7 +1,7 @@
 
 #include <h2/renderer/gpu/device.h>
 
-#include <h2/engineConfig.h>
+#include <h2/hydrogenConfig.h>
 #include <h2/core/verifier.h>
 #include <h2/core/stringUtilities.h>
 #include <h2/renderer/gpu/commands/graphicsContext.h>
@@ -22,7 +22,7 @@ namespace Hydrogen
                             "Unable to obtain DX12 debug interface!"))
         {
             pDebugInterface->EnableDebugLayer();
-            pDebugInterface->SetEnableGPUBasedValidation(Config::EnableGPUBasedValidation);
+            pDebugInterface->SetEnableGPUBasedValidation(StaticConfig::EnableGPUBasedValidation);
             pDebugInterface->SetEnableAutoName(true);
         }
 
@@ -54,7 +54,7 @@ namespace Hydrogen
                         "Failed to create DXGI factory!");
 
         std::string adapterVendorString = "INVALID";
-        switch (Config::RequestedAdapter)
+        switch (StaticConfig::RequestedAdapter)
         {
         case eAdapterVendor::INTEL:
             adapterVendorString = "INTEL";
@@ -79,7 +79,7 @@ namespace Hydrogen
         {
             DXGI_ADAPTER_DESC3 adapterDesc{};
             m_pDxgiAdapter->GetDesc3(&adapterDesc);
-            if (static_cast<eAdapterVendor>(adapterDesc.VendorId) == Config::RequestedAdapter)
+            if (static_cast<eAdapterVendor>(adapterDesc.VendorId) == StaticConfig::RequestedAdapter)
             {
                 std::string gpuName = String::ToUTF8(adapterDesc.Description);
                 H2_INFO(eLogLevel::Verbose, "Adapter found:\n> {} ({} MB)", gpuName,
@@ -352,7 +352,7 @@ namespace Hydrogen
         // Shader model
         {
             D3D_SHADER_MODEL expectedShaderModel =
-                static_cast<D3D_SHADER_MODEL>((Config::ShaderModelVersionMajor << 4) | Config::ShaderModelVersionMinor);
+                static_cast<D3D_SHADER_MODEL>((StaticConfig::ShaderModelVersionMajor << 4) | StaticConfig::ShaderModelVersionMinor);
 
             D3D12_FEATURE_DATA_SHADER_MODEL featureData{expectedShaderModel};
             H2_VERIFY(m_pDxDevice->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &featureData, sizeof(featureData)),
@@ -367,7 +367,7 @@ namespace Hydrogen
             H2_VERIFY(m_pDxDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &featureData, sizeof(featureData)),
                       "Could not check raytracing support!");
 
-            bAllFeaturesSupported &= featureData.RaytracingTier >= Config::ExpectedRaytracingTier;
+            bAllFeaturesSupported &= featureData.RaytracingTier >= StaticConfig::ExpectedRaytracingTier;
         }
 
         // Mesh shaders
@@ -376,7 +376,7 @@ namespace Hydrogen
             H2_VERIFY(m_pDxDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &featureData, sizeof(featureData)),
                       "Could not check mesh shader support!");
 
-            bAllFeaturesSupported &= featureData.MeshShaderTier >= Config::ExpectedMeshShaderTier;
+            bAllFeaturesSupported &= featureData.MeshShaderTier >= StaticConfig::ExpectedMeshShaderTier;
         }
 
         // Bindless resources
@@ -385,7 +385,7 @@ namespace Hydrogen
             H2_VERIFY(m_pDxDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &featureData, sizeof(featureData)),
                       "Could not check bindless resource support!");
 
-            bAllFeaturesSupported &= featureData.ResourceBindingTier >= Config::ExpectedResourceBindingTier;
+            bAllFeaturesSupported &= featureData.ResourceBindingTier >= StaticConfig::ExpectedResourceBindingTier;
         }
 
         // Enhanced barriers
