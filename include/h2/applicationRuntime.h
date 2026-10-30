@@ -37,10 +37,10 @@ namespace Hydrogen
             return m_window;
         }
 
-        //AssetRegistry& GetAssetRegistry() noexcept
-        //{
-        //    return m_assetRegistry;
-        //}
+        AssetRegistry& GetAssetRegistry() noexcept
+        {
+            return m_assetRegistry;
+        }
         const AssetRegistry& GetAssetRegistry() const noexcept
         {
             return m_assetRegistry;

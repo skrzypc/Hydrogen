@@ -27,7 +27,7 @@ namespace Hydrogen
     class Logger
     {
     public:
-        static void Initialize();
+        static void Initialize(eLogLevel logLevel);
         static void SetLogLevel(eLogLevel logLevel);
 
         // Use macros!

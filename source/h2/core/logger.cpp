@@ -9,10 +9,12 @@
 namespace Hydrogen
 {
     std::ofstream Logger::m_file;
-    eLogLevel Logger::m_currentLogLevel = StaticConfig::LogLevel;
+    eLogLevel Logger::m_currentLogLevel = eLogLevel::Minimal;
 
-    void Logger::Initialize()
+    void Logger::Initialize(eLogLevel logLevel)
     {
+        SetLogLevel(logLevel);
+
         // std::lock_guard<std::mutex> lock(m_mutex);
 
         // if (AllocConsole())

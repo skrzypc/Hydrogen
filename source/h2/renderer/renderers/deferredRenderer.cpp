@@ -10,7 +10,8 @@
 
 namespace Hydrogen
 {
-    void DeferredRenderer::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler)
+    void DeferredRenderer::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler, uint32 renderWidth,
+                                      uint32 renderHeight)
     {
         m_pDevice = &device;
 

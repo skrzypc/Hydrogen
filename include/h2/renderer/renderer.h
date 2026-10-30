@@ -38,7 +38,7 @@ namespace Hydrogen
         Renderer(Renderer&&) noexcept = default;
         Renderer& operator=(Renderer&&) noexcept = default;
 
-        void Initialize(HWND hWnd);
+        void Initialize(uint32 renderWidth, uint32 renderHeight, HWND hWnd);
         void SetUploadQueue(AssetUploadQueue* pQueue)
         {
             m_pUploadQueue = pQueue;
@@ -85,5 +85,8 @@ namespace Hydrogen
         ImguiPass m_imguiPass{};
 
         CameraData m_previousCameraData{};
+
+        uint32 m_renderWidth = 0u;
+        uint32 m_renderHeight = 0u;
     };
 } // namespace Hydrogen

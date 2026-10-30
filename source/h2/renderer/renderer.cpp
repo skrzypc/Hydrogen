@@ -32,6 +32,11 @@ namespace Hydrogen
 {
     Renderer::~Renderer()
     {
+        if (m_renderer == nullptr)
+        {
+            return;
+        }
+
         m_gpuDevice.WaitForIdle<eQueueType::Direct>();
         m_renderer->Shutdown();
         m_imguiPass.Shutdown();
@@ -39,8 +44,11 @@ namespace Hydrogen
         ImGui::DestroyContext();
     }
 
-    void Renderer::Initialize(HWND hWnd)
+    void Renderer::Initialize(uint32 renderWidth, uint32 renderHeight, HWND hWnd)
     {
+        m_renderWidth = renderWidth;
+        m_renderHeight = renderHeight;
+
         m_gpuDevice.Create();
         m_swapChain.Create(m_gpuDevice, hWnd);
 
@@ -70,8 +78,60 @@ namespace Hydrogen
 
     void Renderer::SubmitFrame(const Scene& scene, uint64 frameNumber, float32 deltaTime)
     {
-        RenderScene sc{};
-        RenderFrame(sc, nullptr, 0, 0);
+        RenderScene renderScene{};
+
+        if (const TransformComponent* pCameraTransform = scene.transforms.Get(scene.activeCamera))
+        {
+            renderScene.camera.position = pCameraTransform->transform.position;
+            renderScene.camera.rotation = pCameraTransform->transform.rotation;
+        }
+
+        if (const CameraComponent* pCameraComponent = scene.cameras.Get(scene.activeCamera))
+        {
+            renderScene.camera.fovYDeg = pCameraComponent->fovYDeg;
+            renderScene.camera.nearZ = pCameraComponent->nearZ;
+            renderScene.camera.farZ = pCameraComponent->farZ;
+            renderScene.camera.exposure = 683.0f / (1.2f * std::exp2(pCameraComponent->ev100)); // EV100 to exposure.
+        }
+
+        const auto& meshEntities = scene.meshes.GetEntities();
+        const auto meshComponents = scene.meshes.GetAll();
+        for (uint32 meshIndex = 0; meshIndex < static_cast<uint32>(meshEntities.size()); ++meshIndex)
+        {
+            const TransformComponent* pTransformComponent = scene.transforms.Get(meshEntities[meshIndex]);
+            if (pTransformComponent == nullptr)
+            {
+                continue;
+            }
+
+            RenderObject renderObject{};
+            renderObject.mesh = meshComponents[meshIndex].mesh;
+            if (const MaterialComponent* pMaterialComponent = scene.materials.Get(meshEntities[meshIndex]))
+            {
+                renderObject.materialDataIndex = pMaterialComponent->material.id;
+            }
+            DirectX::XMStoreFloat4x4(&renderObject.worldMatrix, pTransformComponent->transform.GetWorldMatrix());
+            renderScene.objects.push_back(renderObject);
+        }
+
+        const auto& lightEntities = scene.lights.GetEntities();
+        const auto lightComponents = scene.lights.GetAll();
+        for (uint32 lightIndex = 0; lightIndex < static_cast<uint32>(lightEntities.size()); ++lightIndex)
+        {
+            const TransformComponent* pTransformComponent = scene.transforms.Get(lightEntities[lightIndex]);
+            if (pTransformComponent == nullptr)
+            {
+                continue;
+            }
+
+            RenderLight renderLight{};
+            renderLight.light = lightComponents[lightIndex].light;
+            renderLight.position = pTransformComponent->transform.position;
+            renderLight.direction = Vector3::Transform(Forward, Quaternion(pTransformComponent->transform.rotation));
+            renderScene.lights.push_back(renderLight);
+        }
+
+        RenderFrame(renderScene, nullptr, 0.0, deltaTime);
     }
 
     FrameContext Renderer::BeginFrame(const RenderScene& renderScene, float64 time, float32 deltaTime)
@@ -190,7 +250,7 @@ namespace Hydrogen
             break;
         }
 
-        m_renderer->Initialize(m_gpuDevice, m_shaderCompiler);
+        m_renderer->Initialize(m_gpuDevice, m_shaderCompiler, m_renderWidth, m_renderHeight);
         m_rendererType = type;
     }
 

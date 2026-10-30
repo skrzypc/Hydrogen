@@ -5,7 +5,7 @@ namespace Hydrogen
 {
     ApplicationRuntime::ApplicationRuntime(const Config& hydrogenConfig) : m_hydrogenConfig(hydrogenConfig)
     {
-        Logger::Initialize();
+        Logger::Initialize(hydrogenConfig.logLevel);
     }
 
     int32 ApplicationRuntime::Run()
@@ -22,7 +22,7 @@ namespace Hydrogen
 
         m_window.Create(m_hydrogenConfig.windowWidth, m_hydrogenConfig.windowHeight, m_hydrogenConfig.windowTitle);
 
-        m_renderer.Initialize(m_window.GetHandle());
+        m_renderer.Initialize(m_window.GetWidth(), m_window.GetHeight(), m_window.GetHandle());
         // TODO: Avoid that?
         m_renderer.SetUploadQueue(&m_assetRegistry.GetUploadQueue());
 
@@ -31,8 +31,8 @@ namespace Hydrogen
         int32 returnCode = 0;
         while (true)
         {
-            m_frameTimer.Mark();
             const float64 deltaSeconds = m_frameTimer.GetSeconds();
+            m_frameTimer.Mark();
 
             if (const auto ecode = m_window.ProcessMessages())
             {
@@ -46,6 +46,8 @@ namespace Hydrogen
             OnUpdate(static_cast<float32>(deltaSeconds));
 
             m_renderer.SubmitFrame(GetScene(), m_frameNumber, static_cast<float32>(deltaSeconds));
+
+            ++m_frameNumber;
         }
 
         return returnCode;

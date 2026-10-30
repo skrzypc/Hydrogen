@@ -32,6 +32,8 @@ namespace Hydrogen
         ComponentStore<CameraComponent> cameras;
         ComponentStore<LightComponent> lights;
 
+        Entity activeCamera{};
+
     private:
         uint32 m_nextId = 0;
     };

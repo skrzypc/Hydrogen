@@ -14,8 +14,8 @@ int32 WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     // TODO: Handle command line arguments
 
     Application::Config appConfig{};
-    appConfig.windowWidth = 3000;
-    appConfig.windowHeight = 1688;
+    appConfig.windowWidth = 2560;
+    appConfig.windowHeight = 1440;
     appConfig.windowTitle = L"Development Application";
 
     Application app(appConfig);

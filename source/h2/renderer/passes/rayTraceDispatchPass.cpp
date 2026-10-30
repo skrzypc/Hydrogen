@@ -47,10 +47,13 @@ namespace Hydrogen
             .hitGroupExports = hitGroupExports,
         };
         m_shaderTable.Create(device, m_raytracingPso, tableDesc);
+    }
 
+    void RayTraceDispatchPass::CreateAccumulationTarget(uint32 width, uint32 height)
+    {
         Texture::Desc accumulationTargetDesc{
-            .width = StaticConfig::WindowWidth,
-            .height = StaticConfig::WindowHeight,
+            .width = width,
+            .height = height,
             .mipLevels = 1,
             .arraySize = 1,
             .format = DXGI_FORMAT_R32G32B32A32_FLOAT,

@@ -14,7 +14,7 @@ public:
     explicit Application(const Config& appConfig);
     ~Application() = default;
     Application(const Application&) = delete;
-    const Application& operator=(const Application&) = delete;
+    Application& operator=(const Application&) = delete;
     Application(Application&&) noexcept = default;
     Application& operator=(Application&&) noexcept = default;
 
@@ -25,5 +25,10 @@ public:
     const Hydrogen::Scene& GetScene() const override;
 
 private:
+    void LoadModels();
+    void CreateCamera();
+    void UpdateCamera(float32 deltaTime);
+
     Hydrogen::Scene m_scene{};
+    float32 m_cameraSpeed = 15.0f;
 };
