@@ -20,6 +20,7 @@
 #include <h2/renderer/renderers/renderer.h>
 #include <h2/renderer/passes/copyPass.h>
 #include <h2/renderer/passes/imguiPass.h>
+#include <h2/renderer/rendererUiRequest.h>
 
 struct ImDrawData;
 
@@ -44,13 +45,16 @@ namespace Hydrogen
             m_pUploadQueue = pQueue;
         }
 
-        void SubmitFrame(const Scene& scene, uint64 frameNumber, float32 deltaTime);
+        void SubmitFrame(const Scene& scene, ImDrawData* drawData, const RendererUiRequest& uiRequest, float64 time,
+                         float32 deltaTime);
+        // Main thread only. Reads renderer settings and stats, never touches GPU objects or frame graph state.
+        // Changes the user asks for are returned and applied by the next SubmitFrame.
+        [[nodiscard]] RendererUiRequest BuildUi();
 
     private:
         void RenderFrame(const RenderScene& renderScene, ImDrawData* drawData, float64 time, float32 deltaTime);
 
         void SwitchRenderer(eRendererType type);
-        void BuildRendererUI();
 
         [[nodiscard]] FrameContext BeginFrame(const RenderScene& renderScene, float64 time, float32 deltaTime);
         void EndFrame(uint32 frameIndex, uint64 fenceValue);

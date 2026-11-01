@@ -10,7 +10,6 @@
 
 #include <imgui.h>
 #include <imgui_impl_dx12.h>
-#include <imgui_impl_win32.h>
 
 #include <h2/renderer/renderer.h>
 #include <h2/renderer/renderers/deferredRenderer.h>
@@ -40,8 +39,6 @@ namespace Hydrogen
         m_gpuDevice.WaitForIdle<eQueueType::Direct>();
         m_renderer->Shutdown();
         m_imguiPass.Shutdown();
-        ImGui_ImplWin32_Shutdown();
-        ImGui::DestroyContext();
     }
 
     void Renderer::Initialize(uint32 renderWidth, uint32 renderHeight, HWND hWnd)
@@ -71,13 +68,17 @@ namespace Hydrogen
 
         CreateRenderer(m_rendererType);
 
-        ImGui::CreateContext();
-        ImGui_ImplWin32_Init(hWnd);
         m_imguiPass.Initialize(m_gpuDevice, m_shaderCompiler);
     }
 
-    void Renderer::SubmitFrame(const Scene& scene, uint64 frameNumber, float32 deltaTime)
+    void Renderer::SubmitFrame(const Scene& scene, ImDrawData* drawData, const RendererUiRequest& uiRequest,
+                               float64 time, float32 deltaTime)
     {
+        if (uiRequest.rendererType.has_value())
+        {
+            SwitchRenderer(*uiRequest.rendererType);
+        }
+
         RenderScene renderScene{};
 
         if (const TransformComponent* pCameraTransform = scene.transforms.Get(scene.activeCamera))
@@ -131,7 +132,7 @@ namespace Hydrogen
             renderScene.lights.push_back(renderLight);
         }
 
-        RenderFrame(renderScene, nullptr, 0.0, deltaTime);
+        RenderFrame(renderScene, drawData, time, deltaTime);
     }
 
     FrameContext Renderer::BeginFrame(const RenderScene& renderScene, float64 time, float32 deltaTime)
@@ -268,24 +269,24 @@ namespace Hydrogen
         CreateRenderer(type);
     }
 
-    void Renderer::BuildRendererUI()
+    RendererUiRequest Renderer::BuildUi()
     {
+        RendererUiRequest request{};
+
         static constexpr std::array<const char*, static_cast<size_t>(eRendererType::Count)> rendererNames = {
             "Deferred",
             "RayTracing",
         };
 
-        ImGui::Begin("Renderer");
-
         int selected = static_cast<int>(m_rendererType);
         if (ImGui::Combo("Renderer", &selected, rendererNames.data(), static_cast<int>(rendererNames.size())))
         {
-            SwitchRenderer(static_cast<eRendererType>(selected));
+            request.rendererType = static_cast<eRendererType>(selected);
         }
 
-        ImGui::End();
-
         m_renderer->BuildUI();
+
+        return request;
     }
 
     // Reversed-Z LH projection: near maps to 1, far maps to 0.
@@ -358,12 +359,12 @@ namespace Hydrogen
 
         m_gpuScene.Update(frameContext);
 
-        frameContext.sceneChanged = (m_gpuScene.HasSceneChanged() ||
-                                     frameContext.renderScene.camera.fovYDeg != m_previousCameraData.fovYDeg ||
-                                     frameContext.renderScene.camera.nearZ != m_previousCameraData.nearZ ||
-                                     frameContext.renderScene.camera.farZ != m_previousCameraData.farZ ||
-                                     frameContext.renderScene.camera.position != m_previousCameraData.position ||
-                                     frameContext.renderScene.camera.rotation != m_previousCameraData.rotation);
+        frameContext.sceneChanged =
+            (m_gpuScene.HasSceneChanged() || frameContext.renderScene.camera.fovYDeg != m_previousCameraData.fovYDeg ||
+             frameContext.renderScene.camera.nearZ != m_previousCameraData.nearZ ||
+             frameContext.renderScene.camera.farZ != m_previousCameraData.farZ ||
+             frameContext.renderScene.camera.position != m_previousCameraData.position ||
+             frameContext.renderScene.camera.rotation != m_previousCameraData.rotation);
 
         m_previousCameraData = frameContext.renderScene.camera;
 

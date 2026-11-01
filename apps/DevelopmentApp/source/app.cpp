@@ -10,15 +10,17 @@
 
 using namespace Hydrogen;
 
-Application::Application(const Config& appConfig) : ApplicationRuntime(appConfig)
-{
-
-}
+Application::Application(const Config& appConfig) : ApplicationRuntime(appConfig) {}
 
 void Application::OnInitialize()
 {
     LoadModels();
     CreateCamera();
+
+    GetUi().AddPanel<StatsPanel>();
+    GetUi().AddPanel<ScenePanel>();
+    GetUi().AddPanel<InspectorPanel>();
+    GetUi().AddPanel<RendererPanel>();
 }
 
 void Application::LoadModels()
@@ -158,6 +160,8 @@ void Application::OnUpdate(float32 deltaTime)
 void Application::UpdateCamera(float32 deltaTime)
 {
     const Window& window = GetWindow();
+    const bool mouseCaptured = GetUi().WantsMouseCapture();
+    const bool keyboardCaptured = GetUi().WantsKeyboardCapture();
 
     TransformComponent* pTransformComponent = m_scene.transforms.Get(m_scene.activeCamera);
     CameraComponent* pCameraComponent = m_scene.cameras.Get(m_scene.activeCamera);
@@ -165,9 +169,12 @@ void Application::UpdateCamera(float32 deltaTime)
     if (pTransformComponent != nullptr)
     {
         Transform& transform = pTransformComponent->transform;
-        ApplyMouseLook(window, transform);
+        if (!mouseCaptured)
+        {
+            ApplyMouseLook(window, transform);
+        }
 
-        Vector3 move = GetMoveDirection(window, Quaternion(transform.rotation));
+        Vector3 move = keyboardCaptured ? Vector3::Zero : GetMoveDirection(window, Quaternion(transform.rotation));
         if (move.LengthSquared() > 0.0f)
         {
             move.Normalize();
@@ -184,12 +191,11 @@ void Application::UpdateCamera(float32 deltaTime)
         return;
     }
 
-    if (const float32 scroll = window.GetScrollDelta(); scroll != 0.0f)
+    if (const float32 scroll = window.GetScrollDelta(); !mouseCaptured && scroll != 0.0f)
     {
         if (window.IsRightMouseDown())
         {
-            m_cameraSpeed =
-                std::clamp(m_cameraSpeed + scroll * CameraSpeedScrollStep, MinCameraSpeed, MaxCameraSpeed);
+            m_cameraSpeed = std::clamp(m_cameraSpeed + scroll * CameraSpeedScrollStep, MinCameraSpeed, MaxCameraSpeed);
         }
         else
         {
@@ -197,10 +203,16 @@ void Application::UpdateCamera(float32 deltaTime)
                 std::clamp(pCameraComponent->fovYDeg - scroll * FovScrollStep, MinFovDegrees, MaxFovDegrees);
         }
     }
+}
 
-    if (window.IsMiddleMouseJustPressed())
+void Application::OnInput(const InputEvent& event)
+{
+    if (event.type == eInputEventType::MouseButtonDown && event.button == eMouseButton::Middle)
     {
-        pCameraComponent->fovYDeg = CameraComponent{}.fovYDeg;
+        if (CameraComponent* pCameraComponent = m_scene.cameras.Get(m_scene.activeCamera))
+        {
+            pCameraComponent->fovYDeg = CameraComponent{}.fovYDeg;
+        }
     }
 }
 
@@ -211,3 +223,7 @@ const Hydrogen::Scene& Application::GetScene() const
     return m_scene;
 }
 
+Hydrogen::Scene& Application::GetScene()
+{
+    return m_scene;
+}

@@ -3,7 +3,7 @@
 #include <DirectXMath.h>
 
 #include <h2/scene/entity.h>
-#include <h2/ui/panel.h>
+#include <h2/ui/userInterfaceContext.h>
 
 namespace Hydrogen
 {
@@ -12,10 +12,31 @@ namespace Hydrogen
     struct CameraComponent;
     struct Material;
 
+    class IPanel
+    {
+    public:
+        virtual ~IPanel() = default;
+
+        virtual void Draw(UserInterfaceContext& context) = 0;
+        virtual const char* GetName() const = 0;
+
+        bool IsOpen() const
+        {
+            return m_open;
+        }
+        void SetOpen(bool open)
+        {
+            m_open = open;
+        }
+
+    protected:
+        bool m_open = true;
+    };
+
     class ScenePanel : public IPanel
     {
     public:
-        void Draw(UiContext& context) override;
+        void Draw(UserInterfaceContext& context) override;
         const char* GetName() const override
         {
             return "Scene";
@@ -25,7 +46,7 @@ namespace Hydrogen
     class InspectorPanel : public IPanel
     {
     public:
-        void Draw(UiContext& context) override;
+        void Draw(UserInterfaceContext& context) override;
         const char* GetName() const override
         {
             return "Inspector";
@@ -45,7 +66,7 @@ namespace Hydrogen
     class StatsPanel : public IPanel
     {
     public:
-        void Draw(UiContext& context) override;
+        void Draw(UserInterfaceContext& context) override;
         const char* GetName() const override
         {
             return "Stats";
@@ -55,7 +76,7 @@ namespace Hydrogen
     class RendererPanel : public IPanel
     {
     public:
-        void Draw(UiContext& context) override;
+        void Draw(UserInterfaceContext& context) override;
         const char* GetName() const override
         {
             return "Renderer";

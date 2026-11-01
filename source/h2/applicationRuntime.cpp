@@ -22,6 +22,8 @@ namespace Hydrogen
 
         m_window.Create(m_hydrogenConfig.windowWidth, m_hydrogenConfig.windowHeight, m_hydrogenConfig.windowTitle);
 
+        m_userInterfaceManager.Initialize(m_window.GetHandle(), m_hydrogenConfig.uiSettingsPath);
+
         m_renderer.Initialize(m_window.GetWidth(), m_window.GetHeight(), m_window.GetHandle());
         // TODO: Avoid that?
         m_renderer.SetUploadQueue(&m_assetRegistry.GetUploadQueue());
@@ -31,6 +33,7 @@ namespace Hydrogen
         int32 returnCode = 0;
         while (true)
         {
+            const float64 time = m_totalTimer.GetSeconds();
             const float64 deltaSeconds = m_frameTimer.GetSeconds();
             m_frameTimer.Mark();
 
@@ -41,15 +44,44 @@ namespace Hydrogen
                 returnCode = *ecode;
                 break;
             }
-            OnInput();
+            DispatchInputEvents();
+
+            m_userInterfaceManager.BeginFrame();
 
             OnUpdate(static_cast<float32>(deltaSeconds));
 
-            m_renderer.SubmitFrame(GetScene(), m_frameNumber, static_cast<float32>(deltaSeconds));
+            UserInterfaceContext context{
+                .pScene = &GetScene(),
+                .pAssetRegistry = &m_assetRegistry,
+                .pRenderer = &m_renderer,
+                .deltaTime = static_cast<float32>(deltaSeconds),
+                .time = time,
+            };
+            m_userInterfaceManager.Draw(context);
 
-            ++m_frameNumber;
+            m_renderer.SubmitFrame(GetScene(), m_userInterfaceManager.EndFrame(), context.rendererRequest, time,
+                                   static_cast<float32>(deltaSeconds));
         }
 
         return returnCode;
+    }
+
+    void ApplicationRuntime::DispatchInputEvents()
+    {
+        for (const InputEvent& event : m_window.GetInputEvents())
+        {
+            if (event.type == eInputEventType::KeyDown && event.keyCode == VK_F1)
+            {
+                m_userInterfaceManager.SetVisible(!m_userInterfaceManager.IsVisible());
+                continue;
+            }
+
+            const bool capturedByUi = event.IsKeyboardEvent() ? m_userInterfaceManager.WantsKeyboardCapture()
+                                                              : m_userInterfaceManager.WantsMouseCapture();
+            if (!capturedByUi)
+            {
+                OnInput(event);
+            }
+        }
     }
 } // namespace Hydrogen

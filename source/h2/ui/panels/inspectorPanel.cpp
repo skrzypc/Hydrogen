@@ -5,7 +5,8 @@
 
 #include <imgui.h>
 
-#include <h2/ui/uiContext.h>
+#include <h2/core/verifier.h>
+#include <h2/ui/userInterfaceContext.h>
 #include <h2/ui/panels.h>
 
 #include <h2/scene/scene.h>
@@ -20,11 +21,15 @@
 
 namespace Hydrogen
 {
-    void InspectorPanel::Draw(UiContext& context)
+    void InspectorPanel::Draw(UserInterfaceContext& context)
     {
+        H2_VERIFY(context.pScene != nullptr && context.pAssetRegistry != nullptr && context.pSelection != nullptr,
+                  "Scene, asset registry or selection is missing from the UI context!");
+
         ImGui::Begin(GetName());
 
-        if (!context.selection.IsValid())
+        const Entity selection = *context.pSelection;
+        if (!selection.IsValid())
         {
             ImGui::TextDisabled("No entity selected.");
             ImGui::End();
@@ -33,9 +38,9 @@ namespace Hydrogen
 
         Scene& scene = *context.pScene;
 
-        if (TransformComponent* pTransformComponent = scene.transforms.Get(context.selection))
+        if (TransformComponent* pTransformComponent = scene.transforms.Get(selection))
         {
-            const bool selectionChanged = context.selection != m_lastSelection;
+            const bool selectionChanged = selection != m_lastSelection;
             const bool rotationChangedExternally =
                 !QuaternionEquals(pTransformComponent->transform.rotation, m_lastKnownRotation);
             if (selectionChanged || rotationChangedExternally)
@@ -52,9 +57,9 @@ namespace Hydrogen
             m_lastKnownRotation = pTransformComponent->transform.rotation;
         }
 
-        m_lastSelection = context.selection;
+        m_lastSelection = selection;
 
-        if (LightComponent* pLight = scene.lights.Get(context.selection))
+        if (LightComponent* pLight = scene.lights.Get(selection))
         {
             if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen))
             {
@@ -62,7 +67,7 @@ namespace Hydrogen
             }
         }
 
-        if (CameraComponent* pCamera = scene.cameras.Get(context.selection))
+        if (CameraComponent* pCamera = scene.cameras.Get(selection))
         {
             if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen))
             {
@@ -70,7 +75,7 @@ namespace Hydrogen
             }
         }
 
-        if (const MaterialComponent* pMaterialComponent = scene.materials.Get(context.selection))
+        if (const MaterialComponent* pMaterialComponent = scene.materials.Get(selection))
         {
             const MaterialHandle materialHandle = pMaterialComponent->material;
             if (const Material* pMaterial = context.pAssetRegistry->GetMaterial(materialHandle);
@@ -119,7 +124,8 @@ namespace Hydrogen
         {
             // Direct sun is ~100000 lux; headroom above it for over-bright lights.
             static constexpr float32 MaxDirectionalLux = 150000.0f;
-            ImGui::SliderFloat("Intensity (lux)", &light.intensity, 0.0f, MaxDirectionalLux, "%.0f", ImGuiSliderFlags_Logarithmic);
+            ImGui::SliderFloat("Intensity (lux)", &light.intensity, 0.0f, MaxDirectionalLux, "%.0f",
+                               ImGuiSliderFlags_Logarithmic);
         }
         else
         {
@@ -179,7 +185,8 @@ namespace Hydrogen
         changed |= ImGui::ColorEdit3("Albedo", &material.baseColor.x);
         changed |= ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 1.0f, "%.3f");
         changed |= ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f, "%.3f");
-        changed |= ImGui::ColorEdit3("Emissive", &material.emissive.x, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
+        changed |=
+            ImGui::ColorEdit3("Emissive", &material.emissive.x, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
 
         const auto drawTexturePathRow = [](const char* pLabel, const std::optional<std::string>& texturePath)
         {

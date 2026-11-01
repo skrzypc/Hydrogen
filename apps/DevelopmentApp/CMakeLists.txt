@@ -18,6 +18,10 @@ source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES
 target_link_libraries(DevelopmentApp PRIVATE Hydrogen)
 target_compile_features(DevelopmentApp PRIVATE cxx_std_23)
 
+target_compile_definitions(DevelopmentApp PRIVATE
+    DEV_APP_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
 target_include_directories(DevelopmentApp PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )

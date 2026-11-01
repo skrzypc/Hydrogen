@@ -11,9 +11,6 @@ namespace Hydrogen
 {
     void ImguiPass::Initialize(GpuDevice& device, ShaderCompiler&)
     {
-        IMGUI_CHECKVERSION();
-        ImGui::StyleColorsDark();
-
         m_descriptorBundle.descHeap = &device.GetDescriptorHeap<eDescriptorHeapType::CBV_SRV_UAV>();
         m_descriptorBundle.descAllocator =
             device.RequestDescriptorAllocator<FreeListIndexAllocator>(8, eDescriptorHeapType::CBV_SRV_UAV);

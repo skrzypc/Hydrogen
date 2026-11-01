@@ -1,14 +1,21 @@
 #include <h2/ui/panels.h>
 
-#include <h2/ui/uiContext.h>
+#include <imgui.h>
+
+#include <h2/core/verifier.h>
+#include <h2/renderer/renderer.h>
+#include <h2/ui/userInterfaceContext.h>
 
 namespace Hydrogen
 {
-    void RendererPanel::Draw(UiContext& context)
+    void RendererPanel::Draw(UserInterfaceContext& context)
     {
-        if (context.fnBuildRendererUi)
-        {
-            context.fnBuildRendererUi();
-        }
+        H2_VERIFY(context.pRenderer != nullptr, "Renderer is missing from the UI context!");
+
+        ImGui::Begin(GetName());
+
+        context.rendererRequest = context.pRenderer->BuildUi();
+
+        ImGui::End();
     }
 } // namespace Hydrogen

@@ -8,8 +8,12 @@ class Application : public Hydrogen::ApplicationRuntime
 public:
     struct Config : public Hydrogen::Config
     {
-        int example = 5;
+        Config()
+        {
+            uiSettingsPath = DEV_APP_SOURCE_DIR "/imgui.ini";
+        }
     };
+
 public:
     explicit Application(const Config& appConfig);
     ~Application() = default;
@@ -20,9 +24,11 @@ public:
 
     void OnInitialize() override;
     void OnUpdate(float32 deltaTime) override;
+    void OnInput(const Hydrogen::InputEvent& event) override;
     void OnShutdown() override;
 
     const Hydrogen::Scene& GetScene() const override;
+    Hydrogen::Scene& GetScene() override;
 
 private:
     void LoadModels();

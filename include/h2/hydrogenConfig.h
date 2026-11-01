@@ -12,7 +12,7 @@ namespace Hydrogen
         static constexpr uint32 FramesInFlight = 3;
 
         static constexpr bool EnableGPUBasedValidation = false;
-        static constexpr eAdapterVendor RequestedAdapter = eAdapterVendor::AMD;
+        static constexpr eAdapterVendor RequestedAdapter = eAdapterVendor::NVIDIA;
 
         static constexpr D3D12_RAYTRACING_TIER ExpectedRaytracingTier =
             D3D12_RAYTRACING_TIER_1_1; // 1_2 not supported by AMD yet.
@@ -28,6 +28,9 @@ namespace Hydrogen
         uint16 windowWidth = 1920u;
         uint16 windowHeight = 1080u;
         std::wstring windowTitle = L"Hydrogen Engine";
+
+        // Where the UI layout (ImGui .ini) is stored. Empty uses ImGui's default (imgui.ini in the working directory).
+        std::string uiSettingsPath{};
 
         bool waitForDebugger = false;
 

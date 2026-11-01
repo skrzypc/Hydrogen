@@ -80,8 +80,6 @@ namespace Hydrogen
 
     void RayTracingRenderer::BuildUI()
     {
-        ImGui::Begin("RayTracing");
         ImGui::Text("Accumulated frames: %u", m_rayTraceDispatchPass.GetAccumulatedFramesCount());
-        ImGui::End();
     }
 } // namespace Hydrogen
