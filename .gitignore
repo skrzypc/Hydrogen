@@ -423,6 +423,10 @@ FodyWeavers.xsd
 *.md
 *.exe
 .*
+!.gitignore
+!.clang-format
+!.clang-tidy
+!.editorconfig
 imgui.ini
 thirdParty/vcpkg
 thirdParty/vcpkg/*
