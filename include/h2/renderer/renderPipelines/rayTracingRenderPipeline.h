@@ -1,13 +1,13 @@
 #pragma once
 
-#include <h2/renderer/renderers/renderer.h>
-#include <h2/renderer/passes/gBufferPass.h>
-#include <h2/renderer/passes/lightingPass.h>
+#include <h2/renderer/renderPipelines/renderPipeline.h>
+#include <h2/renderer/passes/buildTlasPass.h>
+#include <h2/renderer/passes/rayTraceDispatchPass.h>
 #include <h2/renderer/passes/tonemapPass.h>
 
 namespace Hydrogen
 {
-    class DeferredRenderer : public IRenderer
+    class RayTracingRenderPipeline : public IRenderPipeline
     {
     public:
         void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler, uint32 renderWidth,
@@ -19,15 +19,15 @@ namespace Hydrogen
 
         const char* GetName() const override
         {
-            return "Deferred";
+            return "RayTracing";
         }
 
     private:
         void DefineFrameGraphResources(FrameGraph& frameGraph, const FrameContext& frameContext);
 
     private:
-        GBufferPass m_gBufferPass{};
-        LightingPass m_lightingPass{};
+        BuildTlasPass m_buildTlasPass{};
+        RayTraceDispatchPass m_rayTraceDispatchPass{};
         TonemapPass m_tonemapPass{};
     };
 } // namespace Hydrogen

@@ -1,4 +1,4 @@
-#include <h2/renderer/renderers/deferredRenderer.h>
+#include <h2/renderer/renderPipelines/deferredRenderPipeline.h>
 
 #include <string_view>
 
@@ -10,8 +10,8 @@
 
 namespace Hydrogen
 {
-    void DeferredRenderer::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler, uint32 renderWidth,
-                                      uint32 renderHeight)
+    void DeferredRenderPipeline::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler, uint32 renderWidth,
+                                            uint32 renderHeight)
     {
         m_pDevice = &device;
 
@@ -20,9 +20,9 @@ namespace Hydrogen
         m_tonemapPass.Initialize(device, shaderCompiler);
     }
 
-    void DeferredRenderer::Shutdown() {}
+    void DeferredRenderPipeline::Shutdown() {}
 
-    void DeferredRenderer::DefineFrameGraphResources(FrameGraph& frameGraph, const FrameContext& frameContext)
+    void DeferredRenderPipeline::DefineFrameGraphResources(FrameGraph& frameGraph, const FrameContext& frameContext)
     {
         frameGraph.CreateTexture("GBuffer_Albedo", {
                                                        .width = frameContext.renderWidth,
@@ -91,7 +91,7 @@ namespace Hydrogen
                                                });
     }
 
-    std::string_view DeferredRenderer::Render(FrameGraph& frameGraph, const FrameContext& frameContext)
+    std::string_view DeferredRenderPipeline::Render(FrameGraph& frameGraph, const FrameContext& frameContext)
     {
         DefineFrameGraphResources(frameGraph, frameContext);
 
@@ -106,5 +106,5 @@ namespace Hydrogen
         return "Output";
     }
 
-    void DeferredRenderer::BuildUI() {}
+    void DeferredRenderPipeline::BuildUI() {}
 } // namespace Hydrogen

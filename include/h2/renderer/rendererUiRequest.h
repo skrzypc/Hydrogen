@@ -2,13 +2,13 @@
 
 #include <optional>
 
-#include <h2/renderer/renderers/renderer.h>
+#include <h2/renderer/renderPipelines/renderPipeline.h>
 
 namespace Hydrogen
 {
     // What the user asked the renderer to change through its UI. Applied by Renderer::SubmitFrame.
     struct RendererUiRequest
     {
-        std::optional<eRendererType> rendererType{};
+        std::optional<eRenderPipelineType> renderPipelineType{};
     };
 } // namespace Hydrogen

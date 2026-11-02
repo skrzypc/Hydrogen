@@ -18,7 +18,7 @@
 #include <h2/renderer/frameContext.h>
 #include <memory>
 
-#include <h2/renderer/renderers/renderer.h>
+#include <h2/renderer/renderPipelines/renderPipeline.h>
 #include <h2/renderer/passes/copyPass.h>
 #include <h2/renderer/passes/imguiPass.h>
 #include <h2/renderer/rendererUiRequest.h>
@@ -55,14 +55,14 @@ namespace Hydrogen
     private:
         void RenderFrame(const RenderScene& renderScene, ImDrawData* drawData, float64 time, float32 deltaTime);
 
-        void SwitchRenderer(eRendererType type);
+        void SwitchRenderPipeline(eRenderPipelineType type);
 
         [[nodiscard]] FrameContext BeginFrame(const RenderScene& renderScene, float64 time, float32 deltaTime);
         void EndFrame(uint32 frameIndex, uint64 fenceValue);
 
         void UpdateFrameData(const FrameContext& frameContext);
         void ProcessUploadQueue();
-        void CreateRenderer(eRendererType type);
+        void CreateRenderPipeline(eRenderPipelineType type);
 
         GpuDevice m_gpuDevice;
         SwapChain m_swapChain;
@@ -83,8 +83,8 @@ namespace Hydrogen
 
         std::array<uint64, StaticConfig::FramesInFlight> m_frameFenceValues{};
 
-        std::unique_ptr<IRenderer> m_renderer = nullptr;
-        eRendererType m_rendererType = eRendererType::RayTracing;
+        std::unique_ptr<IRenderPipeline> m_renderPipeline = nullptr;
+        eRenderPipelineType m_renderPipelineType = eRenderPipelineType::RayTracing;
 
         CopyPass m_copyPass{};
         ImguiPass m_imguiPass{};

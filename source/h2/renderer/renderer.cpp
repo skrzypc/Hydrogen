@@ -12,8 +12,8 @@
 #include <imgui_impl_dx12.h>
 
 #include <h2/renderer/renderer.h>
-#include <h2/renderer/renderers/deferredRenderer.h>
-#include <h2/renderer/renderers/rayTracingRenderer.h>
+#include <h2/renderer/renderPipelines/deferredRenderPipeline.h>
+#include <h2/renderer/renderPipelines/rayTracingRenderPipeline.h>
 #include <h2/core/logger.h>
 #include <h2/core/verifier.h>
 #include <h2/core/utilities.h>
@@ -31,13 +31,13 @@ namespace Hydrogen
 {
     Renderer::~Renderer()
     {
-        if (m_renderer == nullptr)
+        if (m_renderPipeline == nullptr)
         {
             return;
         }
 
         m_gpuDevice.WaitForIdle<eQueueType::Direct>();
-        m_renderer->Shutdown();
+        m_renderPipeline->Shutdown();
         m_imguiPass.Shutdown();
     }
 
@@ -68,7 +68,7 @@ namespace Hydrogen
         viewSrvDesc.Buffer.StructureByteStride = sizeof(ViewData);
         m_viewBufferSrv = m_gpuDevice.CreateShaderResourceView(m_viewBuffer.get(), viewSrvDesc);
 
-        CreateRenderer(m_rendererType);
+        CreateRenderPipeline(m_renderPipelineType);
 
         m_imguiPass.Initialize(m_gpuDevice, m_shaderCompiler);
     }
@@ -76,9 +76,9 @@ namespace Hydrogen
     void Renderer::SubmitFrame(const Scene& scene, ImDrawData* drawData, const RendererUiRequest& uiRequest,
                                float64 time, float32 deltaTime)
     {
-        if (uiRequest.rendererType.has_value())
+        if (uiRequest.renderPipelineType.has_value())
         {
-            SwitchRenderer(*uiRequest.rendererType);
+            SwitchRenderPipeline(*uiRequest.renderPipelineType);
         }
 
         RenderScene renderScene{};
@@ -238,55 +238,55 @@ namespace Hydrogen
         }
     }
 
-    void Renderer::CreateRenderer(eRendererType type)
+    void Renderer::CreateRenderPipeline(eRenderPipelineType type)
     {
         switch (type)
         {
-        case eRendererType::Deferred:
-            m_renderer = std::make_unique<DeferredRenderer>();
+        case eRenderPipelineType::Deferred:
+            m_renderPipeline = std::make_unique<DeferredRenderPipeline>();
             break;
-        case eRendererType::RayTracing:
-            m_renderer = std::make_unique<RayTracingRenderer>();
+        case eRenderPipelineType::RayTracing:
+            m_renderPipeline = std::make_unique<RayTracingRenderPipeline>();
             break;
         default:
-            H2_VERIFY_FATAL(false, "Unknown renderer type!");
+            H2_VERIFY_FATAL(false, "Unknown render pipeline type!");
             break;
         }
 
-        m_renderer->Initialize(m_gpuDevice, m_shaderCompiler, m_renderWidth, m_renderHeight);
-        m_rendererType = type;
+        m_renderPipeline->Initialize(m_gpuDevice, m_shaderCompiler, m_renderWidth, m_renderHeight);
+        m_renderPipelineType = type;
     }
 
-    void Renderer::SwitchRenderer(eRendererType type)
+    void Renderer::SwitchRenderPipeline(eRenderPipelineType type)
     {
-        if (m_rendererType == type)
+        if (m_renderPipelineType == type)
         {
             return;
         }
 
         m_gpuDevice.WaitForIdle<eQueueType::Direct>();
-        m_renderer->Shutdown();
-        m_renderer.reset();
+        m_renderPipeline->Shutdown();
+        m_renderPipeline.reset();
 
-        CreateRenderer(type);
+        CreateRenderPipeline(type);
     }
 
     RendererUiRequest Renderer::BuildUi()
     {
         RendererUiRequest request{};
 
-        static constexpr std::array<const char*, static_cast<size_t>(eRendererType::Count)> rendererNames = {
+        static constexpr std::array<const char*, static_cast<size_t>(eRenderPipelineType::Count)> pipelineNames = {
             "Deferred",
             "RayTracing",
         };
 
-        int selected = static_cast<int>(m_rendererType);
-        if (ImGui::Combo("Renderer", &selected, rendererNames.data(), static_cast<int>(rendererNames.size())))
+        int selected = static_cast<int>(m_renderPipelineType);
+        if (ImGui::Combo("Render pipeline", &selected, pipelineNames.data(), static_cast<int>(pipelineNames.size())))
         {
-            request.rendererType = static_cast<eRendererType>(selected);
+            request.renderPipelineType = static_cast<eRenderPipelineType>(selected);
         }
 
-        m_renderer->BuildUI();
+        m_renderPipeline->BuildUI();
 
         return request;
     }
@@ -348,7 +348,7 @@ namespace Hydrogen
         frameData.time = static_cast<float32>(frameContext.time);
         frameData.deltaTime = frameContext.deltaTime;
         frameData.frameNumber = static_cast<uint32>(frameContext.frameNumber);
-        m_renderer->FillFrameData(frameData);
+        m_renderPipeline->FillFrameData(frameData);
 
         auto [pCpu, gpuAddr] = m_uploadBuffer.Allocate(sizeof(FrameData));
         memcpy(pCpu, &frameData, sizeof(FrameData));
@@ -376,16 +376,16 @@ namespace Hydrogen
 
         m_frameGraph.ImportTexture("Backbuffer", m_swapChain.GetCurrentBackBuffer());
 
-        std::string_view rendererOutput = m_renderer->Render(m_frameGraph, frameContext);
+        std::string_view pipelineOutput = m_renderPipeline->Render(m_frameGraph, frameContext);
 
         if (drawData != nullptr)
         {
             m_imguiPass.pDrawData = drawData;
-            m_imguiPass.target = rendererOutput;
+            m_imguiPass.target = pipelineOutput;
             m_frameGraph.AddPass("ImGui", m_imguiPass);
         }
 
-        m_copyPass.src = rendererOutput;
+        m_copyPass.src = pipelineOutput;
         m_copyPass.dst = "Backbuffer";
         m_frameGraph.AddPass("CopyToBackbuffer", m_copyPass);
 

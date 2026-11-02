@@ -12,17 +12,17 @@ namespace Hydrogen
     class ShaderCompiler;
     class FrameGraph;
 
-    enum class eRendererType : uint8
+    enum class eRenderPipelineType : uint8
     {
         Deferred = 0,
         RayTracing,
         Count
     };
 
-    class IRenderer
+    class IRenderPipeline
     {
     public:
-        virtual ~IRenderer() = default;
+        virtual ~IRenderPipeline() = default;
 
         virtual void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler, uint32 renderWidth,
                                 uint32 renderHeight) = 0;
@@ -30,7 +30,7 @@ namespace Hydrogen
 
         virtual std::string_view Render(FrameGraph& frameGraph, const FrameContext& frameContext) = 0;
 
-        // TODO: consider per-renderer FrameData struct if renderers diverge significantly
+        // TODO: consider per-pipeline FrameData struct if render pipelines diverge significantly
         virtual void FillFrameData(FrameData& frameData) {}
 
         virtual void BuildUI() {}
