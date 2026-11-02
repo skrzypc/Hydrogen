@@ -7,7 +7,7 @@
 #include <span>
 #include <vector>
 
-#include <h2/engineConfig.h>
+#include <h2/hydrogenConfig.h>
 #include <h2/renderer/gpu/resources/gpuMesh.h>
 #include <h2/renderer/gpu/resources/gpuTexture.h>
 #include <h2/scene/mesh.h>
@@ -206,28 +206,28 @@ namespace Hydrogen
         ShaderResourceViewHandle m_uvSrv{};
 
         // Written every frame, so each frame in flight needs its own copy.
-        std::array<std::unique_ptr<UploadBuffer>, Config::FramesInFlight> m_transformBuffers{};
-        std::array<ShaderResourceViewHandle, Config::FramesInFlight> m_transformSrvs{};
+        std::array<std::unique_ptr<UploadBuffer>, StaticConfig::FramesInFlight> m_transformBuffers{};
+        std::array<ShaderResourceViewHandle, StaticConfig::FramesInFlight> m_transformSrvs{};
 
         // Gathered in cached memory and copied to the upload buffer in one go. Kept around so the
         // allocation is reused between frames.
         std::vector<DirectX::XMFLOAT4X4> m_transformStaging{};
 
-        std::array<std::unique_ptr<UploadBuffer>, Config::FramesInFlight> m_meshDataBuffers{};
-        std::array<ShaderResourceViewHandle, Config::FramesInFlight> m_meshDataSrvs{};
+        std::array<std::unique_ptr<UploadBuffer>, StaticConfig::FramesInFlight> m_meshDataBuffers{};
+        std::array<ShaderResourceViewHandle, StaticConfig::FramesInFlight> m_meshDataSrvs{};
         std::vector<GpuMeshData> m_meshDataStaging{};
 
-        std::array<std::unique_ptr<UploadBuffer>, Config::FramesInFlight> m_instanceDataBuffers{};
-        std::array<ShaderResourceViewHandle, Config::FramesInFlight> m_instanceDataSrvs{};
+        std::array<std::unique_ptr<UploadBuffer>, StaticConfig::FramesInFlight> m_instanceDataBuffers{};
+        std::array<ShaderResourceViewHandle, StaticConfig::FramesInFlight> m_instanceDataSrvs{};
         std::vector<GpuInstanceData> m_instanceDataStaging{};
 
-        std::array<std::unique_ptr<UploadBuffer>, Config::FramesInFlight> m_materialDataBuffers{};
-        std::array<ShaderResourceViewHandle, Config::FramesInFlight> m_materialDataSrvs{};
+        std::array<std::unique_ptr<UploadBuffer>, StaticConfig::FramesInFlight> m_materialDataBuffers{};
+        std::array<ShaderResourceViewHandle, StaticConfig::FramesInFlight> m_materialDataSrvs{};
         std::vector<GpuMaterialData> m_materialCache{};
         std::vector<MaterialTextureBindings> m_materialTextureBindings{};
 
-        std::array<std::unique_ptr<UploadBuffer>, Config::FramesInFlight> m_lightBuffers{};
-        std::array<ShaderResourceViewHandle, Config::FramesInFlight> m_lightSrvs{};
+        std::array<std::unique_ptr<UploadBuffer>, StaticConfig::FramesInFlight> m_lightBuffers{};
+        std::array<ShaderResourceViewHandle, StaticConfig::FramesInFlight> m_lightSrvs{};
         std::vector<GpuLight> m_lightStaging{};
 
         uint32 m_maxLights = 0;
@@ -244,10 +244,10 @@ namespace Hydrogen
         std::queue<TextureUploadData> m_textureUploadQueue{};
         std::vector<InFlightTextureUploadData> m_inFlightTextureUploads{};
 
-        std::array<std::unique_ptr<Buffer>, Config::FramesInFlight> m_blasScratchBuffers{};
+        std::array<std::unique_ptr<Buffer>, StaticConfig::FramesInFlight> m_blasScratchBuffers{};
         std::vector<std::unique_ptr<Buffer>> m_blasBuffers{};
 
-        std::array<std::unique_ptr<UploadBuffer>, Config::FramesInFlight> m_instanceDescs{};
+        std::array<std::unique_ptr<UploadBuffer>, StaticConfig::FramesInFlight> m_instanceDescs{};
         uint32 m_lastInstanceCount = 0;
 
         uint32 m_currentFrameIndex = 0;

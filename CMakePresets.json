@@ -1,0 +1,23 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "vs2026",
+      "displayName": "Visual Studio 2026 x64",
+      "generator": "Visual Studio 18 2026",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/vs2026",
+      "toolchainFile": "${sourceDir}/thirdParty/vcpkg/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/thirdParty/vcpkg_installed"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "debug", "configurePreset": "vs2026", "configuration": "Debug" },
+    { "name": "release", "configurePreset": "vs2026", "configuration": "Release" },
+    { "name": "relwithdebinfo", "configurePreset": "vs2026", "configuration": "RelWithDebInfo" }
+  ]
+}

@@ -3,7 +3,7 @@
 
 #include <h2/renderer/gpu/device.h>
 #include <h2/core/verifier.h>
-#include <h2/core/stringUtilities.h>
+#include <h2/core/utilities.h>
 
 namespace Hydrogen
 {

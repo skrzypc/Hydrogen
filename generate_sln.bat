@@ -4,18 +4,12 @@ setlocal EnableExtensions EnableDelayedExpansion
 set "SCRIPT_DIR=%~dp0"
 for %%I in ("%SCRIPT_DIR%.") do set "ROOT_DIR=%%~fI"
 
-set "BUILD_DIR=%ROOT_DIR%\build"
-set "VCPKG_ROOT=%ROOT_DIR%\thirdParty\vcpkg"
-set "VCPKG_INSTALLED=%ROOT_DIR%\thirdParty\vcpkg_installed"
-
-if not exist "%VCPKG_ROOT%\vcpkg.exe" (
+if not exist "%ROOT_DIR%\thirdParty\vcpkg\vcpkg.exe" (
     echo Error! vcpkg not found. Run setup.bat first.
     exit /b 1
 )
 
-if not exist "%BUILD_DIR%" mkdir "%BUILD_DIR%"
-
-:: Initialize VS developer environment
+:: Initialize VS developer environment (the directx12-agility package finds d3d12.lib through it)
 set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
 if not exist "%VSWHERE%" (
     echo Error! vswhere.exe not found. Is Visual Studio installed?
@@ -30,11 +24,7 @@ call "%VS_PATH%\VC\Auxiliary\Build\vcvarsall.bat" x64
 
 echo Running CMake configure...
 
-cmake -B %BUILD_DIR% -S %ROOT_DIR% ^
-    -G "Visual Studio 18 2026" -A x64 ^
-    -DCMAKE_TOOLCHAIN_FILE="%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake" ^
-    -DVCPKG_TARGET_TRIPLET=x64-windows ^
-    -DVCPKG_INSTALLED_DIR="%VCPKG_INSTALLED%"
+cmake --preset vs2026 -S "%ROOT_DIR%"
 
 if errorlevel 1 (
     echo Error! CMake configure failed.

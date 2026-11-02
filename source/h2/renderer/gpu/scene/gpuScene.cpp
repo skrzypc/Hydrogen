@@ -7,7 +7,7 @@
 #include <h2/assets/gpuUploader.h>
 #include <h2/renderer/gpu/commands/graphicsContext.h>
 #include <h2/scene/mesh.h>
-#include <h2/core/stringUtilities.h>
+#include <h2/core/utilities.h>
 #include <h2/core/verifier.h>
 
 namespace Hydrogen
@@ -64,7 +64,7 @@ namespace Hydrogen
         srvDesc.Buffer.NumElements = m_sceneCapacity;
         srvDesc.Buffer.StructureByteStride = sizeof(DirectX::XMFLOAT4X4);
 
-        for (uint32 i = 0; i < Config::FramesInFlight; ++i)
+        for (uint32 i = 0; i < StaticConfig::FramesInFlight; ++i)
         {
             m_transformBuffers[i] =
                 device.CreateUploadBuffer(L"H2_SCENE_TRANSFORMS", m_sceneCapacity * sizeof(DirectX::XMFLOAT4X4));
@@ -96,7 +96,7 @@ namespace Hydrogen
         srvDesc.Buffer.NumElements = m_maxLights;
         srvDesc.Buffer.StructureByteStride = sizeof(GpuLight);
 
-        for (uint32 i = 0; i < Config::FramesInFlight; ++i)
+        for (uint32 i = 0; i < StaticConfig::FramesInFlight; ++i)
         {
             m_lightBuffers[i] = device.CreateUploadBuffer(L"H2_SCENE_LIGHTS", m_maxLights * sizeof(GpuLight));
             m_lightSrvs[i] = device.CreateShaderResourceView(m_lightBuffers[i].get(), srvDesc);
@@ -494,8 +494,9 @@ namespace Hydrogen
                 .materialDataIndex = obj.materialDataIndex,
             };
 
-            m_sceneChanged |= memcmp(&m_transformStaging[transformIndex], &obj.worldMatrix, sizeof(obj.worldMatrix)) != 0 ||
-                              memcmp(&m_instanceDataStaging[transformIndex], &instanceData, sizeof(instanceData)) != 0;
+            m_sceneChanged |=
+                memcmp(&m_transformStaging[transformIndex], &obj.worldMatrix, sizeof(obj.worldMatrix)) != 0 ||
+                memcmp(&m_instanceDataStaging[transformIndex], &instanceData, sizeof(instanceData)) != 0;
 
             m_transformStaging[transformIndex] = obj.worldMatrix;
             m_instanceDataStaging[transformIndex] = instanceData;
@@ -618,8 +619,8 @@ namespace Hydrogen
 
         ResourceState initialState{};
         initialState.layout = D3D12_BARRIER_LAYOUT_COMMON;
-        gpuTexture.texture =
-            m_pDevice->CreateTexture(String::ToWide(String::Format("H2_TEXTURE_{}", handle.id)), data.desc, initialState);
+        gpuTexture.texture = m_pDevice->CreateTexture(String::ToWide(String::Format("H2_TEXTURE_{}", handle.id)),
+                                                      data.desc, initialState);
 
         for (uint32 mipIndex = 0; mipIndex < static_cast<uint32>(data.subresources.size()); ++mipIndex)
         {

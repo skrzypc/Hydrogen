@@ -26,6 +26,7 @@ namespace Hydrogen
         bool resetAccumulation = false;
 
         void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler) override;
+        void CreateAccumulationTarget(uint32 width, uint32 height);
         void Setup(FGBuilder& builder) override;
         void Execute(FGExecuteContext& fgExecuteContext, GraphicsContext& graphicsContext) override;
 

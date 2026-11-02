@@ -18,12 +18,13 @@ source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES
 target_link_libraries(DevelopmentApp PRIVATE Hydrogen)
 target_compile_features(DevelopmentApp PRIVATE cxx_std_23)
 
-target_include_directories(DevelopmentApp PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+target_compile_definitions(DevelopmentApp PRIVATE
+    DEV_APP_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+    DEV_APP_ASSETS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../assets"
 )
 
-set_target_properties(DevelopmentApp PROPERTIES
-    VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+target_include_directories(DevelopmentApp PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 
 if(MSVC)
@@ -37,7 +38,7 @@ foreach(CONFIG Debug Release RelWithDebInfo)
     string(TOUPPER "${CONFIG}" CONFIG_UPPER)
     set_target_properties(DevelopmentApp PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY_${CONFIG_UPPER}
-            "${CMAKE_BINARY_DIR}/bin/${CONFIG}/DevelopmentApp"
+            "${OUTPUT_ROOT}/bin/${CONFIG}/DevelopmentApp"
     )
 endforeach()
 

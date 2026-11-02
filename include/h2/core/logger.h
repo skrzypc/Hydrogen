@@ -27,7 +27,7 @@ namespace Hydrogen
     class Logger
     {
     public:
-        static void Initialize();
+        static void Initialize(eLogLevel logLevel, const std::filesystem::path& logDir);
         static void SetLogLevel(eLogLevel logLevel);
 
         // Use macros!
@@ -37,7 +37,6 @@ namespace Hydrogen
         static std::string_view LogTypeToString(eLogType logType);
 
     private:
-        const static inline std::filesystem::path m_logDir = "logs";
         constexpr static inline std::string_view m_logFileName = "Hydrogen.log";
         constexpr static inline bool m_bLogToFile = true;
         constexpr static inline bool m_bLogToConsole = true;

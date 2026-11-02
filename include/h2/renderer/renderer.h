@@ -3,6 +3,9 @@
 #include <optional>
 #include <vector>
 
+#include <h2/hydrogenConfig.h>
+#include <h2/scene/scene.h>
+
 #include <h2/renderer/gpu/device.h>
 #include <h2/renderer/gpu/swapChain.h>
 #include <h2/renderer/framegraph/frameGraph.h>
@@ -18,6 +21,7 @@
 #include <h2/renderer/renderers/renderer.h>
 #include <h2/renderer/passes/copyPass.h>
 #include <h2/renderer/passes/imguiPass.h>
+#include <h2/renderer/rendererUiRequest.h>
 
 struct ImDrawData;
 
@@ -36,17 +40,23 @@ namespace Hydrogen
         Renderer(Renderer&&) noexcept = default;
         Renderer& operator=(Renderer&&) noexcept = default;
 
-        void Initialize(HWND hWnd);
-        void RenderFrame(const RenderScene& renderScene, ImDrawData* drawData, float64 time, float32 deltaTime);
-
+        void Initialize(uint32 renderWidth, uint32 renderHeight, HWND hWnd, const RuntimePaths& paths);
         void SetUploadQueue(AssetUploadQueue* pQueue)
         {
             m_pUploadQueue = pQueue;
         }
-        void SwitchRenderer(eRendererType type);
-        void BuildRendererUI();
+
+        void SubmitFrame(const Scene& scene, ImDrawData* drawData, const RendererUiRequest& uiRequest, float64 time,
+                         float32 deltaTime);
+        // Main thread only. Reads renderer settings and stats, never touches GPU objects or frame graph state.
+        // Changes the user asks for are returned and applied by the next SubmitFrame.
+        [[nodiscard]] RendererUiRequest BuildUi();
 
     private:
+        void RenderFrame(const RenderScene& renderScene, ImDrawData* drawData, float64 time, float32 deltaTime);
+
+        void SwitchRenderer(eRendererType type);
+
         [[nodiscard]] FrameContext BeginFrame(const RenderScene& renderScene, float64 time, float32 deltaTime);
         void EndFrame(uint32 frameIndex, uint64 fenceValue);
 
@@ -71,7 +81,7 @@ namespace Hydrogen
         ShaderResourceViewHandle m_viewBufferSrv{};
         uint32 m_maxViews = 16;
 
-        std::array<uint64, Config::FramesInFlight> m_frameFenceValues{};
+        std::array<uint64, StaticConfig::FramesInFlight> m_frameFenceValues{};
 
         std::unique_ptr<IRenderer> m_renderer = nullptr;
         eRendererType m_rendererType = eRendererType::RayTracing;
@@ -80,5 +90,8 @@ namespace Hydrogen
         ImguiPass m_imguiPass{};
 
         CameraData m_previousCameraData{};
+
+        uint32 m_renderWidth = 0u;
+        uint32 m_renderHeight = 0u;
     };
 } // namespace Hydrogen

@@ -10,7 +10,8 @@ namespace Hydrogen
     class RayTracingRenderer : public IRenderer
     {
     public:
-        void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler) override;
+        void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler, uint32 renderWidth,
+                        uint32 renderHeight) override;
         void Shutdown() override;
 
         std::string_view Render(FrameGraph& frameGraph, const FrameContext& frameContext) override;

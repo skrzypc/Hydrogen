@@ -5,7 +5,8 @@
 
 #include <imgui.h>
 
-#include <h2/ui/uiContext.h>
+#include <h2/core/verifier.h>
+#include <h2/ui/userInterfaceContext.h>
 #include <h2/scene/scene.h>
 #include <h2/assets/assetRegistry.h>
 #include <h2/scene/components/meshComponent.h>
@@ -35,14 +36,18 @@ namespace Hydrogen
         }
     } // namespace
 
-    void ScenePanel::Draw(UiContext& context)
+    void ScenePanel::Draw(UserInterfaceContext& context)
     {
+        H2_VERIFY(context.pScene != nullptr && context.pAssetRegistry != nullptr && context.pSelection != nullptr,
+                  "Scene, asset registry or selection is missing from the UI context!");
+
         ImGui::Begin(GetName());
 
         Scene& scene = *context.pScene;
         AssetRegistry& assetRegistry = *context.pAssetRegistry;
+        Entity& selection = *context.pSelection;
 
-        DrawSelectableList("Meshes", scene.meshes.GetEntities(), context.selection,
+        DrawSelectableList("Meshes", scene.meshes.GetEntities(), selection,
                            [&](uint32 index, Entity entity)
                            {
                                const MeshComponent& meshComponent = scene.meshes.GetAll()[index];
@@ -54,10 +59,10 @@ namespace Hydrogen
                                return "Mesh " + std::to_string(entity.id);
                            });
 
-        DrawSelectableList("Lights", scene.lights.GetEntities(), context.selection,
+        DrawSelectableList("Lights", scene.lights.GetEntities(), selection,
                            [](uint32 index, Entity entity) { return "Light " + std::to_string(entity.id); });
 
-        DrawSelectableList("Cameras", scene.cameras.GetEntities(), context.selection,
+        DrawSelectableList("Cameras", scene.cameras.GetEntities(), selection,
                            [](uint32 index, Entity entity) { return "Camera " + std::to_string(entity.id); });
 
         ImGui::End();

@@ -11,9 +11,6 @@ namespace Hydrogen
 {
     void ImguiPass::Initialize(GpuDevice& device, ShaderCompiler&)
     {
-        IMGUI_CHECKVERSION();
-        ImGui::StyleColorsDark();
-
         m_descriptorBundle.descHeap = &device.GetDescriptorHeap<eDescriptorHeapType::CBV_SRV_UAV>();
         m_descriptorBundle.descAllocator =
             device.RequestDescriptorAllocator<FreeListIndexAllocator>(8, eDescriptorHeapType::CBV_SRV_UAV);
@@ -21,7 +18,7 @@ namespace Hydrogen
         ImGui_ImplDX12_InitInfo initInfo{};
         initInfo.Device = device.GetDxDevice();
         initInfo.CommandQueue = device.GetDxQueue<eQueueType::Direct>();
-        initInfo.NumFramesInFlight = Config::FramesInFlight;
+        initInfo.NumFramesInFlight = StaticConfig::FramesInFlight;
         initInfo.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
         initInfo.SrvDescriptorHeap = m_descriptorBundle.descHeap->GetDxHeap();
         initInfo.UserData = &m_descriptorBundle;

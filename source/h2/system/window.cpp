@@ -2,6 +2,7 @@
 #include <h2/system/window.h>
 #include <h2/core/logger.h>
 
+#include <imgui.h>
 #include <imgui_impl_win32.h>
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -156,26 +157,39 @@ namespace Hydrogen
         case WM_LBUTTONDOWN:
         {
             m_currentInput.leftMouseDown = true;
+            m_inputEvents.push_back({.type = eInputEventType::MouseButtonDown, .button = eMouseButton::Left});
             break;
         }
         case WM_LBUTTONUP:
         {
             m_currentInput.leftMouseDown = false;
+            m_inputEvents.push_back({.type = eInputEventType::MouseButtonUp, .button = eMouseButton::Left});
             break;
         }
         case WM_MBUTTONDOWN:
         {
             m_currentInput.middleMouseDown = true;
+            m_inputEvents.push_back({.type = eInputEventType::MouseButtonDown, .button = eMouseButton::Middle});
             break;
         }
         case WM_MBUTTONUP:
         {
             m_currentInput.middleMouseDown = false;
+            m_inputEvents.push_back({.type = eInputEventType::MouseButtonUp, .button = eMouseButton::Middle});
             break;
         }
         case WM_RBUTTONDOWN:
         {
             m_currentInput.rightMouseDown = true;
+            m_inputEvents.push_back({.type = eInputEventType::MouseButtonDown, .button = eMouseButton::Right});
+
+            // A right click on the UI must keep the cursor visible, e.g. for context menus.
+            if (ImGui::GetCurrentContext() != nullptr && ImGui::GetIO().WantCaptureMouse)
+            {
+                break;
+            }
+
+            m_cursorCaptured = true;
             SetCapture(hWnd);
             RECT clientRect{};
             GetClientRect(hWnd, &clientRect);
@@ -187,15 +201,22 @@ namespace Hydrogen
         case WM_RBUTTONUP:
         {
             m_currentInput.rightMouseDown = false;
-            ReleaseCapture();
-            ClipCursor(nullptr);
-            ShowCursor(TRUE);
+            m_inputEvents.push_back({.type = eInputEventType::MouseButtonUp, .button = eMouseButton::Right});
+            if (m_cursorCaptured)
+            {
+                m_cursorCaptured = false;
+                ReleaseCapture();
+                ClipCursor(nullptr);
+                ShowCursor(TRUE);
+            }
             break;
         }
         case WM_MOUSEWHEEL:
         {
-            m_currentInput.scrollDelta +=
+            const float32 wheelDelta =
                 static_cast<float32>(GET_WHEEL_DELTA_WPARAM(wParam)) / static_cast<float32>(WHEEL_DELTA);
+            m_currentInput.scrollDelta += wheelDelta;
+            m_inputEvents.push_back({.type = eInputEventType::MouseWheel, .wheelDelta = wheelDelta});
             break;
         }
         case WM_XBUTTONDOWN:
@@ -206,18 +227,25 @@ namespace Hydrogen
         }
         case WM_MOUSEACTIVATE:
         {
-            return MA_ACTIVATEANDEAT;
+            return MA_ACTIVATE;
         }
         case WM_KEYDOWN:
         case WM_SYSKEYDOWN:
         {
             m_currentInput.keys[static_cast<uint8>(wParam)] = true;
+
+            // Bit 30 is set for auto-repeat; events are for the initial press only.
+            if ((lParam & (1 << 30)) == 0)
+            {
+                m_inputEvents.push_back({.type = eInputEventType::KeyDown, .keyCode = static_cast<uint8>(wParam)});
+            }
             break;
         }
         case WM_KEYUP:
         case WM_SYSKEYUP:
         {
             m_currentInput.keys[static_cast<uint8>(wParam)] = false;
+            m_inputEvents.push_back({.type = eInputEventType::KeyUp, .keyCode = static_cast<uint8>(wParam)});
             break;
         }
         case WM_DESTROY:
@@ -309,6 +337,7 @@ namespace Hydrogen
         m_currentInput.mouseDeltaX = 0.0f;
         m_currentInput.mouseDeltaY = 0.0f;
         m_currentInput.scrollDelta = 0.0f;
+        m_inputEvents.clear();
 
         MSG msg{};
 

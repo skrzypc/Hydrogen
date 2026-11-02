@@ -9,7 +9,7 @@ namespace Hydrogen
         // Align sizePerFrame to 256 bytes so each frame's base address satisfies CBV alignment.
         m_sizePerFrame = (sizePerFrame + 255ull) & ~255ull;
 
-        const uint64 totalSize = m_sizePerFrame * Config::FramesInFlight;
+        const uint64 totalSize = m_sizePerFrame * StaticConfig::FramesInFlight;
 
         m_buffer = device.CreateUploadBuffer(L"UploadRingBuffer", totalSize);
     }

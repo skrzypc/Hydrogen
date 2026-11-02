@@ -2,11 +2,11 @@
 
 #include <imgui.h>
 
-#include <h2/ui/uiContext.h>
+#include <h2/ui/userInterfaceContext.h>
 
 namespace Hydrogen
 {
-    void StatsPanel::Draw(UiContext& context)
+    void StatsPanel::Draw(UserInterfaceContext& context)
     {
         ImGui::Begin(GetName());
 

@@ -2,31 +2,15 @@
 #include <filesystem>
 
 #include <h2/shaders/shaderCompiler.h>
-#include <h2/engineConfig.h>
+#include <h2/hydrogenConfig.h>
 #include <h2/core/logger.h>
 #include <h2/core/verifier.h>
-#include <h2/core/stringUtilities.h>
+#include <h2/core/utilities.h>
 
 namespace Hydrogen
 {
     ShaderCompiler::ShaderCompiler()
     {
-        // Resolve directories
-        auto workDir = std::filesystem::current_path();
-        m_shaderSourceDir = workDir / "shaders";
-
-#if _DEBUG
-        m_shaderOutputDir = workDir / "build" / "bin" / "Debug" / "shaders";
-#else
-        m_shaderOutputDir = workDir / "build" / "bin" / "Release" / "shaders";
-#endif
-
-        if (!std::filesystem::exists(m_shaderOutputDir))
-        {
-            H2_VERIFY_FATAL(std::filesystem::create_directories(m_shaderOutputDir),
-                            "Failed to create shader output directory: {}", m_shaderOutputDir.string());
-        }
-
         // Create DXC objects
         H2_VERIFY_FATAL(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&m_pUtils)), "Failed to create IDxcUtils");
         H2_VERIFY_FATAL(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_pCompiler)),
@@ -35,12 +19,25 @@ namespace Hydrogen
                         "Failed to create DXC include handler");
 
         const std::wstring smSuffix =
-            String::Format(L"_{}_{}", Config::ShaderModelVersionMajor, Config::ShaderModelVersionMinor);
+            String::Format(L"_{}_{}", StaticConfig::ShaderModelVersionMajor, StaticConfig::ShaderModelVersionMinor);
 
         m_targetStrings[eShaderType::VS] = L"vs" + smSuffix;
         m_targetStrings[eShaderType::PS] = L"ps" + smSuffix;
         m_targetStrings[eShaderType::CS] = L"cs" + smSuffix;
         m_targetStrings[eShaderType::RT] = L"lib" + smSuffix;
+    }
+
+    void ShaderCompiler::Initialize(const std::filesystem::path& shaderSourceDir,
+                                    const std::filesystem::path& shaderOutputDir)
+    {
+        m_shaderSourceDir = shaderSourceDir;
+        m_shaderOutputDir = shaderOutputDir;
+
+        if (!std::filesystem::exists(m_shaderOutputDir))
+        {
+            H2_VERIFY_FATAL(std::filesystem::create_directories(m_shaderOutputDir),
+                            "Failed to create shader output directory: {}", m_shaderOutputDir.string());
+        }
     }
 
     bool ShaderCompiler::Compile(Shader& shader)

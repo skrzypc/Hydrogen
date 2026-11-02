@@ -1,0 +1,54 @@
+#pragma once
+
+#include <filesystem>
+
+#include <h2/core/basicTypes.h>
+
+#include <h2/core/logger.h>
+#include <h2/renderer/gpu/device.h>
+
+namespace Hydrogen
+{
+    struct StaticConfig
+    {
+        static constexpr uint32 FramesInFlight = 3;
+
+        static constexpr bool EnableGPUBasedValidation = false;
+        static constexpr eAdapterVendor RequestedAdapter = eAdapterVendor::NVIDIA;
+
+        static constexpr D3D12_RAYTRACING_TIER ExpectedRaytracingTier =
+            D3D12_RAYTRACING_TIER_1_1; // 1_2 not supported by AMD yet.
+        static constexpr D3D12_MESH_SHADER_TIER ExpectedMeshShaderTier = D3D12_MESH_SHADER_TIER_1;
+        static constexpr D3D12_RESOURCE_BINDING_TIER ExpectedResourceBindingTier = D3D12_RESOURCE_BINDING_TIER_3;
+
+        static constexpr uint8 ShaderModelVersionMajor = 6;
+        static constexpr uint8 ShaderModelVersionMinor = 9;
+    };
+
+    // Directories the engine needs at runtime, resolved once at startup so nothing depends on the working directory.
+    // Inputs default to the engine source tree, outputs to the executable's directory.
+    struct RuntimePaths
+    {
+        std::filesystem::path shaderSourceDir{};
+        std::filesystem::path shaderOutputDir{};
+        std::filesystem::path dataDir{};
+        std::filesystem::path logDir{};
+    };
+
+    struct Config
+    {
+        uint16 windowWidth = 1920u;
+        uint16 windowHeight = 1080u;
+        std::wstring windowTitle = L"Hydrogen Engine";
+
+        // Where the UI layout (ImGui .ini) is stored. Empty uses ImGui's default (imgui.ini in the working directory).
+        std::string uiSettingsPath{};
+
+        // Directory overrides. Empty entries use the defaults resolved at startup.
+        RuntimePaths paths{};
+
+        bool waitForDebugger = false;
+
+        eLogLevel logLevel = eLogLevel::Verbose;
+    };
+} // namespace Hydrogen

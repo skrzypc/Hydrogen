@@ -24,7 +24,8 @@ namespace Hydrogen
     public:
         virtual ~IRenderer() = default;
 
-        virtual void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler) = 0;
+        virtual void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler, uint32 renderWidth,
+                                uint32 renderHeight) = 0;
         virtual void Shutdown() = 0;
 
         virtual std::string_view Render(FrameGraph& frameGraph, const FrameContext& frameContext) = 0;

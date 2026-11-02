@@ -13,12 +13,14 @@
 
 namespace Hydrogen
 {
-    void RayTracingRenderer::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler)
+    void RayTracingRenderer::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler, uint32 renderWidth,
+                                        uint32 renderHeight)
     {
         m_pDevice = &device;
 
         m_buildTlasPass.Initialize(device, shaderCompiler);
         m_rayTraceDispatchPass.Initialize(device, shaderCompiler);
+        m_rayTraceDispatchPass.CreateAccumulationTarget(renderWidth, renderHeight);
         m_tonemapPass.Initialize(device, shaderCompiler);
     }
 
@@ -78,8 +80,6 @@ namespace Hydrogen
 
     void RayTracingRenderer::BuildUI()
     {
-        ImGui::Begin("RayTracing");
         ImGui::Text("Accumulated frames: %u", m_rayTraceDispatchPass.GetAccumulatedFramesCount());
-        ImGui::End();
     }
 } // namespace Hydrogen

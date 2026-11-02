@@ -22,6 +22,8 @@ namespace Hydrogen
         ShaderCompiler(ShaderCompiler&&) noexcept = default;
         ShaderCompiler& operator=(ShaderCompiler&&) noexcept = default;
 
+        void Initialize(const std::filesystem::path& shaderSourceDir, const std::filesystem::path& shaderOutputDir);
+
         bool Compile(Shader& shader);
 
     private:

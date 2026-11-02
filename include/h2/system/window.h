@@ -4,8 +4,10 @@
 #include <string>
 #include <optional>
 #include <bitset>
+#include <vector>
 
 #include <h2/core/basicTypes.h>
+#include <h2/system/inputEvent.h>
 
 namespace Hydrogen
 {
@@ -39,6 +41,11 @@ namespace Hydrogen
         }
 
         std::optional<int32> ProcessMessages();
+
+        const std::vector<InputEvent>& GetInputEvents() const
+        {
+            return m_inputEvents;
+        }
 
         bool IsKeyDown(uint8 keyCode) const;
         bool IsKeyJustPressed(uint8 keyCode) const;
@@ -86,10 +93,14 @@ namespace Hydrogen
         ATOM m_atom{};
 
         bool m_wasResized = false;
+        bool m_cursorCaptured = false;
         uint32 m_width = 0u;
         uint32 m_height = 0u;
 
         InputState m_currentInput{};
         InputState m_previousInput{};
+
+        // Events received during the last ProcessMessages() call.
+        std::vector<InputEvent> m_inputEvents{};
     };
 } // namespace Hydrogen

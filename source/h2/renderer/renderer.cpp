@@ -10,14 +10,13 @@
 
 #include <imgui.h>
 #include <imgui_impl_dx12.h>
-#include <imgui_impl_win32.h>
 
 #include <h2/renderer/renderer.h>
 #include <h2/renderer/renderers/deferredRenderer.h>
 #include <h2/renderer/renderers/rayTracingRenderer.h>
 #include <h2/core/logger.h>
 #include <h2/core/verifier.h>
-#include <h2/core/stringUtilities.h>
+#include <h2/core/utilities.h>
 #include <h2/shaders/shaderInterop.h>
 
 #include <h2/renderer/framegraph/frameGraph.h>
@@ -32,15 +31,23 @@ namespace Hydrogen
 {
     Renderer::~Renderer()
     {
+        if (m_renderer == nullptr)
+        {
+            return;
+        }
+
         m_gpuDevice.WaitForIdle<eQueueType::Direct>();
         m_renderer->Shutdown();
         m_imguiPass.Shutdown();
-        ImGui_ImplWin32_Shutdown();
-        ImGui::DestroyContext();
     }
 
-    void Renderer::Initialize(HWND hWnd)
+    void Renderer::Initialize(uint32 renderWidth, uint32 renderHeight, HWND hWnd, const RuntimePaths& paths)
     {
+        m_renderWidth = renderWidth;
+        m_renderHeight = renderHeight;
+
+        m_shaderCompiler.Initialize(paths.shaderSourceDir, paths.shaderOutputDir);
+
         m_gpuDevice.Create();
         m_swapChain.Create(m_gpuDevice, hWnd);
 
@@ -63,9 +70,71 @@ namespace Hydrogen
 
         CreateRenderer(m_rendererType);
 
-        ImGui::CreateContext();
-        ImGui_ImplWin32_Init(hWnd);
         m_imguiPass.Initialize(m_gpuDevice, m_shaderCompiler);
+    }
+
+    void Renderer::SubmitFrame(const Scene& scene, ImDrawData* drawData, const RendererUiRequest& uiRequest,
+                               float64 time, float32 deltaTime)
+    {
+        if (uiRequest.rendererType.has_value())
+        {
+            SwitchRenderer(*uiRequest.rendererType);
+        }
+
+        RenderScene renderScene{};
+
+        if (const TransformComponent* pCameraTransform = scene.transforms.Get(scene.activeCamera))
+        {
+            renderScene.camera.position = pCameraTransform->transform.position;
+            renderScene.camera.rotation = pCameraTransform->transform.rotation;
+        }
+
+        if (const CameraComponent* pCameraComponent = scene.cameras.Get(scene.activeCamera))
+        {
+            renderScene.camera.fovYDeg = pCameraComponent->fovYDeg;
+            renderScene.camera.nearZ = pCameraComponent->nearZ;
+            renderScene.camera.farZ = pCameraComponent->farZ;
+            renderScene.camera.exposure = 683.0f / (1.2f * std::exp2(pCameraComponent->ev100)); // EV100 to exposure.
+        }
+
+        const auto& meshEntities = scene.meshes.GetEntities();
+        const auto meshComponents = scene.meshes.GetAll();
+        for (uint32 meshIndex = 0; meshIndex < static_cast<uint32>(meshEntities.size()); ++meshIndex)
+        {
+            const TransformComponent* pTransformComponent = scene.transforms.Get(meshEntities[meshIndex]);
+            if (pTransformComponent == nullptr)
+            {
+                continue;
+            }
+
+            RenderObject renderObject{};
+            renderObject.mesh = meshComponents[meshIndex].mesh;
+            if (const MaterialComponent* pMaterialComponent = scene.materials.Get(meshEntities[meshIndex]))
+            {
+                renderObject.materialDataIndex = pMaterialComponent->material.id;
+            }
+            DirectX::XMStoreFloat4x4(&renderObject.worldMatrix, pTransformComponent->transform.GetWorldMatrix());
+            renderScene.objects.push_back(renderObject);
+        }
+
+        const auto& lightEntities = scene.lights.GetEntities();
+        const auto lightComponents = scene.lights.GetAll();
+        for (uint32 lightIndex = 0; lightIndex < static_cast<uint32>(lightEntities.size()); ++lightIndex)
+        {
+            const TransformComponent* pTransformComponent = scene.transforms.Get(lightEntities[lightIndex]);
+            if (pTransformComponent == nullptr)
+            {
+                continue;
+            }
+
+            RenderLight renderLight{};
+            renderLight.light = lightComponents[lightIndex].light;
+            renderLight.position = pTransformComponent->transform.position;
+            renderLight.direction = Vector3::Transform(Forward, Quaternion(pTransformComponent->transform.rotation));
+            renderScene.lights.push_back(renderLight);
+        }
+
+        RenderFrame(renderScene, drawData, time, deltaTime);
     }
 
     FrameContext Renderer::BeginFrame(const RenderScene& renderScene, float64 time, float32 deltaTime)
@@ -184,7 +253,7 @@ namespace Hydrogen
             break;
         }
 
-        m_renderer->Initialize(m_gpuDevice, m_shaderCompiler);
+        m_renderer->Initialize(m_gpuDevice, m_shaderCompiler, m_renderWidth, m_renderHeight);
         m_rendererType = type;
     }
 
@@ -202,24 +271,24 @@ namespace Hydrogen
         CreateRenderer(type);
     }
 
-    void Renderer::BuildRendererUI()
+    RendererUiRequest Renderer::BuildUi()
     {
+        RendererUiRequest request{};
+
         static constexpr std::array<const char*, static_cast<size_t>(eRendererType::Count)> rendererNames = {
             "Deferred",
             "RayTracing",
         };
 
-        ImGui::Begin("Renderer");
-
         int selected = static_cast<int>(m_rendererType);
         if (ImGui::Combo("Renderer", &selected, rendererNames.data(), static_cast<int>(rendererNames.size())))
         {
-            SwitchRenderer(static_cast<eRendererType>(selected));
+            request.rendererType = static_cast<eRendererType>(selected);
         }
 
-        ImGui::End();
-
         m_renderer->BuildUI();
+
+        return request;
     }
 
     // Reversed-Z LH projection: near maps to 1, far maps to 0.
@@ -292,12 +361,12 @@ namespace Hydrogen
 
         m_gpuScene.Update(frameContext);
 
-        frameContext.sceneChanged = (m_gpuScene.HasSceneChanged() ||
-                                     frameContext.renderScene.camera.fovYDeg != m_previousCameraData.fovYDeg ||
-                                     frameContext.renderScene.camera.nearZ != m_previousCameraData.nearZ ||
-                                     frameContext.renderScene.camera.farZ != m_previousCameraData.farZ ||
-                                     frameContext.renderScene.camera.position != m_previousCameraData.position ||
-                                     frameContext.renderScene.camera.rotation != m_previousCameraData.rotation);
+        frameContext.sceneChanged =
+            (m_gpuScene.HasSceneChanged() || frameContext.renderScene.camera.fovYDeg != m_previousCameraData.fovYDeg ||
+             frameContext.renderScene.camera.nearZ != m_previousCameraData.nearZ ||
+             frameContext.renderScene.camera.farZ != m_previousCameraData.farZ ||
+             frameContext.renderScene.camera.position != m_previousCameraData.position ||
+             frameContext.renderScene.camera.rotation != m_previousCameraData.rotation);
 
         m_previousCameraData = frameContext.renderScene.camera;
 
@@ -309,9 +378,12 @@ namespace Hydrogen
 
         std::string_view rendererOutput = m_renderer->Render(m_frameGraph, frameContext);
 
-        m_imguiPass.pDrawData = drawData;
-        m_imguiPass.target = rendererOutput;
-        m_frameGraph.AddPass("ImGui", m_imguiPass);
+        if (drawData != nullptr)
+        {
+            m_imguiPass.pDrawData = drawData;
+            m_imguiPass.target = rendererOutput;
+            m_frameGraph.AddPass("ImGui", m_imguiPass);
+        }
 
         m_copyPass.src = rendererOutput;
         m_copyPass.dst = "Backbuffer";

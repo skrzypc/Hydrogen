@@ -7,7 +7,7 @@
 
 #include <array>
 
-#include <h2/engineConfig.h>
+#include <h2/hydrogenConfig.h>
 #include <h2/core/verifier.h>
 #include <h2/renderer/gpu/resources/texture.h>
 
@@ -45,6 +45,6 @@ namespace Hydrogen
         uint64 m_frameNumber = 0u;
 
         Microsoft::WRL::ComPtr<IDXGISwapChain4> m_pSwapChain = nullptr;
-        std::array<std::unique_ptr<Texture>, Config::FramesInFlight> m_backBuffers{};
+        std::array<std::unique_ptr<Texture>, StaticConfig::FramesInFlight> m_backBuffers{};
     };
 } // namespace Hydrogen
