@@ -41,7 +41,7 @@ foreach(CONFIG Debug Release RelWithDebInfo)
     string(TOUPPER "${CONFIG}" CONFIG_UPPER)
     set_target_properties(DevelopmentApp PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY_${CONFIG_UPPER}
-            "${CMAKE_BINARY_DIR}/bin/${CONFIG}/DevelopmentApp"
+            "${OUTPUT_ROOT}/bin/${CONFIG}/DevelopmentApp"
     )
 endforeach()
 
