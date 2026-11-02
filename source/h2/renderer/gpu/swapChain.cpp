@@ -5,7 +5,7 @@
 #include <h2/hydrogenConfig.h>
 #include <h2/renderer/gpu/swapChain.h>
 #include <h2/core/verifier.h>
-#include <h2/core/stringUtilities.h>
+#include <h2/core/utilities.h>
 
 namespace Hydrogen
 {

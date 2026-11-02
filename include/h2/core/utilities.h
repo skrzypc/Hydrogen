@@ -3,10 +3,12 @@
 #include <string>
 #include <format>
 #include <algorithm>
+#include <filesystem>
 #include <Windows.h>
 
 #include <h2/core/basicTypes.h>
 #include <h2/core/logger.h>
+#include <h2/core/verifier.h>
 
 namespace Hydrogen
 {
@@ -81,4 +83,26 @@ namespace Hydrogen
             return std::format(fmt, std::forward<Args>(args)...);
         }
     } // namespace String
+
+    namespace Path
+    {
+        inline std::filesystem::path GetExecutableDir()
+        {
+            std::wstring buffer(MAX_PATH, L'\0');
+            while (true)
+            {
+                const DWORD length = GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
+                H2_VERIFY_FATAL(length != 0, "Failed to get the executable path!");
+
+                if (length < buffer.size())
+                {
+                    buffer.resize(length);
+                    break;
+                }
+                buffer.resize(buffer.size() * 2);
+            }
+
+            return std::filesystem::path(buffer).parent_path();
+        }
+    } // namespace Path
 } // namespace Hydrogen

@@ -2,7 +2,7 @@
 
 #include <DirectXTex.h>
 
-#include <h2/core/stringUtilities.h>
+#include <h2/core/utilities.h>
 #include <h2/core/verifier.h>
 
 namespace Hydrogen

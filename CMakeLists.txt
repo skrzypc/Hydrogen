@@ -98,6 +98,11 @@ target_include_directories(Hydrogen
         "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 
+target_compile_definitions(Hydrogen
+    PRIVATE
+        HYDROGEN_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
 add_subdirectory(apps/DevelopmentApp)
 
 if(MSVC)

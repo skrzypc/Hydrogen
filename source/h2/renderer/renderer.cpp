@@ -16,7 +16,7 @@
 #include <h2/renderer/renderers/rayTracingRenderer.h>
 #include <h2/core/logger.h>
 #include <h2/core/verifier.h>
-#include <h2/core/stringUtilities.h>
+#include <h2/core/utilities.h>
 #include <h2/shaders/shaderInterop.h>
 
 #include <h2/renderer/framegraph/frameGraph.h>

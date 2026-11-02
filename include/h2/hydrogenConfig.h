@@ -1,5 +1,7 @@
 #pragma once
 
+#include <filesystem>
+
 #include <h2/core/basicTypes.h>
 
 #include <h2/core/logger.h>
@@ -23,6 +25,16 @@ namespace Hydrogen
         static constexpr uint8 ShaderModelVersionMinor = 9;
     };
 
+    // Directories the engine needs at runtime, resolved once at startup so nothing depends on the working directory.
+    // Inputs default to the engine source tree, outputs to the executable's directory.
+    struct RuntimePaths
+    {
+        std::filesystem::path shaderSourceDir{};
+        std::filesystem::path shaderOutputDir{};
+        std::filesystem::path dataDir{};
+        std::filesystem::path logDir{};
+    };
+
     struct Config
     {
         uint16 windowWidth = 1920u;
@@ -31,6 +43,9 @@ namespace Hydrogen
 
         // Where the UI layout (ImGui .ini) is stored. Empty uses ImGui's default (imgui.ini in the working directory).
         std::string uiSettingsPath{};
+
+        // Directory overrides. Empty entries use the defaults resolved at startup.
+        RuntimePaths paths{};
 
         bool waitForDebugger = false;
 

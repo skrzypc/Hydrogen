@@ -11,7 +11,7 @@ namespace Hydrogen
     std::ofstream Logger::m_file;
     eLogLevel Logger::m_currentLogLevel = eLogLevel::Minimal;
 
-    void Logger::Initialize(eLogLevel logLevel)
+    void Logger::Initialize(eLogLevel logLevel, const std::filesystem::path& logDir)
     {
         SetLogLevel(logLevel);
 
@@ -25,11 +25,11 @@ namespace Hydrogen
         //   std::cout.sync_with_stdio();
         // }
 
-        const std::filesystem::path logFilePath = m_logDir / m_logFileName;
+        const std::filesystem::path logFilePath = logDir / m_logFileName;
 
-        if (!std::filesystem::exists(m_logDir))
+        if (!std::filesystem::exists(logDir))
         {
-            std::filesystem::create_directory(m_logDir);
+            std::filesystem::create_directories(logDir);
         }
 
         m_file.open(logFilePath.c_str(), std::ios::out | std::ios::trunc);

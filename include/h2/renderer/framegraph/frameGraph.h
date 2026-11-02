@@ -15,7 +15,7 @@
 #include <h2/core/basicTypes.h>
 #include <h2/renderer/framegraph/frameGraphBuilder.h>
 #include <h2/renderer/framegraph/frameGraphResourceCache.h>
-#include <h2/core/stringUtilities.h>
+#include <h2/core/utilities.h>
 
 namespace Hydrogen
 {
