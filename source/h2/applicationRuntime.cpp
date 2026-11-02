@@ -40,7 +40,7 @@ namespace Hydrogen
 
         m_userInterfaceManager.Initialize(m_window.GetHandle(), m_hydrogenConfig.uiSettingsPath);
 
-        m_renderer.Initialize(m_window.GetWidth(), m_window.GetHeight(), m_window.GetHandle());
+        m_renderer.Initialize(m_window.GetWidth(), m_window.GetHeight(), m_window.GetHandle(), m_paths);
         // TODO: Avoid that?
         m_renderer.SetUploadQueue(&m_assetRegistry.GetUploadQueue());
 
