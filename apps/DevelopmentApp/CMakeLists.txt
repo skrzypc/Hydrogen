@@ -20,14 +20,11 @@ target_compile_features(DevelopmentApp PRIVATE cxx_std_23)
 
 target_compile_definitions(DevelopmentApp PRIVATE
     DEV_APP_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+    DEV_APP_ASSETS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../assets"
 )
 
 target_include_directories(DevelopmentApp PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
-)
-
-set_target_properties(DevelopmentApp PROPERTIES
-    VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 
 if(MSVC)

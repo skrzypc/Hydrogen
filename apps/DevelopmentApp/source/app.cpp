@@ -26,7 +26,7 @@ void Application::OnInitialize()
 void Application::LoadModels()
 {
     std::vector<Model> models{};
-    models.emplace_back(ModelLoader::Load("apps/assets/AmdSponza/MainSponza.gltf"));
+    models.emplace_back(ModelLoader::Load(DEV_APP_ASSETS_DIR "/AmdSponza/MainSponza.gltf"));
 
     auto registerTextureIfPresent = [this](const std::optional<std::string>& path) -> TextureHandle
     {
