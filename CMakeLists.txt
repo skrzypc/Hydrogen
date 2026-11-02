@@ -96,8 +96,6 @@ target_link_libraries(Hydrogen
 target_include_directories(Hydrogen
     PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/include"
-        "${CMAKE_SOURCE_DIR}/thirdParty"
-        "${CMAKE_SOURCE_DIR}/thirdParty/vcpkg_installed/x64-windows/include"
 )
 
 add_subdirectory(apps/DevelopmentApp)
