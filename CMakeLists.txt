@@ -20,7 +20,7 @@ file(GENERATE
 ]=]
 )
 
-set(OUTPUT_ROOT "${CMAKE_BINARY_DIR}")
+set(OUTPUT_ROOT "${CMAKE_SOURCE_DIR}/build")
 foreach(CONFIG Debug Release RelWithDebInfo)
     string(TOUPPER "${CONFIG}" CONFIG_UPPER)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${CONFIG_UPPER} "${OUTPUT_ROOT}/bin/${CONFIG}")
@@ -96,8 +96,6 @@ target_link_libraries(Hydrogen
 target_include_directories(Hydrogen
     PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/include"
-        "${CMAKE_SOURCE_DIR}/thirdParty"
-        "${CMAKE_SOURCE_DIR}/thirdParty/vcpkg_installed/x64-windows/include"
 )
 
 add_subdirectory(apps/DevelopmentApp)
