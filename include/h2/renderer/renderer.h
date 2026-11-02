@@ -3,6 +3,7 @@
 #include <optional>
 #include <vector>
 
+#include <h2/hydrogenConfig.h>
 #include <h2/scene/scene.h>
 
 #include <h2/renderer/gpu/device.h>
@@ -39,7 +40,7 @@ namespace Hydrogen
         Renderer(Renderer&&) noexcept = default;
         Renderer& operator=(Renderer&&) noexcept = default;
 
-        void Initialize(uint32 renderWidth, uint32 renderHeight, HWND hWnd);
+        void Initialize(uint32 renderWidth, uint32 renderHeight, HWND hWnd, const RuntimePaths& paths);
         void SetUploadQueue(AssetUploadQueue* pQueue)
         {
             m_pUploadQueue = pQueue;

@@ -2,7 +2,7 @@
 #include <h2/renderer/gpu/device.h>
 #include <h2/shaders/shader.h>
 #include <h2/core/verifier.h>
-#include <h2/core/stringUtilities.h>
+#include <h2/core/utilities.h>
 
 #include <string>
 #include <vector>

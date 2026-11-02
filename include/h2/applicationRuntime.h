@@ -67,6 +67,7 @@ namespace Hydrogen
         void DispatchInputEvents();
 
         Config m_hydrogenConfig{};
+        RuntimePaths m_paths{};
 
         Timer m_frameTimer{};
         Timer m_totalTimer{};

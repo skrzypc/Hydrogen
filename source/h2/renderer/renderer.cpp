@@ -16,7 +16,7 @@
 #include <h2/renderer/renderers/rayTracingRenderer.h>
 #include <h2/core/logger.h>
 #include <h2/core/verifier.h>
-#include <h2/core/stringUtilities.h>
+#include <h2/core/utilities.h>
 #include <h2/shaders/shaderInterop.h>
 
 #include <h2/renderer/framegraph/frameGraph.h>
@@ -41,10 +41,12 @@ namespace Hydrogen
         m_imguiPass.Shutdown();
     }
 
-    void Renderer::Initialize(uint32 renderWidth, uint32 renderHeight, HWND hWnd)
+    void Renderer::Initialize(uint32 renderWidth, uint32 renderHeight, HWND hWnd, const RuntimePaths& paths)
     {
         m_renderWidth = renderWidth;
         m_renderHeight = renderHeight;
+
+        m_shaderCompiler.Initialize(paths.shaderSourceDir, paths.shaderOutputDir);
 
         m_gpuDevice.Create();
         m_swapChain.Create(m_gpuDevice, hWnd);

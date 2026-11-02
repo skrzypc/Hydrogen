@@ -3,7 +3,7 @@
 
 #include <h2/hydrogenConfig.h>
 #include <h2/core/verifier.h>
-#include <h2/core/stringUtilities.h>
+#include <h2/core/utilities.h>
 #include <h2/renderer/gpu/commands/graphicsContext.h>
 #include <h2/renderer/gpu/commands/copyContext.h>
 
@@ -351,8 +351,8 @@ namespace Hydrogen
 
         // Shader model
         {
-            D3D_SHADER_MODEL expectedShaderModel =
-                static_cast<D3D_SHADER_MODEL>((StaticConfig::ShaderModelVersionMajor << 4) | StaticConfig::ShaderModelVersionMinor);
+            D3D_SHADER_MODEL expectedShaderModel = static_cast<D3D_SHADER_MODEL>(
+                (StaticConfig::ShaderModelVersionMajor << 4) | StaticConfig::ShaderModelVersionMinor);
 
             D3D12_FEATURE_DATA_SHADER_MODEL featureData{expectedShaderModel};
             H2_VERIFY(m_pDxDevice->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &featureData, sizeof(featureData)),
