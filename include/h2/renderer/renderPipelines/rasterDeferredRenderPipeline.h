@@ -7,7 +7,7 @@
 
 namespace Hydrogen
 {
-    class DeferredRenderPipeline : public IRenderPipeline
+    class RasterDeferredRenderPipeline : public IRenderPipeline
     {
     public:
         void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler, uint32 renderWidth,
@@ -19,7 +19,7 @@ namespace Hydrogen
 
         const char* GetName() const override
         {
-            return "Deferred";
+            return "RasterDeferred";
         }
 
     private:

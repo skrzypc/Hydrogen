@@ -84,7 +84,7 @@ namespace Hydrogen
         std::array<uint64, StaticConfig::FramesInFlight> m_frameFenceValues{};
 
         std::unique_ptr<IRenderPipeline> m_renderPipeline = nullptr;
-        eRenderPipelineType m_renderPipelineType = eRenderPipelineType::RayTracing;
+        eRenderPipelineType m_renderPipelineType = eRenderPipelineType::ReferencePathTracer;
 
         CopyPass m_copyPass{};
         ImguiPass m_imguiPass{};

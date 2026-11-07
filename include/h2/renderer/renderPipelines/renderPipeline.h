@@ -14,8 +14,8 @@ namespace Hydrogen
 
     enum class eRenderPipelineType : uint8
     {
-        Deferred = 0,
-        RayTracing,
+        RasterDeferred = 0,
+        ReferencePathTracer,
         Count
     };
 

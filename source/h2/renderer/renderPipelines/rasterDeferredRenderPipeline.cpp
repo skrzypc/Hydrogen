@@ -1,4 +1,4 @@
-#include <h2/renderer/renderPipelines/deferredRenderPipeline.h>
+#include <h2/renderer/renderPipelines/rasterDeferredRenderPipeline.h>
 
 #include <string_view>
 
@@ -10,8 +10,8 @@
 
 namespace Hydrogen
 {
-    void DeferredRenderPipeline::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler, uint32 renderWidth,
-                                            uint32 renderHeight)
+    void RasterDeferredRenderPipeline::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler, uint32 renderWidth,
+                                                  uint32 renderHeight)
     {
         m_pDevice = &device;
 
@@ -20,9 +20,10 @@ namespace Hydrogen
         m_tonemapPass.Initialize(device, shaderCompiler);
     }
 
-    void DeferredRenderPipeline::Shutdown() {}
+    void RasterDeferredRenderPipeline::Shutdown() {}
 
-    void DeferredRenderPipeline::DefineFrameGraphResources(FrameGraph& frameGraph, const FrameContext& frameContext)
+    void RasterDeferredRenderPipeline::DefineFrameGraphResources(FrameGraph& frameGraph,
+                                                                 const FrameContext& frameContext)
     {
         frameGraph.CreateTexture("GBuffer_Albedo", {
                                                        .width = frameContext.renderWidth,
@@ -91,7 +92,7 @@ namespace Hydrogen
                                                });
     }
 
-    std::string_view DeferredRenderPipeline::Render(FrameGraph& frameGraph, const FrameContext& frameContext)
+    std::string_view RasterDeferredRenderPipeline::Render(FrameGraph& frameGraph, const FrameContext& frameContext)
     {
         DefineFrameGraphResources(frameGraph, frameContext);
 
@@ -106,5 +107,5 @@ namespace Hydrogen
         return "Output";
     }
 
-    void DeferredRenderPipeline::BuildUI() {}
+    void RasterDeferredRenderPipeline::BuildUI() {}
 } // namespace Hydrogen

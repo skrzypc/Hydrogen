@@ -12,8 +12,8 @@
 #include <imgui_impl_dx12.h>
 
 #include <h2/renderer/renderer.h>
-#include <h2/renderer/renderPipelines/deferredRenderPipeline.h>
-#include <h2/renderer/renderPipelines/rayTracingRenderPipeline.h>
+#include <h2/renderer/renderPipelines/rasterDeferredRenderPipeline.h>
+#include <h2/renderer/renderPipelines/referencePathTracerRenderPipeline.h>
 #include <h2/core/logger.h>
 #include <h2/core/verifier.h>
 #include <h2/core/utilities.h>
@@ -242,11 +242,11 @@ namespace Hydrogen
     {
         switch (type)
         {
-        case eRenderPipelineType::Deferred:
-            m_renderPipeline = std::make_unique<DeferredRenderPipeline>();
+        case eRenderPipelineType::RasterDeferred:
+            m_renderPipeline = std::make_unique<RasterDeferredRenderPipeline>();
             break;
-        case eRenderPipelineType::RayTracing:
-            m_renderPipeline = std::make_unique<RayTracingRenderPipeline>();
+        case eRenderPipelineType::ReferencePathTracer:
+            m_renderPipeline = std::make_unique<ReferencePathTracerRenderPipeline>();
             break;
         default:
             H2_VERIFY_FATAL(false, "Unknown render pipeline type!");
@@ -276,8 +276,8 @@ namespace Hydrogen
         RendererUiRequest request{};
 
         static constexpr std::array<const char*, static_cast<size_t>(eRenderPipelineType::Count)> pipelineNames = {
-            "Deferred",
-            "RayTracing",
+            "RasterDeferred",
+            "ReferencePathTracer",
         };
 
         int selected = static_cast<int>(m_renderPipelineType);

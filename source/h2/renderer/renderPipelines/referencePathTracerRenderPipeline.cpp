@@ -1,4 +1,4 @@
-#include <h2/renderer/renderPipelines/rayTracingRenderPipeline.h>
+#include <h2/renderer/renderPipelines/referencePathTracerRenderPipeline.h>
 
 #include <string_view>
 
@@ -13,8 +13,8 @@
 
 namespace Hydrogen
 {
-    void RayTracingRenderPipeline::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler, uint32 renderWidth,
-                                              uint32 renderHeight)
+    void ReferencePathTracerRenderPipeline::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler,
+                                                       uint32 renderWidth, uint32 renderHeight)
     {
         m_pDevice = &device;
 
@@ -24,9 +24,9 @@ namespace Hydrogen
         m_tonemapPass.Initialize(device, shaderCompiler);
     }
 
-    void RayTracingRenderPipeline::Shutdown() {}
+    void ReferencePathTracerRenderPipeline::Shutdown() {}
 
-    std::string_view RayTracingRenderPipeline::Render(FrameGraph& frameGraph, const FrameContext& frameContext)
+    std::string_view ReferencePathTracerRenderPipeline::Render(FrameGraph& frameGraph, const FrameContext& frameContext)
     {
         DefineFrameGraphResources(frameGraph, frameContext);
 
@@ -42,7 +42,8 @@ namespace Hydrogen
         return "Output";
     }
 
-    void RayTracingRenderPipeline::DefineFrameGraphResources(FrameGraph& frameGraph, const FrameContext& frameContext)
+    void ReferencePathTracerRenderPipeline::DefineFrameGraphResources(FrameGraph& frameGraph,
+                                                                      const FrameContext& frameContext)
     {
         frameGraph.CreateTexture("SceneColor", {
                                                    .width = frameContext.renderWidth,
@@ -78,7 +79,7 @@ namespace Hydrogen
                                                             .flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS});
     }
 
-    void RayTracingRenderPipeline::BuildUI()
+    void ReferencePathTracerRenderPipeline::BuildUI()
     {
         ImGui::Text("Accumulated frames: %u", m_rayTraceDispatchPass.GetAccumulatedFramesCount());
     }

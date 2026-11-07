@@ -7,7 +7,7 @@
 
 namespace Hydrogen
 {
-    class RayTracingRenderPipeline : public IRenderPipeline
+    class ReferencePathTracerRenderPipeline : public IRenderPipeline
     {
     public:
         void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler, uint32 renderWidth,
@@ -19,7 +19,7 @@ namespace Hydrogen
 
         const char* GetName() const override
         {
-            return "RayTracing";
+            return "ReferencePathTracer";
         }
 
     private:
