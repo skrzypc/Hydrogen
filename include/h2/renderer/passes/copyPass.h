@@ -9,15 +9,15 @@ namespace Hydrogen
     class CopyPass : public IRenderPass
     {
     public:
-        std::string src;
-        std::string dst;
+        std::string input;
+        std::string output;
 
         void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler) override {}
 
         void Setup(FGBuilder& builder) override
         {
-            builder.Read(src, FGAccess::Read::CopySrc);
-            builder.Write(dst, FGAccess::Write::CopyDst);
+            builder.Read(input, FGAccess::Read::CopySrc);
+            builder.Write(output, FGAccess::Write::CopyDst);
         }
 
         void Execute(FGExecuteContext& fgExecuteContext, GraphicsContext& graphicsContext) override;

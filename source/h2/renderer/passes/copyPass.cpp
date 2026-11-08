@@ -5,6 +5,7 @@ namespace Hydrogen
 {
     void CopyPass::Execute(FGExecuteContext& fgExecuteContext, GraphicsContext& graphicsContext)
     {
-        graphicsContext.CmdList()->CopyResource(fgExecuteContext.GetResource(dst), fgExecuteContext.GetResource(src));
+        graphicsContext.CmdList()->CopyResource(fgExecuteContext.GetResource(output),
+                                                fgExecuteContext.GetResource(input));
     }
 } // namespace Hydrogen

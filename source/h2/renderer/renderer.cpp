@@ -14,6 +14,7 @@
 #include <h2/renderer/renderer.h>
 #include <h2/renderer/renderPipelines/rasterDeferredRenderPipeline.h>
 #include <h2/renderer/renderPipelines/referencePathTracerRenderPipeline.h>
+#include <h2/renderer/renderPipelines/realtimePathTracerRenderPipeline.h>
 #include <h2/core/logger.h>
 #include <h2/core/verifier.h>
 #include <h2/core/utilities.h>
@@ -248,6 +249,9 @@ namespace Hydrogen
         case eRenderPipelineType::ReferencePathTracer:
             m_renderPipeline = std::make_unique<ReferencePathTracerRenderPipeline>();
             break;
+        case eRenderPipelineType::RealtimePathTracer:
+            m_renderPipeline = std::make_unique<RealtimePathTracerRenderPipeline>();
+            break;
         default:
             H2_VERIFY_FATAL(false, "Unknown render pipeline type!");
             break;
@@ -275,13 +279,20 @@ namespace Hydrogen
     {
         RendererUiRequest request{};
 
-        static constexpr std::array<const char*, static_cast<size_t>(eRenderPipelineType::Count)> pipelineNames = {
-            "RasterDeferred",
-            "ReferencePathTracer",
+        static constexpr std::array pipelineNames = {
+            RasterDeferredRenderPipeline::Name,
+            ReferencePathTracerRenderPipeline::Name,
+            // RealtimePathTracerRenderPipeline::Name,
         };
+        static_assert(pipelineNames.size() == static_cast<size_t>(eRenderPipelineType::Count),
+                      "pipelineNames must list every eRenderPipelineType");
 
-        int selected = static_cast<int>(m_renderPipelineType);
-        if (ImGui::Combo("Render pipeline", &selected, pipelineNames.data(), static_cast<int>(pipelineNames.size())))
+        // ImGui needs null-terminated strings; string_view literals are, so data() is safe here.
+        std::array<const char*, pipelineNames.size()> pipelineItems{};
+        std::ranges::transform(pipelineNames, pipelineItems.begin(), [](std::string_view name) { return name.data(); });
+
+        auto selected = static_cast<int32>(m_renderPipelineType);
+        if (ImGui::Combo("Render pipeline", &selected, pipelineItems.data(), static_cast<int32>(pipelineItems.size())))
         {
             request.renderPipelineType = static_cast<eRenderPipelineType>(selected);
         }
@@ -385,8 +396,8 @@ namespace Hydrogen
             m_frameGraph.AddPass("ImGui", m_imguiPass);
         }
 
-        m_copyPass.src = pipelineOutput;
-        m_copyPass.dst = "Backbuffer";
+        m_copyPass.input = pipelineOutput;
+        m_copyPass.output = "Backbuffer";
         m_frameGraph.AddPass("CopyToBackbuffer", m_copyPass);
 
         m_frameGraph.Compile();

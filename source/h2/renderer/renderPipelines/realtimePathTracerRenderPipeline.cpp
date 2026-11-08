@@ -1,0 +1,134 @@
+#include <h2/renderer/renderPipelines/realtimePathTracerRenderPipeline.h>
+
+#include <string_view>
+
+#include <d3d12.h>
+
+#include <h2/renderer/framegraph/frameGraph.h>
+#include <h2/renderer/gpu/scene/gpuScene.h>
+#include <h2/shaders/shaderInterop.h>
+
+namespace Hydrogen
+{
+    void RealtimePathTracerRenderPipeline::Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler,
+                                                      uint32 renderWidth, uint32 renderHeight)
+    {
+        m_pDevice = &device;
+
+        m_gBufferPass.Initialize(device, shaderCompiler);
+        m_buildTlasPass.Initialize(device, shaderCompiler);
+        m_tonemapPass.Initialize(device, shaderCompiler);
+    }
+
+    void RealtimePathTracerRenderPipeline::Shutdown() {}
+
+    void RealtimePathTracerRenderPipeline::DefineFrameGraphResources(FrameGraph& frameGraph,
+                                                                     const FrameContext& frameContext)
+    {
+        frameGraph.CreateTexture("GBuffer_Albedo", {
+                                                       .width = frameContext.renderWidth,
+                                                       .height = frameContext.renderHeight,
+                                                       .mipLevels = 1,
+                                                       .arraySize = 1,
+                                                       .format = GBufferPass::AlbedoFormat,
+                                                       .flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+                                                       .dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+                                                       .optimizedClearColor = {0.0f, 0.0f, 0.0f, 1.0f},
+                                                   });
+
+        frameGraph.CreateTexture("GBuffer_Normal", {
+                                                       .width = frameContext.renderWidth,
+                                                       .height = frameContext.renderHeight,
+                                                       .mipLevels = 1,
+                                                       .arraySize = 1,
+                                                       .format = GBufferPass::NormalFormat,
+                                                       .flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+                                                       .dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+                                                       .optimizedClearColor = {0.0f, 0.0f},
+                                                   });
+
+        frameGraph.CreateTexture("GBuffer_RM", {
+                                                   .width = frameContext.renderWidth,
+                                                   .height = frameContext.renderHeight,
+                                                   .mipLevels = 1,
+                                                   .arraySize = 1,
+                                                   .format = GBufferPass::RoughnessMetallicFormat,
+                                                   .flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+                                                   .dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+                                                   .optimizedClearColor = {0.0f, 0.0f},
+                                               });
+
+        // Combine with GBuffer_Normal?
+        frameGraph.CreateTexture("GBuffer_MotionVectors", {
+                                                              .width = frameContext.renderWidth,
+                                                              .height = frameContext.renderHeight,
+                                                              .mipLevels = 1,
+                                                              .arraySize = 1,
+                                                              .format = GBufferPass::MotionFormat,
+                                                              .flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+                                                              .dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+                                                              .optimizedClearColor = {0.0f, 0.0f},
+                                                          });
+
+        frameGraph.CreateTexture("SceneColor", {
+                                                   .width = frameContext.renderWidth,
+                                                   .height = frameContext.renderHeight,
+                                                   .mipLevels = 1,
+                                                   .arraySize = 1,
+                                                   .format = DXGI_FORMAT_R16G16B16A16_FLOAT,
+                                                   .flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+                                                   .dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+                                                   .optimizedClearColor = {0.0f, 0.0f, 0.0f, 1.0f},
+                                               });
+
+        frameGraph.CreateTexture("Output", {
+                                               .width = frameContext.displayWidth,
+                                               .height = frameContext.displayHeight,
+                                               .mipLevels = 1,
+                                               .arraySize = 1,
+                                               .format = frameContext.displayFormat,
+                                               .flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+                                               .dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+                                               .optimizedClearColor = {0.0f, 0.0f, 0.0f, 1.0f},
+                                           });
+
+        frameGraph.CreateTexture("SceneDepth", {
+                                                   .width = frameContext.renderWidth,
+                                                   .height = frameContext.renderHeight,
+                                                   .mipLevels = 1,
+                                                   .arraySize = 1,
+                                                   .format = GBufferPass::DepthFormat,
+                                                   .flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL,
+                                                   .dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+                                                   .optimizedDepthClearValue = 0.0f,
+                                               });
+
+        const uint32 instanceCount = static_cast<uint32>(frameContext.renderScene.objects.size());
+        const AccelerationStructureSizes tlasSizes = m_pDevice->GetTlasPrebuildSizes(instanceCount);
+
+        frameGraph.CreateBuffer("TLAS", Buffer::Desc{.size = tlasSizes.resultSize,
+                                                     .flags = D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE});
+
+        frameGraph.CreateBuffer("TLASScratch", Buffer::Desc{.size = tlasSizes.scratchSize,
+                                                            .flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS});
+    }
+
+    std::string_view RealtimePathTracerRenderPipeline::Render(FrameGraph& frameGraph, const FrameContext& frameContext)
+    {
+        DefineFrameGraphResources(frameGraph, frameContext);
+
+        m_buildTlasPass.pScene = &frameContext.gpuScene;
+        frameGraph.AddPass("BuildTLAS", m_buildTlasPass);
+
+        m_gBufferPass.pScene = &frameContext.gpuScene;
+        m_gBufferPass.renderObjects = frameContext.renderScene.objects;
+        frameGraph.AddPass("GBuffer", m_gBufferPass);
+
+        m_tonemapPass.input = "GBuffer_Normal";
+        frameGraph.AddPass("Tonemap", m_tonemapPass);
+
+        return "Output";
+    }
+
+    void RealtimePathTracerRenderPipeline::BuildUI() {}
+} // namespace Hydrogen

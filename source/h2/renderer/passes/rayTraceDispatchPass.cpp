@@ -67,10 +67,10 @@ namespace Hydrogen
     void RayTraceDispatchPass::Setup(FGBuilder& builder)
     {
         builder.Read("TLAS", FGAccess::Read::AccelerationStructure);
-        builder.Write(outputTarget, FGAccess::Write::UnorderedAccess);
+        builder.Write(output, FGAccess::Write::UnorderedAccess);
         builder.Write("AccumulationTarget", FGAccess::Write::UnorderedAccess);
 
-        const Texture::Desc& desc = builder.GetTextureDesc(outputTarget);
+        const Texture::Desc& desc = builder.GetTextureDesc(output);
         m_width = desc.width;
         m_height = desc.height;
 
@@ -86,7 +86,7 @@ namespace Hydrogen
         cmd->SetPipelineState1(m_raytracingPso.Get());
 
         const PushConstants push{.tlasIndex = fgExecuteContext.GetSRVIndex("TLAS"),
-                                 .outputUavIndex = fgExecuteContext.GetUAVIndex(outputTarget),
+                                 .outputUavIndex = fgExecuteContext.GetUAVIndex(output),
                                  .accumulationTargetUavIndex = fgExecuteContext.GetUAVIndex("AccumulationTarget"),
                                  .accumulatedFramesCount = m_accumulatedFramesCount};
         graphicsContext.SetComputePushConstants(push);

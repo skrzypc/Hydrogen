@@ -21,6 +21,7 @@ namespace Hydrogen
         static constexpr DXGI_FORMAT NormalFormat = DXGI_FORMAT_R16G16_FLOAT; // Octahedral encoded.
         static constexpr DXGI_FORMAT RoughnessMetallicFormat = DXGI_FORMAT_R16G16_UNORM;
         static constexpr DXGI_FORMAT DepthFormat = DXGI_FORMAT_D32_FLOAT;
+        static constexpr DXGI_FORMAT MotionFormat = DXGI_FORMAT_R16G16_FLOAT; // 2D motion vector in screen space.
 
         struct PushConstants
         {

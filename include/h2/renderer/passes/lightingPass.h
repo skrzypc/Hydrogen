@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include <h2/renderer/passes/renderPass.h>
 #include <h2/renderer/gpu/pipeline/pipelineState.h>
 #include <h2/core/basicTypes.h>
@@ -20,6 +22,8 @@ namespace Hydrogen
             uint32 depthIndex = 0;
             uint32 outputIndex = 0;
         };
+
+        std::string output = "SceneColor";
 
         void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler) override;
         void Setup(FGBuilder& builder) override;
