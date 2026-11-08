@@ -21,6 +21,7 @@ namespace Hydrogen
         m_buildTlasPass.Initialize(device, shaderCompiler);
         m_rayTraceDispatchPass.Initialize(device, shaderCompiler);
         m_rayTraceDispatchPass.CreateAccumulationTarget(renderWidth, renderHeight);
+
         m_tonemapPass.Initialize(device, shaderCompiler);
     }
 
@@ -33,7 +34,6 @@ namespace Hydrogen
         m_buildTlasPass.pScene = &frameContext.gpuScene;
         frameGraph.AddPass("BuildTLAS", m_buildTlasPass);
 
-        m_rayTraceDispatchPass.outputTarget = "SceneColor";
         m_rayTraceDispatchPass.resetAccumulation = frameContext.sceneChanged;
         frameGraph.AddPass("RayTraceDispatch", m_rayTraceDispatchPass);
 

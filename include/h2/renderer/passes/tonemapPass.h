@@ -15,6 +15,9 @@ namespace Hydrogen
             uint32 outputIndex = 0;
         };
 
+        std::string input = "SceneColor";
+        std::string output = "Output";
+
         void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler) override;
         void Setup(FGBuilder& builder) override;
         void Execute(FGExecuteContext& fgExecuteContext, GraphicsContext& graphicsContext) override;

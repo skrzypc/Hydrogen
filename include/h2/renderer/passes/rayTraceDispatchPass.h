@@ -22,7 +22,7 @@ namespace Hydrogen
             uint32 accumulatedFramesCount = 0;
         };
 
-        std::string outputTarget = "";
+        std::string output = "SceneColor";
         bool resetAccumulation = false;
 
         void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler) override;

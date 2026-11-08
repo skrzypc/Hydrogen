@@ -31,10 +31,10 @@ namespace Hydrogen
 
     void TonemapPass::Setup(FGBuilder& builder)
     {
-        builder.Read("SceneColor", FGAccess::Read::ShaderResource);
-        builder.Write("Output", FGAccess::Write::UnorderedAccess);
+        builder.Read(input, FGAccess::Read::ShaderResource);
+        builder.Write(output, FGAccess::Write::UnorderedAccess);
 
-        const Texture::Desc& desc = builder.GetTextureDesc("Output");
+        const Texture::Desc& desc = builder.GetTextureDesc(output);
         m_width = desc.width;
         m_height = desc.height;
     }
@@ -49,8 +49,8 @@ namespace Hydrogen
         cmd->SetPipelineState(m_pso.Get());
 
         const PushConstants push{
-            .sceneColorIndex = fgExecuteContext.GetSRVIndex("SceneColor"),
-            .outputIndex = fgExecuteContext.GetUAVIndex("Output"),
+            .sceneColorIndex = fgExecuteContext.GetSRVIndex(input),
+            .outputIndex = fgExecuteContext.GetUAVIndex(output),
         };
         graphicsContext.SetComputePushConstants(push);
 

@@ -36,9 +36,9 @@ namespace Hydrogen
         builder.Read("GBuffer_RM", FGAccess::Read::ShaderResource);
         builder.Read("SceneDepth", FGAccess::Read::ShaderResource);
 
-        builder.Write("SceneColor", FGAccess::Write::UnorderedAccess);
+        builder.Write(output, FGAccess::Write::UnorderedAccess);
 
-        const Texture::Desc& desc = builder.GetTextureDesc("SceneColor");
+        const Texture::Desc& desc = builder.GetTextureDesc(output);
         m_width = desc.width;
         m_height = desc.height;
     }
@@ -57,7 +57,7 @@ namespace Hydrogen
             .normalIndex = fgExecuteContext.GetSRVIndex("GBuffer_Normal"),
             .roughnessMetallicIndex = fgExecuteContext.GetSRVIndex("GBuffer_RM"),
             .depthIndex = fgExecuteContext.GetSRVIndex("SceneDepth"),
-            .outputIndex = fgExecuteContext.GetUAVIndex("SceneColor"),
+            .outputIndex = fgExecuteContext.GetUAVIndex(output),
         };
         graphicsContext.SetComputePushConstants(push);
 

@@ -16,6 +16,7 @@ namespace Hydrogen
     {
         RasterDeferred = 0,
         ReferencePathTracer,
+        RealtimePathTracer,
         Count
     };
 
@@ -35,7 +36,7 @@ namespace Hydrogen
 
         virtual void BuildUI() {}
 
-        virtual const char* GetName() const = 0;
+        virtual std::string_view GetName() const = 0;
 
     protected:
         GpuDevice* m_pDevice = nullptr;

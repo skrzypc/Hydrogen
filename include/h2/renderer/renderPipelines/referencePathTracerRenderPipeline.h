@@ -10,6 +10,8 @@ namespace Hydrogen
     class ReferencePathTracerRenderPipeline : public IRenderPipeline
     {
     public:
+        static constexpr std::string_view Name = "ReferencePathTracer";
+
         void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler, uint32 renderWidth,
                         uint32 renderHeight) override;
         void Shutdown() override;
@@ -17,9 +19,9 @@ namespace Hydrogen
         std::string_view Render(FrameGraph& frameGraph, const FrameContext& frameContext) override;
         void BuildUI() override;
 
-        const char* GetName() const override
+        std::string_view GetName() const override
         {
-            return "ReferencePathTracer";
+            return Name;
         }
 
     private:
