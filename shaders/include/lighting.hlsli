@@ -157,4 +157,4 @@ bool SampleLightRIS(inout RngState rngState, const float3 surfaceWorldPosition, 
     return true;
 }
 
-#endif // COMMON_HLSLI
+#endif // LIGHTING_HLSLI

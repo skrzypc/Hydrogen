@@ -1,8 +1,11 @@
 #include <h2/renderer/renderPipelines/realtimePathTracerRenderPipeline.h>
 
+#include <array>
 #include <string_view>
 
 #include <d3d12.h>
+
+#include <imgui.h>
 
 #include <h2/renderer/framegraph/frameGraph.h>
 #include <h2/renderer/gpu/scene/gpuScene.h>
@@ -18,6 +21,8 @@ namespace Hydrogen
         m_gBufferPass.Initialize(device, shaderCompiler);
         m_buildTlasPass.Initialize(device, shaderCompiler);
         m_tonemapPass.Initialize(device, shaderCompiler);
+        m_dummyPass.Initialize(device, shaderCompiler);
+        m_restirInitialCandidateGenerationPass.Initialize(device, shaderCompiler);
     }
 
     void RealtimePathTracerRenderPipeline::Shutdown() {}
@@ -111,6 +116,11 @@ namespace Hydrogen
 
         frameGraph.CreateBuffer("TLASScratch", Buffer::Desc{.size = tlasSizes.scratchSize,
                                                             .flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS});
+
+        frameGraph.CreateBuffer("ReSTIR_Candidates",
+                                Buffer::Desc{.size = static_cast<uint64>(frameContext.renderWidth) *
+                                                     static_cast<uint64>(frameContext.renderHeight) * sizeof(Reservoir),
+                                             .flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS});
     }
 
     std::string_view RealtimePathTracerRenderPipeline::Render(FrameGraph& frameGraph, const FrameContext& frameContext)
@@ -124,11 +134,28 @@ namespace Hydrogen
         m_gBufferPass.renderObjects = frameContext.renderScene.objects;
         frameGraph.AddPass("GBuffer", m_gBufferPass);
 
-        m_tonemapPass.input = "GBuffer_Normal";
-        frameGraph.AddPass("Tonemap", m_tonemapPass);
+        frameGraph.AddPass("ReSTIR_CandidatesGeneration", m_restirInitialCandidateGenerationPass);
+
+        m_dummyPass.output = "Output";
+        m_dummyPass.indexToOutput = static_cast<uint32>(m_gBufferView);
+        frameGraph.AddPass("Dummy", m_dummyPass);
+
+        // frameGraph.AddPass("Tonemap", m_tonemapPass);
 
         return "Output";
     }
 
-    void RealtimePathTracerRenderPipeline::BuildUI() {}
+    void RealtimePathTracerRenderPipeline::BuildUI()
+    {
+        static constexpr std::array gBufferViewNames = {"Albedo", "Normal", "Roughness", "Metallic", "Depth"};
+        static_assert(gBufferViewNames.size() == static_cast<size_t>(eGBufferView::Count),
+                      "gBufferViewNames must list every eGBufferView");
+
+        auto selected = static_cast<int32>(m_gBufferView);
+        if (ImGui::Combo("G-buffer view", &selected, gBufferViewNames.data(),
+                         static_cast<int32>(gBufferViewNames.size())))
+        {
+            m_gBufferView = static_cast<eGBufferView>(selected);
+        }
+    }
 } // namespace Hydrogen
