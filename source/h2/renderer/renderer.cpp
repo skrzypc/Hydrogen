@@ -282,7 +282,7 @@ namespace Hydrogen
         static constexpr std::array pipelineNames = {
             RasterDeferredRenderPipeline::Name,
             ReferencePathTracerRenderPipeline::Name,
-            // RealtimePathTracerRenderPipeline::Name,
+            RealtimePathTracerRenderPipeline::Name,
         };
         static_assert(pipelineNames.size() == static_cast<size_t>(eRenderPipelineType::Count),
                       "pipelineNames must list every eRenderPipelineType");

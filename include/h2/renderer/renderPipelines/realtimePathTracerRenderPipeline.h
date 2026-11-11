@@ -4,6 +4,8 @@
 #include <h2/renderer/passes/gBufferPass.h>
 #include <h2/renderer/passes/buildTlasPass.h>
 #include <h2/renderer/passes/tonemapPass.h>
+#include <h2/renderer/passes/dummyPass.h>
+#include <h2/renderer/passes/restirInitialCandidateGenerationPass.h>
 
 namespace Hydrogen
 {
@@ -25,10 +27,25 @@ namespace Hydrogen
         }
 
     private:
+        // Values match the indices hard-coded in dummyShader.cs.hlsl.
+        enum class eGBufferView : uint32
+        {
+            Albedo = 0,
+            Normal,
+            Roughness,
+            Metallic,
+            Depth,
+            Count
+        };
+
         void DefineFrameGraphResources(FrameGraph& frameGraph, const FrameContext& frameContext);
 
     private:
+        eGBufferView m_gBufferView = eGBufferView::Albedo;
+
         GBufferPass m_gBufferPass{};
+        ReSTIRInitialCandidateGenerationPass m_restirInitialCandidateGenerationPass{};
+        DummyPass m_dummyPass{};
         BuildTlasPass m_buildTlasPass{};
         TonemapPass m_tonemapPass{};
     };

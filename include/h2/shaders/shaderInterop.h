@@ -113,6 +113,15 @@ namespace Hydrogen
         uint _pad;
     };
 
+    struct Reservoir
+    {
+        uint lightIndex; // y | Selected sample.
+        float contributionWeight; // W | Unbiased contribution weight of the selected sample.
+
+        uint sampleCount; // M | Number of samples accumulated (confidence).
+        float weightSum; // w_sum
+    };
+
 #ifdef __cplusplus
 } // namespace Hydrogen
 #endif
