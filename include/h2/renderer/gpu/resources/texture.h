@@ -2,12 +2,12 @@
 
 #include <array>
 
-#include <h2/renderer/gpu/resources/gpuResource.h>
+#include <h2/renderer/gpu/resources/resource.h>
 #include <h2/core/basicTypes.h>
 
 namespace Hydrogen
 {
-    class Texture : public GpuResource
+    class Texture : public Resource
     {
     public:
         Texture() = default;

@@ -14,15 +14,15 @@ namespace Hydrogen
         D3D12_BARRIER_LAYOUT layout = D3D12_BARRIER_LAYOUT_UNDEFINED;
     };
 
-    class GpuResource
+    class Resource
     {
     public:
-        GpuResource() = default;
-        virtual ~GpuResource() = default;
-        GpuResource(const GpuResource&) = delete;
-        GpuResource& operator=(const GpuResource&) = delete;
-        GpuResource(GpuResource&&) noexcept = default;
-        GpuResource& operator=(GpuResource&&) noexcept = default;
+        Resource() = default;
+        virtual ~Resource() = default;
+        Resource(const Resource&) = delete;
+        Resource& operator=(const Resource&) = delete;
+        Resource(Resource&&) noexcept = default;
+        Resource& operator=(Resource&&) noexcept = default;
 
         void AttachResource(ID3D12Resource* pResource)
         {

@@ -32,9 +32,11 @@ namespace Hydrogen
         ShaderResourceViewHandle GetSRV(const Texture* pTexture, const FGSubresourceRange& range);
         UnorderedAccessViewHandle GetUAV(const Texture* pTexture, const FGSubresourceRange& range);
 
-        // Acceleration structures are addressed by GPU virtual address rather than by resource,
-        // so they need their own view path and cannot share the texture SRV code.
+        // Acceleration structures are addressed by GPU virtual address rather than by resource.
         ShaderResourceViewHandle GetAccelerationStructureSRV(const Buffer* pBuffer);
+
+        ShaderResourceViewHandle GetSRV(const Buffer* pBuffer);
+        UnorderedAccessViewHandle GetUAV(const Buffer* pBuffer);
 
     private:
         Texture* CreateTexture(const Texture::Desc& desc);
@@ -80,8 +82,13 @@ namespace Hydrogen
         // descriptor creation.
         std::unordered_map<const Texture*, std::unordered_map<uint64, RenderTargetViewHandle>> m_cachedRtvs;
         std::unordered_map<const Texture*, std::unordered_map<uint64, DepthStencilViewHandle>> m_cachedDsvs;
-        std::unordered_map<const Texture*, std::unordered_map<uint64, ShaderResourceViewHandle>> m_cachedSrvs;
-        std::unordered_map<const Texture*, std::unordered_map<uint64, UnorderedAccessViewHandle>> m_cachedUavs;
+        std::unordered_map<const Texture*, std::unordered_map<uint64, ShaderResourceViewHandle>> m_cachedTextureSrvs;
+        std::unordered_map<const Texture*, std::unordered_map<uint64, UnorderedAccessViewHandle>> m_cachedTextureUavs;
+
+        // Just a single view per buffer.
+        std::unordered_map<const Buffer*, ShaderResourceViewHandle> m_cachedBufferSrvs;
+        std::unordered_map<const Buffer*, UnorderedAccessViewHandle> m_cachedBufferUavs;
+
         std::unordered_map<const Buffer*, ShaderResourceViewHandle> m_cachedAccelerationStructureSrvs;
     };
 } // namespace Hydrogen

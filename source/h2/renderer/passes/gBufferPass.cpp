@@ -95,7 +95,7 @@ namespace Hydrogen
 
         D3D12_INDEX_BUFFER_VIEW ibv{};
         ibv.BufferLocation = pScene->GetIndexBuffer()->GetResource()->GetGPUVirtualAddress();
-        ibv.SizeInBytes = static_cast<UINT>(pScene->GetIndexBuffer()->GetDesc().size);
+        ibv.SizeInBytes = static_cast<UINT>(pScene->GetIndexBuffer()->GetSize());
         ibv.Format = DXGI_FORMAT_R32_UINT;
         cmd->IASetIndexBuffer(&ibv);
 

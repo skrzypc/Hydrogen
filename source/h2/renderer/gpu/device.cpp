@@ -156,7 +156,7 @@ namespace Hydrogen
 
         D3D12_RESOURCE_DESC1 resourceDesc = {};
         resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        resourceDesc.Width = desc.size;
+        resourceDesc.Width = desc.elementCount * desc.stride;
         resourceDesc.Height = 1;
         resourceDesc.DepthOrArraySize = 1;
         resourceDesc.MipLevels = 1;
@@ -204,7 +204,8 @@ namespace Hydrogen
         auto pBuffer = std::make_unique<UploadBuffer>();
 
         Buffer::Desc desc{};
-        desc.size = sizeInBytes;
+        desc.elementCount = static_cast<uint32>(sizeInBytes);
+        desc.stride = 1;
         desc.heapType = D3D12_HEAP_TYPE_UPLOAD;
         pBuffer->SetDesc(desc);
 
@@ -296,6 +297,16 @@ namespace Hydrogen
                                              const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc)
     {
         m_pDxDevice->CreateShaderResourceView(nullptr, &srvDesc, m_cbvSrvUavDescriptorHeap.GetCpuHandle(handle.index));
+    }
+
+    UnorderedAccessViewHandle GpuDevice::CreateUnorderedAccessView(const Buffer* pBuffer,
+                                                                   const D3D12_UNORDERED_ACCESS_VIEW_DESC& uavDesc)
+    {
+        uint32 index = m_cbvSrvUavDescriptorHeap.Allocate(1);
+        ID3D12Resource* pResource = pBuffer ? pBuffer->GetResource() : nullptr;
+        m_pDxDevice->CreateUnorderedAccessView(pResource, nullptr, &uavDesc,
+                                               m_cbvSrvUavDescriptorHeap.GetCpuHandle(index));
+        return UnorderedAccessViewHandle{.index = index};
     }
 
     UnorderedAccessViewHandle GpuDevice::CreateUnorderedAccessView(const Texture* pTexture,

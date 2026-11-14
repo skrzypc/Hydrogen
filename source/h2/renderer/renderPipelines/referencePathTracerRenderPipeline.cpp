@@ -72,10 +72,12 @@ namespace Hydrogen
         const uint32 instanceCount = static_cast<uint32>(frameContext.renderScene.objects.size());
         const AccelerationStructureSizes tlasSizes = m_pDevice->GetTlasPrebuildSizes(instanceCount);
 
-        frameGraph.CreateBuffer("TLAS", Buffer::Desc{.size = tlasSizes.resultSize,
+        frameGraph.CreateBuffer("TLAS", Buffer::Desc{.elementCount = static_cast<uint32>(tlasSizes.resultSize),
+                                                     .stride = 1,
                                                      .flags = D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE});
 
-        frameGraph.CreateBuffer("TLASScratch", Buffer::Desc{.size = tlasSizes.scratchSize,
+        frameGraph.CreateBuffer("TLASScratch", Buffer::Desc{.elementCount = static_cast<uint32>(tlasSizes.scratchSize),
+                                                            .stride = 1,
                                                             .flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS});
     }
 

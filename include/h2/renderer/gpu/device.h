@@ -197,6 +197,8 @@ namespace Hydrogen
                                                           const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc);
         void UpdateShaderResourceView(ShaderResourceViewHandle handle, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc);
 
+        UnorderedAccessViewHandle CreateUnorderedAccessView(const Buffer* pBuffer,
+                                                            const D3D12_UNORDERED_ACCESS_VIEW_DESC& uavDesc);
         UnorderedAccessViewHandle CreateUnorderedAccessView(const Texture* pTexture,
                                                             const D3D12_UNORDERED_ACCESS_VIEW_DESC& uavDesc);
         void UpdateUnorderedAccessView(UnorderedAccessViewHandle handle, ID3D12Resource* pResource,

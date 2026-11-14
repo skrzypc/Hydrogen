@@ -648,11 +648,16 @@ namespace Hydrogen
                         m_executeContext.m_srvIndexMap[key] =
                             m_resourceCache.GetAccelerationStructureSRV(node.pResource).index;
                         break;
-
+                    case FGUsage::SRV:
+                        m_executeContext.m_srvIndexMap[key] =
+                            m_resourceCache.GetSRV(node.pResource).index;
+                        break;
+                    case FGUsage::UAV:
+                        m_executeContext.m_uavIndexMap[key] =
+                            m_resourceCache.GetUAV(node.pResource).index;
+                        break;
                     case FGUsage::RTV:
                     case FGUsage::DSV:
-                    case FGUsage::SRV:
-                    case FGUsage::UAV:
                     case FGUsage::None:
                         break;
                     }

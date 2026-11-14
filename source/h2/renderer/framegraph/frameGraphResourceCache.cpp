@@ -1,4 +1,6 @@
 
+#include <utility>
+#include <h2/core/verifier.h>
 #include <h2/renderer/framegraph/frameGraphResourceCache.h>
 
 namespace Hydrogen
@@ -149,7 +151,7 @@ namespace Hydrogen
     {
         uint64 subresourceRangeHash = HashRange(range);
 
-        auto& textureSrvs = m_cachedSrvs[pTexture];
+        auto& textureSrvs = m_cachedTextureSrvs[pTexture];
         if (textureSrvs.contains(subresourceRangeHash))
         {
             return textureSrvs.at(subresourceRangeHash);
@@ -192,7 +194,7 @@ namespace Hydrogen
     {
         uint64 subresourceRangeHash = HashRange(range);
 
-        auto& textureUavs = m_cachedUavs[pTexture];
+        auto& textureUavs = m_cachedTextureUavs[pTexture];
         if (textureUavs.contains(subresourceRangeHash))
         {
             return textureUavs.at(subresourceRangeHash);
@@ -243,6 +245,76 @@ namespace Hydrogen
         m_cachedAccelerationStructureSrvs[pBuffer] = srvHandle;
 
         return srvHandle;
+    }
+
+    ShaderResourceViewHandle FGResourceCache::GetSRV(const Buffer* pBuffer)
+    {
+        if (m_cachedBufferSrvs.contains(pBuffer))
+        {
+            return m_cachedBufferSrvs.at(pBuffer);
+        }
+
+        const Buffer::Desc& bufferDesc = pBuffer->GetDesc();
+
+        D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
+        desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+        desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        desc.Buffer.FirstElement = 0;
+
+        if (bufferDesc.stride > 1)
+        {
+            desc.Format = DXGI_FORMAT_UNKNOWN;
+            desc.Buffer.NumElements = bufferDesc.elementCount;
+            desc.Buffer.StructureByteStride = bufferDesc.stride;
+            desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+        }
+        else
+        {
+            desc.Format = DXGI_FORMAT_R32_TYPELESS;
+            desc.Buffer.NumElements = static_cast<uint32>(pBuffer->GetSize() / sizeof(uint32));
+            desc.Buffer.StructureByteStride = 0;
+            desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+        }
+
+        ShaderResourceViewHandle srvHandle = m_pDevice->CreateShaderResourceView(pBuffer, desc);
+        m_cachedBufferSrvs[pBuffer] = srvHandle;
+
+        return srvHandle;
+    }
+
+    UnorderedAccessViewHandle FGResourceCache::GetUAV(const Buffer* pBuffer)
+    {
+        if (m_cachedBufferUavs.contains(pBuffer))
+        {
+            return m_cachedBufferUavs.at(pBuffer);
+        }
+
+        const Buffer::Desc& bufferDesc = pBuffer->GetDesc();
+
+        D3D12_UNORDERED_ACCESS_VIEW_DESC desc = {};
+        desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+        desc.Buffer.FirstElement = 0;
+        desc.Buffer.CounterOffsetInBytes = 0;
+
+        if (bufferDesc.stride > 1)
+        {
+            desc.Format = DXGI_FORMAT_UNKNOWN;
+            desc.Buffer.NumElements = static_cast<uint32>(bufferDesc.elementCount);
+            desc.Buffer.StructureByteStride = bufferDesc.stride;
+            desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+        }
+        else
+        {
+            desc.Format = DXGI_FORMAT_R32_TYPELESS;
+            desc.Buffer.NumElements = static_cast<uint32>(pBuffer->GetSize() / sizeof(uint32));
+            desc.Buffer.StructureByteStride = 0;
+            desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+        }
+
+        UnorderedAccessViewHandle uavHandle = m_pDevice->CreateUnorderedAccessView(pBuffer, desc);
+        m_cachedBufferUavs[pBuffer] = uavHandle;
+
+        return uavHandle;
     }
 
     Texture* FGResourceCache::CreateTexture(const Texture::Desc& desc)

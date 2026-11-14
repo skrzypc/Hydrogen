@@ -29,15 +29,19 @@ namespace Hydrogen
         ResourceState initialState{};
 
         m_positionBuffer = device.CreateBuffer(
-            L"H2_SCENE_POSITIONS", Buffer::Desc{.size = maxVertices * sizeof(DirectX::XMFLOAT3)}, initialState);
+            L"H2_SCENE_POSITIONS", Buffer::Desc{.elementCount = maxVertices, .stride = sizeof(DirectX::XMFLOAT3)},
+            initialState);
         m_normalBuffer = device.CreateBuffer(
-            L"H2_SCENE_NORMALS", Buffer::Desc{.size = maxVertices * sizeof(DirectX::XMFLOAT3)}, initialState);
+            L"H2_SCENE_NORMALS", Buffer::Desc{.elementCount = maxVertices, .stride = sizeof(DirectX::XMFLOAT3)},
+            initialState);
         m_tangentBuffer = device.CreateBuffer(
-            L"H2_SCENE_TANGENTS", Buffer::Desc{.size = maxVertices * sizeof(DirectX::XMFLOAT4)}, initialState);
-        m_uvBuffer = device.CreateBuffer(L"H2_SCENE_UVS", Buffer::Desc{.size = maxVertices * sizeof(DirectX::XMFLOAT2)},
+            L"H2_SCENE_TANGENTS", Buffer::Desc{.elementCount = maxVertices, .stride = sizeof(DirectX::XMFLOAT4)},
+            initialState);
+        m_uvBuffer = device.CreateBuffer(L"H2_SCENE_UVS",
+                                         Buffer::Desc{.elementCount = maxVertices, .stride = sizeof(DirectX::XMFLOAT2)},
                                          initialState);
-        m_indexBuffer =
-            device.CreateBuffer(L"H2_SCENE_INDICES", Buffer::Desc{.size = maxIndices * sizeof(uint32)}, initialState);
+        m_indexBuffer = device.CreateBuffer(
+            L"H2_SCENE_INDICES", Buffer::Desc{.elementCount = maxIndices, .stride = sizeof(uint32)}, initialState);
 
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
         srvDesc.Format = DXGI_FORMAT_UNKNOWN;
@@ -299,12 +303,14 @@ namespace Hydrogen
         }
 
         auto& scratch = m_blasScratchBuffers[m_currentFrameIndex];
-        if (!scratch || scratch->GetDesc().size < totalScratchSize)
+        if (!scratch || scratch->GetSize() < totalScratchSize)
         {
             ResourceState uavState{};
-            scratch = m_pDevice->CreateBuffer(
-                L"H2_BLAS_SCRATCH",
-                Buffer::Desc{.size = totalScratchSize, .flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS}, uavState);
+            scratch = m_pDevice->CreateBuffer(L"H2_BLAS_SCRATCH",
+                                              Buffer::Desc{.elementCount = static_cast<uint32>(totalScratchSize),
+                                                           .stride = 1,
+                                                           .flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS},
+                                              uavState);
         }
         const D3D12_GPU_VIRTUAL_ADDRESS scratchBase = scratch->GetResource()->GetGPUVirtualAddress();
 
@@ -321,11 +327,12 @@ namespace Hydrogen
             ResourceState asState{};
             asState.access = D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE;
 
-            m_blasBuffers.push_back(
-                m_pDevice->CreateBuffer(String::ToWide(String::Format("H2_BLAS_{}", String::ToUpper(mesh.name))),
-                                        Buffer::Desc{.size = blasPrebuildInfos[i].ResultDataMaxSizeInBytes,
-                                                     .flags = D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE},
-                                        asState));
+            m_blasBuffers.push_back(m_pDevice->CreateBuffer(
+                String::ToWide(String::Format("H2_BLAS_{}", String::ToUpper(mesh.name))),
+                Buffer::Desc{.elementCount = static_cast<uint32>(blasPrebuildInfos[i].ResultDataMaxSizeInBytes),
+                             .stride = 1,
+                             .flags = D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE},
+                asState));
 
             D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs{};
             inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
