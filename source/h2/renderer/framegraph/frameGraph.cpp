@@ -127,11 +127,12 @@ namespace Hydrogen
         return m_resourceRegistry.at(resourceName);
     }
 
-    void FrameGraph::AddPass(std::string_view passName, IRenderPass& pass)
+    void FrameGraph::AddPass(std::string_view passName, IRenderPass& pass, FGPassFlags flags)
     {
         FGPass& fgPass = m_passes.emplace_back();
         fgPass.name = passName;
         fgPass.index = static_cast<uint32>(m_passes.size() - 1u);
+        fgPass.flags = flags;
 
         FGBuilder builder(*this, fgPass);
         pass.Setup(builder);
@@ -425,7 +426,8 @@ namespace Hydrogen
         {
             FGPass& pass = m_passes[i];
 
-            if (pass.bHasSideEffect || pass.refCount > 0)
+            const bool bNeverCull = (pass.flags & FGPassFlags::NeverCull) != FGPassFlags::None;
+            if (pass.bHasSideEffect || bNeverCull || pass.refCount > 0)
             {
                 continue;
             }
@@ -649,12 +651,10 @@ namespace Hydrogen
                             m_resourceCache.GetAccelerationStructureSRV(node.pResource).index;
                         break;
                     case FGUsage::SRV:
-                        m_executeContext.m_srvIndexMap[key] =
-                            m_resourceCache.GetSRV(node.pResource).index;
+                        m_executeContext.m_srvIndexMap[key] = m_resourceCache.GetSRV(node.pResource).index;
                         break;
                     case FGUsage::UAV:
-                        m_executeContext.m_uavIndexMap[key] =
-                            m_resourceCache.GetUAV(node.pResource).index;
+                        m_executeContext.m_uavIndexMap[key] = m_resourceCache.GetUAV(node.pResource).index;
                         break;
                     case FGUsage::RTV:
                     case FGUsage::DSV:

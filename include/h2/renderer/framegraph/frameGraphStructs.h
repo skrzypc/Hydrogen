@@ -5,6 +5,7 @@
 #include <vector>
 #include <functional>
 #include <unordered_map>
+#include <utility>
 
 #include <d3d12.h>
 
@@ -48,6 +49,22 @@ namespace Hydrogen
         DontCare,
         Clear,
     };
+
+    enum class FGPassFlags : uint8
+    {
+        None = 0,
+        NeverCull = 1 << 0,
+    };
+
+    constexpr FGPassFlags operator|(FGPassFlags a, FGPassFlags b)
+    {
+        return static_cast<FGPassFlags>(std::to_underlying(a) | std::to_underlying(b));
+    }
+
+    constexpr FGPassFlags operator&(FGPassFlags a, FGPassFlags b)
+    {
+        return static_cast<FGPassFlags>(std::to_underlying(a) & std::to_underlying(b));
+    }
 
     namespace FGAccess
     {
@@ -258,6 +275,7 @@ namespace Hydrogen
         uint32 index = std::numeric_limits<uint32>::max();
         uint32 refCount = 0;
 
+        FGPassFlags flags = FGPassFlags::None;
         bool bCulled = false;
         bool bHasSideEffect = false;
     };

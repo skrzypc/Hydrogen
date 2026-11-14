@@ -46,14 +46,16 @@ namespace Hydrogen
 
         FGResourceHandle GetResource(std::string_view name) const;
 
-        void AddPass(std::string_view passName, IRenderPass& pass);
+        void AddPass(std::string_view passName, IRenderPass& pass, FGPassFlags flags = FGPassFlags::None);
 
         template <typename PassDataT, typename SetupFn, typename ExecuteFn>
-        void AddPass(std::string_view passName, SetupFn&& setupFn, ExecuteFn&& executeFn)
+        void AddPass(std::string_view passName, SetupFn&& setupFn, ExecuteFn&& executeFn,
+                     FGPassFlags flags = FGPassFlags::None)
         {
             FGPass& pass = m_passes.emplace_back();
             pass.name = passName;
             pass.index = static_cast<uint32>(m_passes.size() - 1u);
+            pass.flags = flags;
 
             FGBuilder builder(*this, pass);
             auto pPassData = std::make_unique<PassDataT>();
