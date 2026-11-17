@@ -12,15 +12,20 @@ void InitializeReservoir(out Reservoir reservoir)
     reservoir.weightSum = 0.0f;
 }
 
-void UpdateReservoir(inout Reservoir reservoir, uint lightIndex, float weight, inout RngState rngState)
+bool UpdateReservoir(inout Reservoir reservoir, uint lightIndex, float weight, inout RngState rngState)
 {
+    bool candidateAccepted = false;
+    
     reservoir.weightSum += weight;
     reservoir.sampleCount++;
 
     if (weight > 0.0f && NextRandomFloat(rngState) < (weight / reservoir.weightSum))
     {
         reservoir.lightIndex = lightIndex;
+        candidateAccepted = true;
     }
+
+    return candidateAccepted;
 }
 
 #endif // RESERVOIR_HLSLI

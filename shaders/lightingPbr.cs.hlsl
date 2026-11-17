@@ -17,16 +17,6 @@ ConstantBuffer<PushConstants> g_push : register(b0, space0);
 static const float3 kSkyRadiance = float3(0.0f, 0.0f, 0.0f);
 //static const float3 kSkyRadiance = float3(0.02f, 0.04f, 0.08f);
 
-float3 ReconstructWorldPosition(float2 uv, float depth, float4x4 invViewProjection)
-{
-    float2 ndc = float2(uv.x * 2.0f - 1.0f, 1.0f - uv.y * 2.0f);
-
-    float4 clipPosition = float4(ndc, depth, 1.0f);
-    float4 worldPosition = mul(invViewProjection, clipPosition);
-
-    return worldPosition.xyz / worldPosition.w;
-}
-
 [numthreads(8, 8, 1)]
 void mainCS(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
@@ -80,8 +70,8 @@ void mainCS(uint3 dispatchThreadId : SV_DispatchThreadID)
                 continue;
             }
 
-            float3 lightRadiance = GetLightContribution(lights[i], lightDirection, lightDistance);
-            radiance += lightRadiance * EvaluateBrdfGgx(surface, N, V, lightDirection) * NoL;
+            float3 lightIrradiance = GetLightIrradiance(lights[i], lightDirection, lightDistance);
+            radiance += lightIrradiance * EvaluateBrdfGgx(surface, N, V, lightDirection) * NoL;
         }
     }
 

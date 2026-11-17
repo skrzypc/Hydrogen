@@ -259,12 +259,12 @@ void mainRayGen()
             // Light unoccluded, calculate total contribution for given point on surface.
             if (!shadowRayPayload.occluded)
             {
-                float3 lightRadiance = GetLightContributionPT(sampledLight, lightDirection, lightDistance);
+                float3 lightIrradiance = GetLightIrradiancePT(sampledLight, lightDirection, lightDistance);
                 //float3 materialBrdf = EvaluateBrdfLambert(surface); // Lambert
                 float3 materialBrdf = EvaluateBrdfGgx(surface, rayPayload.shadingNormal, -currentRay.Direction, lightDirection); // GGX
                 float NoL = saturate(dot(rayPayload.shadingNormal, lightDirection));
 
-                currentRadiance += throughput * materialBrdf * lightRadiance * NoL * lightSampleWeight;
+                currentRadiance += throughput * materialBrdf * lightIrradiance * NoL * lightSampleWeight;
             }
         }
 

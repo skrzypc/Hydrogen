@@ -16,7 +16,7 @@ namespace Hydrogen
             uint32 normalIndex;
             uint32 roughnessMetallicIndex;
             uint32 depthIndex;
-            uint32 candidatesBufferIndex;
+            uint32 reservoirIndex;
         };
 
         void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler) override;
