@@ -6,7 +6,7 @@
 static const float kRangeFalloffStartFraction = 0.8f;
 static const uint kRisCandidatesLightsCount = 8;
 
-// Distance is -1 for directional lights, matching GetLightContribution/GetLightContributionPT's convention.
+// Distance is -1 for directional lights, matching GetLightIrradiance/GetLightIrradiancePT's convention.
 void GetLightDirectionAndDistance(GpuLight light, float3 surfaceWorldPosition, out float3 lightDirection,
                                   out float lightDistance)
 {
@@ -28,7 +28,7 @@ float CalculateLuminance(const float3 input)
     return (0.2126f * input.r + 0.7152f * input.g + 0.0722f * input.b);
 }
 
-float3 GetLightContribution(const GpuLight light, const float3 lightDirection, const float lightDistance)
+float3 GetLightIrradiance(const GpuLight light, const float3 lightDirection, const float lightDistance)
 {
     float attenuation = 1.0f;
     float softRangeFalloffFactor = 1.0f;
@@ -62,7 +62,7 @@ float3 GetLightContribution(const GpuLight light, const float3 lightDirection, c
 }
 
 // Don't use range parameter to avoid bias.
-float3 GetLightContributionPT(const GpuLight light, const float3 lightDirection, const float lightDistance)
+float3 GetLightIrradiancePT(const GpuLight light, const float3 lightDirection, const float lightDistance)
 {
     float attenuation = 1.0f;
 
@@ -105,6 +105,23 @@ bool SampleLightUniformly(inout RngState rngState, out GpuLight lightSample, out
     return true;
 }
 
+bool SampleLightUniformly(StructuredBuffer<GpuLight> lightBuffer, inout RngState rngState, out GpuLight lightSample, out float lightSampleWeight, out uint lightIndex)
+{
+    lightSample = (GpuLight) 0;
+    lightSampleWeight = 0.0f;
+
+    if (g_frame.lightCount == 0)
+    {
+        return false;
+    }
+
+    lightIndex = min(g_frame.lightCount - 1, uint(NextRandomFloat(rngState) * g_frame.lightCount));
+    lightSample = lightBuffer[lightIndex];
+    lightSampleWeight = float(g_frame.lightCount);
+
+    return true;
+}
+
 bool SampleLightRIS(inout RngState rngState, const float3 surfaceWorldPosition, const float3 surfaceNormal,
                     out GpuLight lightSample, out float lightSampleWeight)
 {
@@ -135,7 +152,7 @@ bool SampleLightRIS(inout RngState rngState, const float3 surfaceWorldPosition, 
             }
 
             float candidateTargetPdf =
-                CalculateLuminance(GetLightContributionPT(candidateLightSample, lightDirection, lightDistance));
+                CalculateLuminance(GetLightIrradiancePT(candidateLightSample, lightDirection, lightDistance));
             const float candidateRisWeight = candidateTargetPdf * candidateLightSampleWeight; // p_hat / pdf
 
             totalRisWeight += candidateRisWeight;

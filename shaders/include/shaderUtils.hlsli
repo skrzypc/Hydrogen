@@ -70,4 +70,14 @@ float3 DebugColorFromId(uint id)
                   float((hash >> 16) & 0xFF) / 255.0f);
 }
 
+float3 ReconstructWorldPosition(float2 uv, float depth, float4x4 invViewProjection)
+{
+    float2 ndc = float2(uv.x * 2.0f - 1.0f, 1.0f - uv.y * 2.0f);
+
+    float4 clipPosition = float4(ndc, depth, 1.0f);
+    float4 worldPosition = mul(invViewProjection, clipPosition);
+
+    return worldPosition.xyz / worldPosition.w;
+}
+
 #endif // SHADERUTILS_HLSLI
