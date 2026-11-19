@@ -80,4 +80,12 @@ float3 ReconstructWorldPosition(float2 uv, float depth, float4x4 invViewProjecti
     return worldPosition.xyz / worldPosition.w;
 }
 
+// TODO: Implement RT Gems 2, Chapter 6's robust self-intersection avoidance instead of a fixed epsilon.
+static const float kRayOriginBiasDistance = 0.001f;
+
+float3 OffsetRayOrigin(const float3 worldPosition, const float3 geometryNormal)
+{
+    return worldPosition + geometryNormal * kRayOriginBiasDistance;
+}
+
 #endif // SHADERUTILS_HLSLI
