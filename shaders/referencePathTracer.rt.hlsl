@@ -15,12 +15,9 @@ struct PushConstants
 
 ConstantBuffer<PushConstants> g_push : register(b0, space0);
 
-static const float3 kSkyRadiance = float3(0.0f, 0.0f, 0.0f);
-//static const float3 kSkyRadiance = float3(0.02f, 0.04f, 0.08f);
-// static const float3 kSkyRadiance = float3(0.05f, 0.05f, 0.05f);
 
-static const uint MIN_BOUNCES = 1;
-static const uint MAX_BOUNCES = 3;
+static const uint MIN_BOUNCES = 0;
+static const uint MAX_BOUNCES = 0;
 
 struct [raypayload] RayPayload
 {
@@ -115,14 +112,6 @@ RayDesc GenerateCameraRay(const float2 vfPixel)
                                 (vfPixel.y * view.viewMx[1].xyz * fTanHalfFovY) + view.viewMx[2].xyz);
 
     return wsRay;
-}
-
-// TODO: Implement RT Gems 2, Chapter 6's robust self-intersection avoidance instead of a fixed epsilon.
-static const float kRayOriginBiasDistance = 0.001f;
-
-float3 OffsetRayOrigin(const float3 worldPosition, const float3 geometryNormal)
-{
-    return worldPosition + geometryNormal * kRayOriginBiasDistance;
 }
 
 [shader("raygeneration")]

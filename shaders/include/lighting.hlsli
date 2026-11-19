@@ -3,6 +3,8 @@
 
 #include "rng.hlsli"
 
+static const float3 kSkyRadiance = float3(0.05f, 0.05f, 0.05f);
+
 static const float kRangeFalloffStartFraction = 0.8f;
 static const uint kRisCandidatesLightsCount = 8;
 
@@ -109,7 +111,8 @@ bool SampleLightUniformly(StructuredBuffer<GpuLight> lightBuffer, inout RngState
 {
     lightSample = (GpuLight) 0;
     lightSampleWeight = 0.0f;
-
+    lightIndex = 0xffffffff;
+    
     if (g_frame.lightCount == 0)
     {
         return false;
