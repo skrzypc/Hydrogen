@@ -6,6 +6,7 @@
 #include <h2/renderer/passes/tonemapPass.h>
 #include <h2/renderer/passes/dummyPass.h>
 #include <h2/renderer/passes/restirInitialCandidateGenerationPass.h>
+#include <h2/renderer/passes/restirShadingPass.h>
 
 namespace Hydrogen
 {
@@ -41,10 +42,12 @@ namespace Hydrogen
         void DefineFrameGraphResources(FrameGraph& frameGraph, const FrameContext& frameContext);
 
     private:
+        bool m_showGBuffer = false;
         eGBufferView m_gBufferView = eGBufferView::Albedo;
 
         GBufferPass m_gBufferPass{};
         ReSTIRInitialCandidateGenerationPass m_restirInitialCandidateGenerationPass{};
+        ReSTIRShadingPass m_restirShadingPass{};
         DummyPass m_dummyPass{};
         BuildTlasPass m_buildTlasPass{};
         TonemapPass m_tonemapPass{};
