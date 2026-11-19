@@ -58,14 +58,14 @@ namespace Hydrogen
         m_gpuUploader.Initialize(m_gpuDevice, static_cast<uint64>(256ull * 1024ull * 1024ull));
         m_gpuScene.Initialize(m_gpuDevice, m_gpuUploader, 50'000'000, 150'000'000);
 
-        m_viewBuffer = m_gpuDevice.CreateUploadBuffer(L"H2_VIEW_BUFFER", m_maxViews * sizeof(ViewData));
+        m_viewBuffer = m_gpuDevice.CreateUploadBuffer(L"H2_VIEW_BUFFER", m_maxViews * sizeof(ViewData) * StaticConfig::FramesInFlight);
         D3D12_SHADER_RESOURCE_VIEW_DESC viewSrvDesc{};
         viewSrvDesc.Format = DXGI_FORMAT_UNKNOWN;
         viewSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
         viewSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
         viewSrvDesc.Buffer.FirstElement = 0;
         viewSrvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-        viewSrvDesc.Buffer.NumElements = m_maxViews;
+        viewSrvDesc.Buffer.NumElements = m_maxViews * StaticConfig::FramesInFlight;
         viewSrvDesc.Buffer.StructureByteStride = sizeof(ViewData);
         m_viewBufferSrv = m_gpuDevice.CreateShaderResourceView(m_viewBuffer.get(), viewSrvDesc);
 
@@ -340,11 +340,15 @@ namespace Hydrogen
         viewData.farPlane = renderScene.camera.farZ;
         viewData.viewportSize = {renderWidth, renderHeight};
         viewData.exposure = renderScene.camera.exposure;
-        m_viewBuffer->Write(&viewData, sizeof(ViewData), 0);
+
+        const uint32 viewDataIndex = 0;
+        const uint32 viewDataSlotIndex = m_maxViews * frameContext.frameIndex + viewDataIndex;
+        const uint32 viewDataSlotOffset = (sizeof(ViewData) * viewDataSlotIndex);
+        m_viewBuffer->Write(&viewData, sizeof(ViewData), viewDataSlotOffset);
 
         FrameData frameData{};
         frameData.viewBufferIndex = m_viewBufferSrv.index;
-        frameData.mainViewIndex = 0;
+        frameData.mainViewIndex = viewDataSlotIndex;
         frameData.vertexPositionBufferIndex = m_gpuScene.GetPositionBufferIndex();
         frameData.vertexNormalBufferIndex = m_gpuScene.GetNormalBufferIndex();
         frameData.vertexTangentBufferIndex = m_gpuScene.GetTangentBufferIndex();
