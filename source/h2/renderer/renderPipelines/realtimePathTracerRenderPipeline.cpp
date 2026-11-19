@@ -23,6 +23,7 @@ namespace Hydrogen
         m_tonemapPass.Initialize(device, shaderCompiler);
         m_dummyPass.Initialize(device, shaderCompiler);
         m_restirInitialCandidateGenerationPass.Initialize(device, shaderCompiler);
+        m_restirShadingPass.Initialize(device, shaderCompiler);
     }
 
     void RealtimePathTracerRenderPipeline::Shutdown() {}
@@ -139,11 +140,17 @@ namespace Hydrogen
         frameGraph.AddPass("ReSTIR_CandidatesGeneration", m_restirInitialCandidateGenerationPass,
                            FGPassFlags::NeverCull);
 
-        m_dummyPass.output = "Output";
-        m_dummyPass.indexToOutput = static_cast<uint32>(m_gBufferView);
-        frameGraph.AddPass("Dummy", m_dummyPass);
-
-        // frameGraph.AddPass("Tonemap", m_tonemapPass);
+        if (m_showGBuffer)
+        {
+            m_dummyPass.output = "Output";
+            m_dummyPass.indexToOutput = static_cast<uint32>(m_gBufferView);
+            frameGraph.AddPass("Dummy", m_dummyPass);
+        }
+        else
+        {
+            frameGraph.AddPass("ReSTIR_Shading", m_restirShadingPass);
+            frameGraph.AddPass("Tonemap", m_tonemapPass);
+        }
 
         return "Output";
     }
@@ -154,11 +161,16 @@ namespace Hydrogen
         static_assert(gBufferViewNames.size() == static_cast<size_t>(eGBufferView::Count),
                       "gBufferViewNames must list every eGBufferView");
 
-        auto selected = static_cast<int32>(m_gBufferView);
-        if (ImGui::Combo("G-buffer view", &selected, gBufferViewNames.data(),
-                         static_cast<int32>(gBufferViewNames.size())))
+        ImGui::Checkbox("Show G-buffer", &m_showGBuffer);
+
+        if (m_showGBuffer)
         {
-            m_gBufferView = static_cast<eGBufferView>(selected);
+            auto selected = static_cast<int32>(m_gBufferView);
+            if (ImGui::Combo("G-buffer view", &selected, gBufferViewNames.data(),
+                             static_cast<int32>(gBufferViewNames.size())))
+            {
+                m_gBufferView = static_cast<eGBufferView>(selected);
+            }
         }
     }
 } // namespace Hydrogen
