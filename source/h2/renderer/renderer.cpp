@@ -58,7 +58,8 @@ namespace Hydrogen
         m_gpuUploader.Initialize(m_gpuDevice, static_cast<uint64>(256ull * 1024ull * 1024ull));
         m_gpuScene.Initialize(m_gpuDevice, m_gpuUploader, 50'000'000, 150'000'000);
 
-        m_viewBuffer = m_gpuDevice.CreateUploadBuffer(L"H2_VIEW_BUFFER", m_maxViews * sizeof(ViewData) * StaticConfig::FramesInFlight);
+        m_viewBuffer = m_gpuDevice.CreateUploadBuffer(L"H2_VIEW_BUFFER",
+                                                      m_maxViews * sizeof(ViewData) * StaticConfig::FramesInFlight);
         D3D12_SHADER_RESOURCE_VIEW_DESC viewSrvDesc{};
         viewSrvDesc.Format = DXGI_FORMAT_UNKNOWN;
         viewSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
@@ -297,7 +298,25 @@ namespace Hydrogen
             request.renderPipelineType = static_cast<eRenderPipelineType>(selected);
         }
 
-        m_renderPipeline->BuildUI();
+        request.captureOutput = ImGui::Button("Capture output");
+
+        ImGui::Spacing();
+        ImGui::Spacing();
+
+        if (ImGui::CollapsingHeader("Performance"))
+        {
+            const float32 framerate = ImGui::GetIO().Framerate;
+            ImGui::Text("FPS: %.1f (%.2f ms)", framerate, 1000.0f / framerate);
+            ImGui::Spacing();
+        }
+
+        ImGui::Spacing();
+
+        if (ImGui::CollapsingHeader("Pipeline settings", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            m_renderPipeline->BuildUI();
+            ImGui::Spacing();
+        }
 
         return request;
     }

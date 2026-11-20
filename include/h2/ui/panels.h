@@ -63,16 +63,6 @@ namespace Hydrogen
         DirectX::XMFLOAT3 m_cachedEulerDeg{};
     };
 
-    class StatsPanel : public IPanel
-    {
-    public:
-        void Draw(UserInterfaceContext& context) override;
-        const char* GetName() const override
-        {
-            return "Stats";
-        }
-    };
-
     class RendererPanel : public IPanel
     {
     public:
