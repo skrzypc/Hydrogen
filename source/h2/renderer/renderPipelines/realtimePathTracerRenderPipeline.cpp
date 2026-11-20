@@ -24,6 +24,8 @@ namespace Hydrogen
         m_dummyPass.Initialize(device, shaderCompiler);
         m_restirInitialCandidateGenerationPass.Initialize(device, shaderCompiler);
         m_restirShadingPass.Initialize(device, shaderCompiler);
+        m_accumulationPass.Initialize(device, shaderCompiler);
+        m_accumulationPass.CreateAccumulationTarget(renderWidth, renderHeight);
     }
 
     void RealtimePathTracerRenderPipeline::Shutdown() {}
@@ -87,6 +89,8 @@ namespace Hydrogen
                                                    .optimizedClearColor = {0.0f, 0.0f, 0.0f, 1.0f},
                                                });
 
+        frameGraph.ImportTexture("AccumulationTarget", m_accumulationPass.GetAccumulationTarget());
+
         frameGraph.CreateTexture("Output", {
                                                .width = frameContext.displayWidth,
                                                .height = frameContext.displayHeight,
@@ -149,6 +153,14 @@ namespace Hydrogen
         else
         {
             frameGraph.AddPass("ReSTIR_Shading", m_restirShadingPass);
+
+            if (m_accumulate)
+            {
+                m_accumulationPass.frameNumber = frameContext.frameNumber;
+                m_accumulationPass.resetAccumulation = frameContext.sceneChanged;
+                frameGraph.AddPass("Accumulation", m_accumulationPass);
+            }
+
             frameGraph.AddPass("Tonemap", m_tonemapPass);
         }
 
@@ -160,6 +172,12 @@ namespace Hydrogen
         static constexpr std::array gBufferViewNames = {"Albedo", "Normal", "Roughness", "Metallic", "Depth"};
         static_assert(gBufferViewNames.size() == static_cast<size_t>(eGBufferView::Count),
                       "gBufferViewNames must list every eGBufferView");
+
+        ImGui::Checkbox("Accumulate", &m_accumulate);
+        if (m_accumulate)
+        {
+            ImGui::Text("Accumulated frames: %u", m_accumulationPass.GetAccumulatedFramesCount());
+        }
 
         ImGui::Checkbox("Show G-buffer", &m_showGBuffer);
 

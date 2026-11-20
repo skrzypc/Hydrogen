@@ -19,6 +19,9 @@ mono_crash.*
 
 # Build results
 [Dd]ebug/
+# Source folders named "debug" are code, not build output.
+!/include/h2/renderer/passes/debug/
+!/source/h2/renderer/passes/debug/
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
