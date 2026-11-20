@@ -10,5 +10,6 @@ namespace Hydrogen
     struct RendererUiRequest
     {
         std::optional<eRenderPipelineType> renderPipelineType{};
+        bool captureOutput = false; // Save the pipeline output (without UI) to a DDS file.
     };
 } // namespace Hydrogen

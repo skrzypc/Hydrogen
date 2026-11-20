@@ -17,7 +17,6 @@ void Application::OnInitialize()
     LoadModels();
     CreateCamera();
 
-    GetUi().AddPanel<StatsPanel>();
     GetUi().AddPanel<ScenePanel>();
     GetUi().AddPanel<InspectorPanel>();
     GetUi().AddPanel<RendererPanel>();

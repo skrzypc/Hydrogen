@@ -21,7 +21,6 @@ namespace Hydrogen
         m_gBufferPass.Initialize(device, shaderCompiler);
         m_buildTlasPass.Initialize(device, shaderCompiler);
         m_tonemapPass.Initialize(device, shaderCompiler);
-        m_dummyPass.Initialize(device, shaderCompiler);
         m_restirInitialCandidateGenerationPass.Initialize(device, shaderCompiler);
         m_restirShadingPass.Initialize(device, shaderCompiler);
         m_accumulationPass.Initialize(device, shaderCompiler);
@@ -144,51 +143,29 @@ namespace Hydrogen
         frameGraph.AddPass("ReSTIR_CandidatesGeneration", m_restirInitialCandidateGenerationPass,
                            FGPassFlags::NeverCull);
 
-        if (m_showGBuffer)
-        {
-            m_dummyPass.output = "Output";
-            m_dummyPass.indexToOutput = static_cast<uint32>(m_gBufferView);
-            frameGraph.AddPass("Dummy", m_dummyPass);
-        }
-        else
-        {
-            frameGraph.AddPass("ReSTIR_Shading", m_restirShadingPass);
+        frameGraph.AddPass("ReSTIR_Shading", m_restirShadingPass);
 
-            if (m_accumulate)
-            {
-                m_accumulationPass.frameNumber = frameContext.frameNumber;
-                m_accumulationPass.resetAccumulation = frameContext.sceneChanged;
-                frameGraph.AddPass("Accumulation", m_accumulationPass);
-            }
-
-            frameGraph.AddPass("Tonemap", m_tonemapPass);
+        if (m_accumulate)
+        {
+            m_accumulationPass.frameNumber = frameContext.frameNumber;
+            m_accumulationPass.resetAccumulation = frameContext.sceneChanged;
+            frameGraph.AddPass("Accumulation", m_accumulationPass);
         }
+
+        frameGraph.AddPass("Tonemap", m_tonemapPass);
 
         return "Output";
     }
 
     void RealtimePathTracerRenderPipeline::BuildUI()
     {
-        static constexpr std::array gBufferViewNames = {"Albedo", "Normal", "Roughness", "Metallic", "Depth"};
-        static_assert(gBufferViewNames.size() == static_cast<size_t>(eGBufferView::Count),
-                      "gBufferViewNames must list every eGBufferView");
+        ImGui::SeparatorText("Debug");
 
         ImGui::Checkbox("Accumulate", &m_accumulate);
         if (m_accumulate)
         {
-            ImGui::Text("Accumulated frames: %u", m_accumulationPass.GetAccumulatedFramesCount());
-        }
-
-        ImGui::Checkbox("Show G-buffer", &m_showGBuffer);
-
-        if (m_showGBuffer)
-        {
-            auto selected = static_cast<int32>(m_gBufferView);
-            if (ImGui::Combo("G-buffer view", &selected, gBufferViewNames.data(),
-                             static_cast<int32>(gBufferViewNames.size())))
-            {
-                m_gBufferView = static_cast<eGBufferView>(selected);
-            }
+            ImGui::SameLine();
+            ImGui::TextDisabled("(%u frames)", m_accumulationPass.GetAccumulatedFramesCount());
         }
     }
 } // namespace Hydrogen
