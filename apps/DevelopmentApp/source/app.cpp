@@ -63,6 +63,12 @@ void Application::LoadModels()
             m_scene.transforms.Add(entity, TransformComponent{node.localTransform});
             if (node.meshIndex.has_value())
             {
+                // Temporarily skip the curtain mesh!!!
+                if (node.name.contains("curtain"))
+                {
+                    continue;
+                }
+
                 m_scene.meshes.Add(entity, MeshComponent{meshHandles[*node.meshIndex]});
             }
 
