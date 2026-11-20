@@ -7,6 +7,7 @@
 #include <h2/renderer/passes/dummyPass.h>
 #include <h2/renderer/passes/restirInitialCandidateGenerationPass.h>
 #include <h2/renderer/passes/restirShadingPass.h>
+#include <h2/renderer/passes/debug/accumulationPass.h>
 
 namespace Hydrogen
 {
@@ -45,11 +46,14 @@ namespace Hydrogen
         bool m_showGBuffer = false;
         eGBufferView m_gBufferView = eGBufferView::Albedo;
 
+        bool m_accumulate = false;
+
         GBufferPass m_gBufferPass{};
         ReSTIRInitialCandidateGenerationPass m_restirInitialCandidateGenerationPass{};
         ReSTIRShadingPass m_restirShadingPass{};
         DummyPass m_dummyPass{};
         BuildTlasPass m_buildTlasPass{};
         TonemapPass m_tonemapPass{};
+        AccumulationPass m_accumulationPass{};
     };
 } // namespace Hydrogen

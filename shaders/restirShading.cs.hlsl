@@ -93,7 +93,6 @@ void mainCS(uint3 dispatchThreadId : SV_DispatchThreadID)
     bool occlusion = (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT);
 
     float3 radiance = float3(0.0f, 0.0f, 0.0f);
-    //float3 radiance = kSkyRadiance;
 
     // Light unoccluded, calculate total contribution for given point on surface.
     if (!occlusion)

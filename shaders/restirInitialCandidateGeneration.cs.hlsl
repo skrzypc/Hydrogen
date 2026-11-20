@@ -64,7 +64,7 @@ void mainCS(uint3 dispatchThreadId : SV_DispatchThreadID)
     
     StructuredBuffer<GpuLight> lightsBuffer = ResourceDescriptorHeap[g_frame.lightBufferIndex];
 
-    const uint candidateCount = 16;
+    const uint candidateCount = 8;
     float selectedPHat = 0.0f;
     for (uint i = 0; i < candidateCount; ++i)
     {
