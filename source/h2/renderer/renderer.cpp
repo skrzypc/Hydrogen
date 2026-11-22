@@ -1,8 +1,12 @@
 
+#include <algorithm>
 #include <cmath>
+#include <filesystem>
+#include <format>
 #include <string_view>
 
 #include <directx/d3d12.h>
+#include <DirectXTex.h>
 #include <DirectXColors.h>
 #include <DirectXMath.h>
 
@@ -18,6 +22,7 @@
 #include <h2/core/logger.h>
 #include <h2/core/verifier.h>
 #include <h2/core/utilities.h>
+#include <h2/core/timer.h>
 #include <h2/shaders/shaderInterop.h>
 
 #include <h2/renderer/framegraph/frameGraph.h>
@@ -69,6 +74,8 @@ namespace Hydrogen
         viewSrvDesc.Buffer.NumElements = m_maxViews * StaticConfig::FramesInFlight;
         viewSrvDesc.Buffer.StructureByteStride = sizeof(ViewData);
         m_viewBufferSrv = m_gpuDevice.CreateShaderResourceView(m_viewBuffer.get(), viewSrvDesc);
+
+        m_captureDir = paths.captureDir;
 
         CreateRenderPipeline(m_renderPipelineType);
 
@@ -136,7 +143,9 @@ namespace Hydrogen
             renderScene.lights.push_back(renderLight);
         }
 
-        RenderFrame(renderScene, drawData, time, deltaTime);
+        // TODO: Translate uiRequest into some sort of render settings.
+        // TODO: We should have something like FrameContext instead of passing all these parameters separately.
+        RenderFrame(renderScene, uiRequest, drawData, time, deltaTime);
     }
 
     FrameContext Renderer::BeginFrame(const RenderScene& renderScene, float64 time, float32 deltaTime)
@@ -389,7 +398,65 @@ namespace Hydrogen
         GraphicsContext::s_frameDataAddr = gpuAddr;
     }
 
-    void Renderer::RenderFrame(const RenderScene& renderScene, ImDrawData* drawData, float64 time, float32 deltaTime)
+    void Renderer::PrepareFrameCaptureTarget(const FrameContext& frameContext)
+    {
+        // Filled with CopyResource, so it must match the pipeline output's size and format exactly.
+        if (m_frameCaptureTarget != nullptr)
+        {
+            const Texture::Desc& current = m_frameCaptureTarget->GetDesc();
+            if (current.width == frameContext.displayWidth && current.height == frameContext.displayHeight &&
+                current.format == frameContext.displayFormat)
+            {
+                return;
+            }
+        }
+
+        // Safe to replace: captures block until the GPU is done, so no frame still uses the old texture.
+        m_frameCaptureTarget = m_gpuDevice.CreateTexture(L"H2_FRAME_CAPTURE_TARGET",
+                                                         Texture::Desc{
+                                                             .width = frameContext.displayWidth,
+                                                             .height = frameContext.displayHeight,
+                                                             .mipLevels = 1,
+                                                             .arraySize = 1,
+                                                             .format = frameContext.displayFormat,
+                                                             .flags = D3D12_RESOURCE_FLAG_NONE,
+                                                             .dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+                                                         },
+                                                         ResourceState{.layout = D3D12_BARRIER_LAYOUT_COMMON});
+    }
+
+    void Renderer::SaveFrameCapture()
+    {
+        DirectX::ScratchImage image{};
+        if (!H2_VERIFY(DirectX::CaptureTexture(m_gpuDevice.GetDxQueue<eQueueType::Direct>(),
+                                               m_frameCaptureTarget->GetResource(), false, image,
+                                               D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COMMON),
+                       "Failed to capture the frame output!"))
+        {
+            return;
+        }
+
+        std::error_code error{};
+        std::filesystem::create_directories(m_captureDir, error);
+        if (!H2_VERIFY(!error, "Failed to create the capture directory {}: {}", m_captureDir.string(), error.message()))
+        {
+            return;
+        }
+
+        std::string timestamp = std::format("{:%Y-%m-%d_%H-%M-%S}", Timer::GetTime());
+        std::ranges::replace(timestamp, '.', '-');
+        const std::filesystem::path filePath =
+            m_captureDir / std::format("{}_{}.dds", m_renderPipeline->GetName(), timestamp);
+
+        if (H2_VERIFY(DirectX::SaveToDDSFile(*image.GetImage(0, 0, 0), DirectX::DDS_FLAGS_NONE, filePath.c_str()),
+                      "Failed to save the frame capture to {}!", filePath.string()))
+        {
+            H2_INFO(eLogLevel::Regular, "Saved frame capture to {}", filePath.string());
+        }
+    }
+
+    void Renderer::RenderFrame(const RenderScene& renderScene, const RendererUiRequest& uiRequest, ImDrawData* drawData,
+                               float64 time, float32 deltaTime)
     {
         FrameContext frameContext = BeginFrame(renderScene, time, deltaTime);
 
@@ -412,6 +479,16 @@ namespace Hydrogen
 
         std::string_view pipelineOutput = m_renderPipeline->Render(m_frameGraph, frameContext);
 
+        if (uiRequest.captureOutput)
+        {
+            PrepareFrameCaptureTarget(frameContext);
+            m_frameGraph.ImportTexture("FrameCaptureTarget", m_frameCaptureTarget.get());
+
+            m_copyPassSaveOutput.input = pipelineOutput;
+            m_copyPassSaveOutput.output = "FrameCaptureTarget";
+            m_frameGraph.AddPass("CopyToFrameCaptureTarget", m_copyPassSaveOutput);
+        }
+
         if (drawData != nullptr)
         {
             m_imguiPass.pDrawData = drawData;
@@ -427,6 +504,11 @@ namespace Hydrogen
 
         GraphicsContext gfx = m_frameGraph.Execute();
         uint64 fenceValue = m_gpuDevice.ExecuteGraphicsContext(std::move(gfx));
+
+        if (uiRequest.captureOutput)
+        {
+            SaveFrameCapture();
+        }
 
         m_frameGraph.Reset();
 

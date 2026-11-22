@@ -29,13 +29,16 @@ namespace Hydrogen
     };
 
     // Directories the engine needs at runtime, resolved once at startup so nothing depends on the working directory.
-    // Inputs default to the engine source tree, outputs to the executable's directory.
+    // Inputs default to the engine source tree, compiled shaders to the executable's directory, and user-facing
+    // outputs (logs, captures) to <source>/output.
     struct RuntimePaths
     {
         std::filesystem::path shaderSourceDir{};
         std::filesystem::path shaderOutputDir{};
         std::filesystem::path dataDir{};
+        std::filesystem::path outputDir{};
         std::filesystem::path logDir{};
+        std::filesystem::path captureDir{};
     };
 
     struct Config

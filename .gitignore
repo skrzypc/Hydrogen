@@ -431,6 +431,9 @@ FodyWeavers.xsd
 !.clang-tidy
 !.editorconfig
 imgui.ini
+
+# Runtime outputs (logs, captures)
+/output/
 thirdParty/vcpkg
 thirdParty/vcpkg/*
 thirdParty/vcpkg_installed/*

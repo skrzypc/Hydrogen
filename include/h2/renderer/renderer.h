@@ -53,7 +53,8 @@ namespace Hydrogen
         [[nodiscard]] RendererUiRequest BuildUi();
 
     private:
-        void RenderFrame(const RenderScene& renderScene, ImDrawData* drawData, float64 time, float32 deltaTime);
+        void RenderFrame(const RenderScene& renderScene, const RendererUiRequest& uiRequest, ImDrawData* drawData,
+                         float64 time, float32 deltaTime);
 
         void SwitchRenderPipeline(eRenderPipelineType type);
 
@@ -61,6 +62,8 @@ namespace Hydrogen
         void EndFrame(uint32 frameIndex, uint64 fenceValue);
 
         void UpdateFrameData(const FrameContext& frameContext);
+        void PrepareFrameCaptureTarget(const FrameContext& frameContext);
+        void SaveFrameCapture();
         void ProcessUploadQueue();
         void CreateRenderPipeline(eRenderPipelineType type);
 
@@ -81,12 +84,17 @@ namespace Hydrogen
         ShaderResourceViewHandle m_viewBufferSrv{};
         uint32 m_maxViews = 16;
 
+        std::unique_ptr<Texture> m_frameCaptureTarget = nullptr;
+        std::filesystem::path m_captureDir{};
+
         std::array<uint64, StaticConfig::FramesInFlight> m_frameFenceValues{};
 
         std::unique_ptr<IRenderPipeline> m_renderPipeline = nullptr;
-        eRenderPipelineType m_renderPipelineType = eRenderPipelineType::ReferencePathTracer;
+        eRenderPipelineType m_renderPipelineType = eRenderPipelineType::RealtimePathTracer;
 
         CopyPass m_copyPass{};
+        // TODO: Temporary, passes should not be members of the renderer.
+        CopyPass m_copyPassSaveOutput{};
         ImguiPass m_imguiPass{};
 
         CameraData m_previousCameraData{};
