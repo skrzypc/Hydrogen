@@ -13,13 +13,26 @@ namespace Hydrogen
     {
         CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
+        // Everything D3D12 (debug layer, devices) must go through this factory to use the Agility runtime; the
+        // global D3D12GetDebugInterface / D3D12CreateDevice would load the OS runtime instead.
+        {
+            Microsoft::WRL::ComPtr<ID3D12SDKConfiguration1> pSdkConfig = nullptr;
+            H2_VERIFY_FATAL(D3D12GetInterface(CLSID_D3D12SDKConfiguration, IID_PPV_ARGS(&pSdkConfig)),
+                            "Unable to obtain the D3D12 SDK configuration interface!");
+            H2_VERIFY_FATAL(pSdkConfig->CreateDeviceFactory(D3D12_SDK_VERSION, StaticConfig::AgilitySdkPath,
+                                                            IID_PPV_ARGS(&m_pDeviceFactory)),
+                            "Unable to load the D3D12 Agility SDK runtime (version {})! Is D3D12Core.dll in '{}'?",
+                            D3D12_SDK_VERSION, StaticConfig::AgilitySdkPath);
+        }
+
         uint32 dxgiFactoryFlags = 0u;
 #if _DEBUG
         dxgiFactoryFlags = DXGI_CREATE_FACTORY_DEBUG;
 
         Microsoft::WRL::ComPtr<ID3D12Debug6> pDebugInterface = nullptr;
-        if (H2_VERIFY_FATAL(D3D12GetDebugInterface(IID_PPV_ARGS(&pDebugInterface)),
-                            "Unable to obtain DX12 debug interface!"))
+        if (H2_VERIFY_FATAL(
+                m_pDeviceFactory->GetConfigurationInterface(CLSID_D3D12Debug, IID_PPV_ARGS(&pDebugInterface)),
+                "Unable to obtain DX12 debug interface!"))
         {
             pDebugInterface->EnableDebugLayer();
             pDebugInterface->SetEnableGPUBasedValidation(StaticConfig::EnableGPUBasedValidation);
@@ -59,8 +72,9 @@ namespace Hydrogen
             m_pDxgiAdapter != nullptr,
             "Requested adapter could not be found! Perhaps requested adapter vendor is not present on this system.");
 
-        H2_VERIFY_FATAL(D3D12CreateDevice(m_pDxgiAdapter.Get(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&m_pDxDevice)),
-                        "DX12 device could not be created!");
+        H2_VERIFY_FATAL(
+            m_pDeviceFactory->CreateDevice(m_pDxgiAdapter.Get(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&m_pDxDevice)),
+            "DX12 device could not be created!");
 
         H2_VERIFY_FATAL(CheckRequiredFeatureSupport(m_pDxDevice.Get()),
                         "Device does not support all expected features!");
@@ -381,7 +395,8 @@ namespace Hydrogen
             const uint64 memoryMB = desc.DedicatedVideoMemory >> 20;
 
             Microsoft::WRL::ComPtr<ID3D12Device16> pProbeDevice = nullptr;
-            if (FAILED(D3D12CreateDevice(pCandidate.Get(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&pProbeDevice))))
+            if (FAILED(m_pDeviceFactory->CreateDevice(pCandidate.Get(), D3D_FEATURE_LEVEL_12_1,
+                                                      IID_PPV_ARGS(&pProbeDevice))))
             {
                 H2_INFO(eLogLevel::Verbose, "Skipping adapter {} ({} MB): no feature level 12_1.", name, memoryMB);
                 continue;

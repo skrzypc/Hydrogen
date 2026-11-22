@@ -13,6 +13,9 @@ namespace Hydrogen
     {
         static constexpr uint32 FramesInFlight = 3;
 
+        // Folder (relative to the executable) holding the Agility D3D12Core.dll; the version is D3D12_SDK_VERSION.
+        static constexpr const char* AgilitySdkPath = ".\\D3D12\\";
+
         static constexpr bool EnableGPUBasedValidation = false;
         static constexpr eAdapterVendor RequestedAdapter = eAdapterVendor::MOST_CAPABLE;
 

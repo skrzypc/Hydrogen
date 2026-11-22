@@ -237,6 +237,7 @@ namespace Hydrogen
     private:
         Microsoft::WRL::ComPtr<IDXGIFactory7> m_pDxgiFactory = nullptr;
         Microsoft::WRL::ComPtr<IDXGIAdapter4> m_pDxgiAdapter = nullptr;
+        Microsoft::WRL::ComPtr<ID3D12DeviceFactory> m_pDeviceFactory = nullptr;
         Microsoft::WRL::ComPtr<ID3D12Device16> m_pDxDevice = nullptr;
 
         LinearIndexAllocator m_cbvSrvUavDescriptorAllocator{};
