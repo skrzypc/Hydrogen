@@ -149,6 +149,7 @@ namespace Hydrogen
         {
             return m_pDxgiFactory.Get();
         }
+
         ID3D12Device16* GetDxDevice() const
         {
             return m_pDxDevice.Get();
