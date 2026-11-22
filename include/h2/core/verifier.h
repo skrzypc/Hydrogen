@@ -46,7 +46,7 @@ namespace Hydrogen
             return result;
         }
 
-    private:
+        // Converts a condition to its success value (HRESULTs via SUCCEEDED). Used by the macros in every config.
         static bool CheckCondition(bool value) noexcept
         {
             return value;
@@ -60,9 +60,9 @@ namespace Hydrogen
 } // namespace Hydrogen
 
 #ifdef _RELEASE
-// TODO: Fix no-discard related warnings.
-#define H2_VERIFY(condition, formatString, ...) (condition)
-#define H2_VERIFY_FATAL(condition, formatString, ...) (condition)
+// No message or logging in release, but the condition is still evaluated and returned as a bool.
+#define H2_VERIFY(condition, formatString, ...) Hydrogen::Verifier::CheckCondition(condition)
+#define H2_VERIFY_FATAL(condition, formatString, ...) Hydrogen::Verifier::CheckCondition(condition)
 #else
 #define H2_VERIFY(condition, formatString, ...)                                                                        \
     Hydrogen::Verifier::Verify(condition, std::format(formatString, __VA_ARGS__), std::source_location::current())
