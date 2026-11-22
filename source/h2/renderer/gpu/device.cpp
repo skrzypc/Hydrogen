@@ -53,41 +53,7 @@ namespace Hydrogen
         H2_VERIFY_FATAL(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&m_pDxgiFactory)),
                         "Failed to create DXGI factory!");
 
-        std::string adapterVendorString = "INVALID";
-        switch (StaticConfig::RequestedAdapter)
-        {
-        case eAdapterVendor::INTEL:
-            adapterVendorString = "INTEL";
-            break;
-        case eAdapterVendor::NVIDIA:
-            adapterVendorString = "NVIDIA";
-            break;
-        case eAdapterVendor::AMD:
-            adapterVendorString = "AMD";
-            break;
-        case eAdapterVendor::SOFTWARE:
-            adapterVendorString = "SOFTWARE";
-            break;
-        }
-
-        H2_INFO(eLogLevel::Verbose, "Looking for {} adapter...", adapterVendorString);
-
-        for (uint32 i = 0;
-             DXGI_ERROR_NOT_FOUND != m_pDxgiFactory->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
-                                                                                IID_PPV_ARGS(&m_pDxgiAdapter));
-             ++i)
-        {
-            DXGI_ADAPTER_DESC3 adapterDesc{};
-            m_pDxgiAdapter->GetDesc3(&adapterDesc);
-            if (static_cast<eAdapterVendor>(adapterDesc.VendorId) == StaticConfig::RequestedAdapter)
-            {
-                std::string gpuName = String::ToUTF8(adapterDesc.Description);
-                H2_INFO(eLogLevel::Verbose, "Adapter found:\n> {} ({} MB)", gpuName,
-                        (adapterDesc.DedicatedVideoMemory >> 20));
-
-                break;
-            }
-        }
+        SelectAdapter();
 
         H2_VERIFY_FATAL(
             m_pDxgiAdapter != nullptr,
@@ -96,7 +62,8 @@ namespace Hydrogen
         H2_VERIFY_FATAL(D3D12CreateDevice(m_pDxgiAdapter.Get(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&m_pDxDevice)),
                         "DX12 device could not be created!");
 
-        H2_VERIFY_FATAL(CheckRequiredFeatureSupport(), "Device does not support all expected features!");
+        H2_VERIFY_FATAL(CheckRequiredFeatureSupport(m_pDxDevice.Get()),
+                        "Device does not support all expected features!");
 
         Initialize();
     }
@@ -356,7 +323,97 @@ namespace Hydrogen
         m_rootSignature.Create(*this);
     }
 
-    bool GpuDevice::CheckRequiredFeatureSupport() const
+    void GpuDevice::SelectAdapter()
+    {
+        constexpr eAdapterVendor requested = StaticConfig::RequestedAdapter;
+
+        std::string requestedString = "INVALID";
+        switch (requested)
+        {
+        case eAdapterVendor::INTEL:
+            requestedString = "INTEL";
+            break;
+        case eAdapterVendor::NVIDIA:
+            requestedString = "NVIDIA";
+            break;
+        case eAdapterVendor::AMD:
+            requestedString = "AMD";
+            break;
+        case eAdapterVendor::SOFTWARE:
+            requestedString = "SOFTWARE";
+            break;
+        case eAdapterVendor::MOST_CAPABLE:
+            requestedString = "MOST_CAPABLE";
+            break;
+        default:
+            break;
+        }
+
+        H2_INFO(eLogLevel::Verbose, "Looking for {} adapter...", requestedString);
+
+        // Adapters come in high-performance order, so the first one that passes the feature check wins. If none
+        // passes, fall back to the matching adapter with the most VRAM; device creation then reports what is missing.
+        Microsoft::WRL::ComPtr<IDXGIAdapter4> pFallback = nullptr;
+        uint64 fallbackMemory = 0;
+
+        Microsoft::WRL::ComPtr<IDXGIAdapter4> pCandidate = nullptr;
+        for (uint32 i = 0;
+             DXGI_ERROR_NOT_FOUND != m_pDxgiFactory->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
+                                                                                IID_PPV_ARGS(&pCandidate));
+             ++i)
+        {
+            DXGI_ADAPTER_DESC3 desc{};
+            if (FAILED(pCandidate->GetDesc3(&desc)))
+            {
+                continue;
+            }
+
+            const bool bSoftware = (desc.Flags & DXGI_ADAPTER_FLAG3_SOFTWARE) != 0;
+            const bool bMatches = (requested == eAdapterVendor::MOST_CAPABLE)
+                                      ? !bSoftware
+                                      : static_cast<eAdapterVendor>(desc.VendorId) == requested;
+            if (!bMatches)
+            {
+                continue;
+            }
+
+            const std::string name = String::ToUTF8(desc.Description);
+            const uint64 memoryMB = desc.DedicatedVideoMemory >> 20;
+
+            Microsoft::WRL::ComPtr<ID3D12Device> pProbeDevice = nullptr;
+            if (FAILED(D3D12CreateDevice(pCandidate.Get(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&pProbeDevice))))
+            {
+                H2_INFO(eLogLevel::Verbose, "Skipping adapter {} ({} MB): no feature level 12_1.", name, memoryMB);
+                continue;
+            }
+
+            if (CheckRequiredFeatureSupport(pProbeDevice.Get()))
+            {
+                m_pDxgiAdapter = pCandidate;
+                H2_INFO(eLogLevel::Verbose, "Adapter selected:\n> {} ({} MB)", name, memoryMB);
+                return;
+            }
+
+            H2_INFO(eLogLevel::Verbose, "Skipping adapter {} ({} MB): missing required features.", name, memoryMB);
+            if (pFallback == nullptr || desc.DedicatedVideoMemory > fallbackMemory)
+            {
+                pFallback = pCandidate;
+                fallbackMemory = desc.DedicatedVideoMemory;
+            }
+        }
+
+        if (pFallback != nullptr)
+        {
+            m_pDxgiAdapter = pFallback;
+
+            DXGI_ADAPTER_DESC3 desc{};
+            m_pDxgiAdapter->GetDesc3(&desc);
+            H2_WARNING(eLogLevel::Verbose, "No adapter supports all required features, falling back to:\n> {} ({} MB)",
+                       String::ToUTF8(desc.Description), (desc.DedicatedVideoMemory >> 20));
+        }
+    }
+
+    bool GpuDevice::CheckRequiredFeatureSupport(ID3D12Device* pDevice)
     {
         bool bAllFeaturesSupported = true;
 
@@ -366,7 +423,7 @@ namespace Hydrogen
                 (StaticConfig::ShaderModelVersionMajor << 4) | StaticConfig::ShaderModelVersionMinor);
 
             D3D12_FEATURE_DATA_SHADER_MODEL featureData{expectedShaderModel};
-            H2_VERIFY(m_pDxDevice->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &featureData, sizeof(featureData)),
+            H2_VERIFY(pDevice->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &featureData, sizeof(featureData)),
                       "Could not check shader model support!");
 
             bAllFeaturesSupported &= featureData.HighestShaderModel >= expectedShaderModel;
@@ -375,7 +432,7 @@ namespace Hydrogen
         // Raytracing
         {
             D3D12_FEATURE_DATA_D3D12_OPTIONS5 featureData{};
-            H2_VERIFY(m_pDxDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &featureData, sizeof(featureData)),
+            H2_VERIFY(pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &featureData, sizeof(featureData)),
                       "Could not check raytracing support!");
 
             bAllFeaturesSupported &= featureData.RaytracingTier >= StaticConfig::ExpectedRaytracingTier;
@@ -384,7 +441,7 @@ namespace Hydrogen
         // Mesh shaders
         {
             D3D12_FEATURE_DATA_D3D12_OPTIONS7 featureData{};
-            H2_VERIFY(m_pDxDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &featureData, sizeof(featureData)),
+            H2_VERIFY(pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &featureData, sizeof(featureData)),
                       "Could not check mesh shader support!");
 
             bAllFeaturesSupported &= featureData.MeshShaderTier >= StaticConfig::ExpectedMeshShaderTier;
@@ -393,7 +450,7 @@ namespace Hydrogen
         // Bindless resources
         {
             D3D12_FEATURE_DATA_D3D12_OPTIONS featureData{};
-            H2_VERIFY(m_pDxDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &featureData, sizeof(featureData)),
+            H2_VERIFY(pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &featureData, sizeof(featureData)),
                       "Could not check bindless resource support!");
 
             bAllFeaturesSupported &= featureData.ResourceBindingTier >= StaticConfig::ExpectedResourceBindingTier;
@@ -402,9 +459,8 @@ namespace Hydrogen
         // Enhanced barriers
         {
             D3D12_FEATURE_DATA_D3D12_OPTIONS12 featureData{};
-            H2_VERIFY(
-                m_pDxDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS12, &featureData, sizeof(featureData)),
-                "Could not check enhanced barriers support!");
+            H2_VERIFY(pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS12, &featureData, sizeof(featureData)),
+                      "Could not check enhanced barriers support!");
 
             bAllFeaturesSupported &= static_cast<bool>(featureData.EnhancedBarriersSupported);
         }

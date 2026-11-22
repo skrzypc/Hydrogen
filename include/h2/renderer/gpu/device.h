@@ -31,7 +31,9 @@ namespace Hydrogen
         NVIDIA = 0x10DE,
         AMD = 0x1002,
         SOFTWARE = 0x1414,
-        INVALID = 0x0000
+        INVALID = 0x0000,
+        // Picks the highest-performance hardware adapter that supports every required feature.
+        MOST_CAPABLE = 0xFFFF,
     };
 
     enum class eDescriptorHeapType : uint8
@@ -215,7 +217,8 @@ namespace Hydrogen
 
     private:
         void Initialize();
-        bool CheckRequiredFeatureSupport() const;
+        void SelectAdapter();
+        static bool CheckRequiredFeatureSupport(ID3D12Device* pDevice);
 
         DescriptorHeap& GetDescriptorHeap(eDescriptorHeapType descHeapType);
 

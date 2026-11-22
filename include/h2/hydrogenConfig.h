@@ -14,7 +14,7 @@ namespace Hydrogen
         static constexpr uint32 FramesInFlight = 3;
 
         static constexpr bool EnableGPUBasedValidation = false;
-        static constexpr eAdapterVendor RequestedAdapter = eAdapterVendor::NVIDIA;
+        static constexpr eAdapterVendor RequestedAdapter = eAdapterVendor::MOST_CAPABLE;
 
         static constexpr D3D12_RAYTRACING_TIER ExpectedRaytracingTier =
             D3D12_RAYTRACING_TIER_1_1; // 1_2 not supported by AMD yet.
