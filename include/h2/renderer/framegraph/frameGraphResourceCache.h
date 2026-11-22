@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include <d3d12.h>
+#include <directx/d3d12.h>
 
 #include <h2/renderer/gpu/device.h>
 #include <h2/renderer/framegraph/frameGraphStructs.h>

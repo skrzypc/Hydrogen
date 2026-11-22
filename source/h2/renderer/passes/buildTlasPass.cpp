@@ -1,4 +1,4 @@
-#include <d3d12.h>
+#include <directx/d3d12.h>
 
 #include <h2/renderer/gpu/device.h>
 #include <h2/renderer/gpu/scene/gpuScene.h>

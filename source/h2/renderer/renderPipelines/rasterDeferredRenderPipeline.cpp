@@ -2,7 +2,7 @@
 
 #include <string_view>
 
-#include <d3d12.h>
+#include <directx/d3d12.h>
 
 #include <h2/renderer/framegraph/frameGraph.h>
 #include <h2/renderer/gpu/scene/gpuScene.h>

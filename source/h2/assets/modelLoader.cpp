@@ -241,7 +241,7 @@ namespace Hydrogen
 
         const auto& uriSource = std::get<fastgltf::sources::URI>(image.data);
 
-        std::filesystem::path ddsPath = directory / uriSource.uri.fspath();
+        std::filesystem::path ddsPath = directory / uriSource.uri->fspath();
         ddsPath.replace_extension(".dds");
 
         return ddsPath.string();

@@ -380,7 +380,7 @@ namespace Hydrogen
             const std::string name = String::ToUTF8(desc.Description);
             const uint64 memoryMB = desc.DedicatedVideoMemory >> 20;
 
-            Microsoft::WRL::ComPtr<ID3D12Device> pProbeDevice = nullptr;
+            Microsoft::WRL::ComPtr<ID3D12Device16> pProbeDevice = nullptr;
             if (FAILED(D3D12CreateDevice(pCandidate.Get(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&pProbeDevice))))
             {
                 H2_INFO(eLogLevel::Verbose, "Skipping adapter {} ({} MB): no feature level 12_1.", name, memoryMB);
@@ -413,7 +413,7 @@ namespace Hydrogen
         }
     }
 
-    bool GpuDevice::CheckRequiredFeatureSupport(ID3D12Device* pDevice)
+    bool GpuDevice::CheckRequiredFeatureSupport(ID3D12Device16* pDevice)
     {
         bool bAllFeaturesSupported = true;
 
@@ -423,7 +423,8 @@ namespace Hydrogen
                 (StaticConfig::ShaderModelVersionMajor << 4) | StaticConfig::ShaderModelVersionMinor);
 
             D3D12_FEATURE_DATA_SHADER_MODEL featureData{expectedShaderModel};
-            H2_VERIFY(pDevice->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &featureData, sizeof(featureData)),
+            H2_VERIFY(pDevice->CheckFeatureSupport1(D3D12_FEATURE_SHADER_MODEL, &featureData, sizeof(featureData),
+                                                    D3D12_SDK_VERSION),
                       "Could not check shader model support!");
 
             bAllFeaturesSupported &= featureData.HighestShaderModel >= expectedShaderModel;
@@ -432,7 +433,8 @@ namespace Hydrogen
         // Raytracing
         {
             D3D12_FEATURE_DATA_D3D12_OPTIONS5 featureData{};
-            H2_VERIFY(pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &featureData, sizeof(featureData)),
+            H2_VERIFY(pDevice->CheckFeatureSupport1(D3D12_FEATURE_D3D12_OPTIONS5, &featureData, sizeof(featureData),
+                                                    D3D12_SDK_VERSION),
                       "Could not check raytracing support!");
 
             bAllFeaturesSupported &= featureData.RaytracingTier >= StaticConfig::ExpectedRaytracingTier;
@@ -441,7 +443,8 @@ namespace Hydrogen
         // Mesh shaders
         {
             D3D12_FEATURE_DATA_D3D12_OPTIONS7 featureData{};
-            H2_VERIFY(pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &featureData, sizeof(featureData)),
+            H2_VERIFY(pDevice->CheckFeatureSupport1(D3D12_FEATURE_D3D12_OPTIONS7, &featureData, sizeof(featureData),
+                                                    D3D12_SDK_VERSION),
                       "Could not check mesh shader support!");
 
             bAllFeaturesSupported &= featureData.MeshShaderTier >= StaticConfig::ExpectedMeshShaderTier;
@@ -450,7 +453,8 @@ namespace Hydrogen
         // Bindless resources
         {
             D3D12_FEATURE_DATA_D3D12_OPTIONS featureData{};
-            H2_VERIFY(pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &featureData, sizeof(featureData)),
+            H2_VERIFY(pDevice->CheckFeatureSupport1(D3D12_FEATURE_D3D12_OPTIONS, &featureData, sizeof(featureData),
+                                                    D3D12_SDK_VERSION),
                       "Could not check bindless resource support!");
 
             bAllFeaturesSupported &= featureData.ResourceBindingTier >= StaticConfig::ExpectedResourceBindingTier;
@@ -459,7 +463,8 @@ namespace Hydrogen
         // Enhanced barriers
         {
             D3D12_FEATURE_DATA_D3D12_OPTIONS12 featureData{};
-            H2_VERIFY(pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS12, &featureData, sizeof(featureData)),
+            H2_VERIFY(pDevice->CheckFeatureSupport1(D3D12_FEATURE_D3D12_OPTIONS12, &featureData, sizeof(featureData),
+                                                    D3D12_SDK_VERSION),
                       "Could not check enhanced barriers support!");
 
             bAllFeaturesSupported &= static_cast<bool>(featureData.EnhancedBarriersSupported);

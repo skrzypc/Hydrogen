@@ -1,6 +1,6 @@
 #pragma once
 
-#include <d3d12.h>
+#include <directx/d3d12.h>
 #include <dxgi1_6.h>
 #include <dxgidebug.h>
 #include <wrl.h>
@@ -149,7 +149,7 @@ namespace Hydrogen
         {
             return m_pDxgiFactory.Get();
         }
-        ID3D12Device14* GetDxDevice() const
+        ID3D12Device16* GetDxDevice() const
         {
             return m_pDxDevice.Get();
         }
@@ -218,7 +218,7 @@ namespace Hydrogen
     private:
         void Initialize();
         void SelectAdapter();
-        static bool CheckRequiredFeatureSupport(ID3D12Device* pDevice);
+        static bool CheckRequiredFeatureSupport(ID3D12Device16* pDevice);
 
         DescriptorHeap& GetDescriptorHeap(eDescriptorHeapType descHeapType);
 
@@ -237,7 +237,7 @@ namespace Hydrogen
     private:
         Microsoft::WRL::ComPtr<IDXGIFactory7> m_pDxgiFactory = nullptr;
         Microsoft::WRL::ComPtr<IDXGIAdapter4> m_pDxgiAdapter = nullptr;
-        Microsoft::WRL::ComPtr<ID3D12Device14> m_pDxDevice = nullptr;
+        Microsoft::WRL::ComPtr<ID3D12Device16> m_pDxDevice = nullptr;
 
         LinearIndexAllocator m_cbvSrvUavDescriptorAllocator{};
         DescriptorHeap m_cbvSrvUavDescriptorHeap{};

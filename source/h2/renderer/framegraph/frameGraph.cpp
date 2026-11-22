@@ -1,5 +1,5 @@
 
-#include <d3d12.h>
+#include <directx/d3d12.h>
 #include <pix3.h>
 
 #include <h2/renderer/framegraph/frameGraph.h>

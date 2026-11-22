@@ -8,12 +8,12 @@ set "VCPKG_DIR=%THIRD_PARTY_DIR%\vcpkg"
 
 where git >nul 2>&1 || (
     echo Error! Git is not installed or not in PATH.
-    exit /b 1
+    goto :fail
 )
 
 if not exist "%VCPKG_DIR%\.git" (
     echo Cloning vcpkg...
-    git clone https://github.com/microsoft/vcpkg "%VCPKG_DIR%" || exit /b 1
+    git clone https://github.com/microsoft/vcpkg "%VCPKG_DIR%" || goto :fail
 )
 
 for /f "tokens=2 delims=:, " %%A in ('findstr "builtin-baseline" "%ROOT_DIR%\thirdParty\vcpkg.json"') do (
@@ -22,15 +22,15 @@ for /f "tokens=2 delims=:, " %%A in ('findstr "builtin-baseline" "%ROOT_DIR%\thi
 
 echo Updating vcpkg...
 pushd "%VCPKG_DIR%"
-git fetch || exit /b 1
-git checkout %VCPKG_BASELINE% || exit /b 1
+git fetch || goto :fail
+git checkout %VCPKG_BASELINE% || goto :fail
 popd
 
 set "VCPKG_ROOT=%VCPKG_DIR%"
 
 if not exist "%VCPKG_DIR%\vcpkg.exe" (
     echo Bootstrapping vcpkg...
-    call "%VCPKG_DIR%\bootstrap-vcpkg.bat" -disableMetrics || exit /b 1
+    call "%VCPKG_DIR%\bootstrap-vcpkg.bat" -disableMetrics || goto :fail
 )
 
 echo Installing dependencies...
@@ -38,10 +38,10 @@ echo Installing dependencies...
 pushd "%THIRD_PARTY_DIR%"
 
 if exist "%THIRD_PARTY_DIR%\vcpkg.json" (
-    call "%VCPKG_DIR%\vcpkg.exe" install --triplet x64-windows || exit /b 1
+    call "%VCPKG_DIR%\vcpkg.exe" install --triplet x64-windows || goto :fail
 ) else (
     echo Error! Could not find vcpkg.json.
-    exit /b 1
+    goto :fail
 )
 
 popd
@@ -56,3 +56,12 @@ echo.
 cmd /k
 
 endlocal
+exit /b 0
+
+:fail
+echo.
+echo Setup failed. See the messages above.
+echo.
+pause
+cmd /k
+exit /b 1

@@ -1,6 +1,6 @@
 
 #include <dxgi1_6.h>
-#include <d3d12.h>
+#include <directx/d3d12.h>
 
 #include <h2/hydrogenConfig.h>
 #include <h2/renderer/gpu/swapChain.h>

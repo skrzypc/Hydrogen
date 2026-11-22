@@ -4,7 +4,7 @@
   "description": "",
   "supports": "windows & x64",
   "dependencies": [
-	{ "name": "directx12-agility", "version>=": "1.619.0" },
+	{ "name": "directx12-agility", "version>=": "1.620.2" },
 	{ "name": "directxtk12", "version>=": "2026-03-31" },
 	{ "name": "directxtex", "version>=": "2026-03-31"},
 	{ "name": "directx-dxc", "version>=": "2026-02-20"},
@@ -12,5 +12,5 @@
 	{ "name": "imgui", "version>=": "1.91.8", "features": [ "docking-experimental", "dx12-binding", "win32-binding" ] },
 	{ "name": "winpixevent", "version>=": "1.0.240308001" }
   ],
-  "builtin-baseline": "dbbd673624c057174dd51ef85758951032717715"
+  "builtin-baseline": "7ea8b7ed582b7c4b75d1586d74759b5687576dc1"
 }

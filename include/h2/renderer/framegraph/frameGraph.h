@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <string>
 
-#include <d3d12.h>
+#include <directx/d3d12.h>
 
 #include <h2/renderer/gpu/resources/texture.h>
 #include <h2/renderer/gpu/resources/buffer.h>

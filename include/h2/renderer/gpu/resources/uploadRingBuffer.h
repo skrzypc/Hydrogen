@@ -1,6 +1,6 @@
 #pragma once
 
-#include <d3d12.h>
+#include <directx/d3d12.h>
 #include <memory>
 
 #include <h2/core/basicTypes.h>

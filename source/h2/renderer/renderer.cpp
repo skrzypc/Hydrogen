@@ -2,7 +2,7 @@
 #include <cmath>
 #include <string_view>
 
-#include <d3d12.h>
+#include <directx/d3d12.h>
 #include <DirectXColors.h>
 #include <DirectXMath.h>
 
