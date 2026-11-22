@@ -1,5 +1,6 @@
 #include <h2/renderer/renderPipelines/referencePathTracerRenderPipeline.h>
 
+#include <algorithm>
 #include <string_view>
 
 #include <directx/d3d12.h>
@@ -84,5 +85,13 @@ namespace Hydrogen
     void ReferencePathTracerRenderPipeline::BuildUI()
     {
         ImGui::Text("Accumulated frames: %u", m_rayTraceDispatchPass.GetAccumulatedFramesCount());
+
+        auto minBounces = static_cast<int32>(m_rayTraceDispatchPass.minBounces);
+        auto maxBounces = static_cast<int32>(m_rayTraceDispatchPass.maxBounces);
+        ImGui::SliderInt("Min bounces", &minBounces, 0, 16);
+        ImGui::SliderInt("Max bounces", &maxBounces, 0, 16);
+        minBounces = std::min(minBounces, maxBounces);
+        m_rayTraceDispatchPass.minBounces = static_cast<uint32>(minBounces);
+        m_rayTraceDispatchPass.maxBounces = static_cast<uint32>(maxBounces);
     }
 } // namespace Hydrogen

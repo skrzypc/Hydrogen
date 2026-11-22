@@ -11,13 +11,11 @@ struct PushConstants
     uint outputUavIndex;
     uint accumulationTargetUavIndex;
     uint accumulatedFramesCount;
+    uint minBounces;
+    uint maxBounces;
 };
 
 ConstantBuffer<PushConstants> g_push : register(b0, space0);
-
-
-static const uint MIN_BOUNCES = 0;
-static const uint MAX_BOUNCES = 0;
 
 struct [raypayload] RayPayload
 {
@@ -145,7 +143,7 @@ void mainRayGen()
     RaytracingAccelerationStructure tlas = ResourceDescriptorHeap[g_push.tlasIndex];
     StructuredBuffer<GpuMaterialData> materialDataBuffer = ResourceDescriptorHeap[g_frame.materialDataBufferIndex];
 
-    for (uint i = 0; i <= MAX_BOUNCES; ++i)
+    for (uint i = 0; i <= g_push.maxBounces; ++i)
     {
         // i = 0 <- Primary ray.
         // i > 0 <- Bounce ray.
@@ -260,7 +258,7 @@ void mainRayGen()
         // Russian Roulette
         // Probabilistically kill the path based on throughput, boosting survivors to compensate.
         // Unbiased alternative to a hard bounce cutoff.
-        if (i > MIN_BOUNCES)
+        if (i > g_push.minBounces)
         {
             float russianRuletteFactor = min(0.95f, CalculateLuminance(throughput));
 

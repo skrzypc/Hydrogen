@@ -20,10 +20,15 @@ namespace Hydrogen
             uint32 outputUavIndex = 0;
             uint32 accumulationTargetUavIndex = 0;
             uint32 accumulatedFramesCount = 0;
+            uint32 minBounces = 0;
+            uint32 maxBounces = 0;
         };
 
         std::string output = "SceneColor";
         bool resetAccumulation = false;
+        
+        uint32 minBounces = 0;
+        uint32 maxBounces = 0;
 
         void Initialize(GpuDevice& device, ShaderCompiler& shaderCompiler) override;
         void CreateAccumulationTarget(uint32 width, uint32 height);
@@ -48,6 +53,8 @@ namespace Hydrogen
         std::unique_ptr<Texture> m_pAccumulationTarget{};
 
         uint32 m_accumulatedFramesCount = 0;
+        uint32 m_lastMinBounces = 0;
+        uint32 m_lastMaxBounces = 0;
 
         uint32 m_width = 0;
         uint32 m_height = 0;

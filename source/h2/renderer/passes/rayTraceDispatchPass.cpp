@@ -74,6 +74,10 @@ namespace Hydrogen
         m_width = desc.width;
         m_height = desc.height;
 
+        resetAccumulation |= (minBounces != m_lastMinBounces || maxBounces != m_lastMaxBounces);
+        m_lastMinBounces = minBounces;
+        m_lastMaxBounces = maxBounces;
+
         m_accumulatedFramesCount = resetAccumulation ? 1 : m_accumulatedFramesCount + 1;
     }
 
@@ -88,7 +92,9 @@ namespace Hydrogen
         const PushConstants push{.tlasIndex = fgExecuteContext.GetSRVIndex("TLAS"),
                                  .outputUavIndex = fgExecuteContext.GetUAVIndex(output),
                                  .accumulationTargetUavIndex = fgExecuteContext.GetUAVIndex("AccumulationTarget"),
-                                 .accumulatedFramesCount = m_accumulatedFramesCount};
+                                 .accumulatedFramesCount = m_accumulatedFramesCount,
+                                 .minBounces = minBounces,
+                                 .maxBounces = maxBounces};
         graphicsContext.SetComputePushConstants(push);
 
         const D3D12_DISPATCH_RAYS_DESC dispatchDesc = m_shaderTable.GetDispatchRaysDesc(0, m_width, m_height);

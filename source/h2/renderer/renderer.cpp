@@ -312,7 +312,7 @@ namespace Hydrogen
         ImGui::Spacing();
         ImGui::Spacing();
 
-        if (ImGui::CollapsingHeader("Performance"))
+        if (ImGui::CollapsingHeader("Performance", ImGuiTreeNodeFlags_DefaultOpen))
         {
             const float32 framerate = ImGui::GetIO().Framerate;
             ImGui::Text("FPS: %.1f (%.2f ms)", framerate, 1000.0f / framerate);
