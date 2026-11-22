@@ -40,7 +40,7 @@ namespace Hydrogen
         };
 
         D3D12_RASTERIZER_DESC2 rasterizerDesc = PipelineState::DefaultRasterizer();
-        rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
+        rasterizerDesc.CullMode = D3D12_CULL_MODE_NONE;
         rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
 
         D3D12_DEPTH_STENCIL_DESC1 depthStencilDesc = PipelineState::DefaultDepthStencil();

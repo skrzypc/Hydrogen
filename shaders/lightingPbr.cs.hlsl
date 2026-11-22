@@ -28,7 +28,7 @@ void mainCS(uint3 dispatchThreadId : SV_DispatchThreadID)
     }
 
     Texture2D<float4> albedoTarget = ResourceDescriptorHeap[g_push.albedoIndex];
-    Texture2D<float2> normalTarget = ResourceDescriptorHeap[g_push.normalIndex];
+    Texture2D<float4> normalTarget = ResourceDescriptorHeap[g_push.normalIndex];
     Texture2D<float2> roughnessMetallicTarget = ResourceDescriptorHeap[g_push.roughnessMetallicIndex];
     Texture2D<float> depthTarget = ResourceDescriptorHeap[g_push.depthIndex];
     RWTexture2D<float4> output = ResourceDescriptorHeap[g_push.outputIndex];
@@ -50,7 +50,7 @@ void mainCS(uint3 dispatchThreadId : SV_DispatchThreadID)
         surface.roughness = roughnessMetallic.x;
         surface.metallic = roughnessMetallic.y;
 
-        float3 N = DecodeOctahedral(normalTarget[pixel]);
+        float3 N = DecodeOctahedral(normalTarget[pixel].xy);
         float3 V = normalize(view.worldPosition - surfacePosition);
 
         StructuredBuffer<GpuLight> lights = ResourceDescriptorHeap[g_frame.lightBufferIndex];

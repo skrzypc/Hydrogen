@@ -21,7 +21,7 @@ struct PsIn
 struct PsOut
 {
     float4 albedo : SV_Target0;
-    float2 normal : SV_Target1;
+    float4 normals : SV_Target1;
     float2 roughnessMetallic : SV_Target2;
 };
 
@@ -47,23 +47,34 @@ PsOut mainPS(PsIn input)
         roughnessMetallic = roughnessMetallicTexture.Sample(AnisoWrapSampler, input.uvCoords).gb;
     }
 
-    float3 normal = normalize(input.normalWorldSpace);
+    float3 shadingNormal = normalize(input.normalWorldSpace);
+
+    // Orient the geometric normal toward the camera, then make the shading normal agree with it.
+    StructuredBuffer<ViewData> views = ResourceDescriptorHeap[g_frame.viewBufferIndex];
+    ViewData view = views[g_frame.mainViewIndex];
+    float3 worldPosition = ReconstructWorldPosition(input.positionClipSpace.xy / view.viewportSize,
+                                                    input.positionClipSpace.z, view.invViewProjectionMx);
+    float3 geometryNormal = normalize(cross(ddx(worldPosition), ddy(worldPosition)));
+    geometryNormal *= dot(geometryNormal, view.worldPosition - worldPosition) < 0.0f ? -1.0f : 1.0f;
+    shadingNormal *= dot(geometryNormal, shadingNormal) < 0.0f ? -1.0f : 1.0f;
+
     if (material.normalTextureIndex != InvalidTextureIndex)
     {
         Texture2D<float4> normalTexture = ResourceDescriptorHeap[material.normalTextureIndex];
         float3 tangentSpaceNormal = normalTexture.Sample(AnisoWrapSampler, input.uvCoords).xyz * 2.0f - 1.0f;
 
         float3 T = normalize(input.tangentWorldSpace.xyz);
-        float3 N = normal;
+        float3 N = shadingNormal;
         T = normalize(T - N * dot(N, T)); // re-orthogonalize after interpolation
         float3 B = cross(N, T) * input.tangentWorldSpace.w;
         float3x3 TBN = float3x3(T, B, N);
 
-        normal = normalize(mul(tangentSpaceNormal, TBN));
+        shadingNormal = normalize(mul(tangentSpaceNormal, TBN));
     }
 
     output.albedo = float4(albedo, 1.0f);
-    output.normal = EncodeOctahedral(normal);
+    // TODO: We only need it for RT. Skip this for rasterization.
+    output.normals = float4(EncodeOctahedral(shadingNormal), EncodeOctahedral(geometryNormal));
     output.roughnessMetallic = float2(roughnessMetallic.x, roughnessMetallic.y);
 
     return output;

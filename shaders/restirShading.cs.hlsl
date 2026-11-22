@@ -53,7 +53,7 @@ void mainCS(uint3 dispatchThreadId : SV_DispatchThreadID)
     }
 
     Texture2D<float4> albedoTarget = ResourceDescriptorHeap[g_push.albedoIndex];
-    Texture2D<float2> normalTarget = ResourceDescriptorHeap[g_push.normalIndex];
+    Texture2D<float4> normalTarget = ResourceDescriptorHeap[g_push.normalIndex];
     Texture2D<float2> roughnessMetallicTarget = ResourceDescriptorHeap[g_push.roughnessMetallicIndex];
     
     float2 uv = (float2(pixel) + 0.5f) / view.viewportSize;
@@ -67,7 +67,8 @@ void mainCS(uint3 dispatchThreadId : SV_DispatchThreadID)
     surface.roughness = roughnessMetallic.x;
     surface.metallic = roughnessMetallic.y;
 
-    float3 N = DecodeOctahedral(normalTarget[pixel]);
+    float4 normalsEncoded = normalTarget[pixel].xyzw;
+    float3 shadingNormal = DecodeOctahedral(normalsEncoded.xy);
     float3 V = normalize(view.worldPosition - surfaceWorldPosition);
 
     StructuredBuffer<GpuLight> lightsBuffer = ResourceDescriptorHeap[g_frame.lightBufferIndex];
@@ -81,7 +82,7 @@ void mainCS(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     // Check occlusion.
     RayDesc shadowRay;
-    shadowRay.Origin = OffsetRayOrigin(surfaceWorldPosition, N);
+    shadowRay.Origin = OffsetRayOrigin(surfaceWorldPosition, DecodeOctahedral(normalsEncoded.zw));
     shadowRay.Direction = lightDirection;
     shadowRay.TMin = 0.0f;
     shadowRay.TMax = lightDistance > 0.0f ? lightDistance * 0.999f : 100000.0f;
@@ -98,8 +99,8 @@ void mainCS(uint3 dispatchThreadId : SV_DispatchThreadID)
     if (!occlusion)
     {
         float3 lightIrradiance = GetLightIrradiancePT(selectedLight, lightDirection, lightDistance);
-        float3 materialBrdf = EvaluateBrdfGgx(surface, N, V, lightDirection); // GGX
-        float NoL = saturate(dot(N, lightDirection));
+        float3 materialBrdf = EvaluateBrdfGgx(surface, shadingNormal, V, lightDirection); // GGX
+        float NoL = saturate(dot(shadingNormal, lightDirection));
 
         radiance = (materialBrdf * lightIrradiance * NoL * reservoir.contributionWeight);
     }

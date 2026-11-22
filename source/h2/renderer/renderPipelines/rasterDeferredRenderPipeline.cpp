@@ -44,7 +44,7 @@ namespace Hydrogen
                                                        .format = GBufferPass::NormalFormat,
                                                        .flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
                                                        .dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
-                                                       .optimizedClearColor = {0.0f, 0.0f},
+                                                       .optimizedClearColor = {0.0f, 0.0f, 0.0f, 0.0f},
                                                    });
 
         frameGraph.CreateTexture("GBuffer_RM", {
